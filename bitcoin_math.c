@@ -19,6 +19,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#define _CRT_RAND_S // prerequisite for the (cryptographically secure) rand_s function, part of the Windows stdlib
+
 #include <ctype.h>
 #include <math.h>
 #include <stdint.h>
@@ -679,7 +681,7 @@ void bnz_align(bnz_t *, bnz_t *);
 void bnz_reverse_digits(bnz_t *);
 void bnz_shift_r(bnz_t *, uint32_t);
 void bnz_trim(bnz_t *);
-void bnz_print(bnz_t *, int32_t, const char *);
+void bnz_print(const bnz_t *, int32_t, const char *);
 void bnz_free(bnz_t *);
 
 uint8_t get_digit(const uint8_t *, size_t, uint8_t);
@@ -687,36 +689,36 @@ uint8_t get_val_from_char_d(uint8_t);
 uint8_t get_val_from_char_16(uint8_t);
 uint8_t get_val_from_char_58(uint8_t);
 uint8_t get_val_from_char_64(uint8_t);
-uint8_t *get_base_n_str(bnz_t *, uint32_t, const char *);
+uint8_t *get_base_n_str(const bnz_t *, uint32_t, const char *);
 
 void bnz_set_i32(bnz_t *, int32_t);
 void bnz_set_ui32(bnz_t *, uint32_t);
 void bnz_set_str(bnz_t *, const uint8_t *, uint8_t);
-void bnz_set_bnz(bnz_t *, bnz_t *);
+void bnz_set_bnz(bnz_t *, const bnz_t *);
 
 int32_t cmp_uint8_arr(uint8_t *, uint8_t *, size_t);
-int32_t bnz_cmp_i32(bnz_t *, int32_t);
-int32_t bnz_cmp_bnz(bnz_t *, bnz_t *);
-int32_t bnz_is_zero(bnz_t *);
-int32_t bnz_bit_set(bnz_t *, uint32_t);
+int32_t bnz_cmp_i32(const bnz_t *, int32_t);
+int32_t bnz_cmp_bnz(const bnz_t *, const bnz_t *);
+int32_t bnz_is_zero(const bnz_t *);
+int32_t bnz_bit_set(const bnz_t *, uint32_t);
 
-void bnz_concatenate_ui8(bnz_t *, bnz_t *, uint8_t, size_t);
-void bnz_concatenate_bnz(bnz_t *, bnz_t *, bnz_t *, size_t);
+void bnz_concatenate_ui8(bnz_t *, const bnz_t *, uint8_t, size_t);
+void bnz_concatenate_bnz(bnz_t *, const bnz_t *, const bnz_t *, size_t);
 
-void bnz_add_i32(bnz_t *, bnz_t *, int32_t);
-void bnz_add_bnz(bnz_t *, bnz_t *, bnz_t *);
-void bnz_addition(bnz_t *, bnz_t *, bnz_t *);
-void bnz_subtract_bnz(bnz_t *, bnz_t *, bnz_t *);
-void bnz_subtraction(bnz_t *, bnz_t *, bnz_t *);
-void bnz_multiply_i32(bnz_t *, bnz_t *, int32_t);
-void bnz_multiply_bnz(bnz_t *, bnz_t *, bnz_t *);
-void bnz_division_signs(bnz_t *, bnz_t *, bnz_t *, bnz_t *);
-void bnz_divide_bnz(bnz_t *, bnz_t *, bnz_t *, bnz_t *);
-void bnz_division(bnz_t *, bnz_t *, bnz_t *, bnz_t *);
-void bnz_mod_bnz(bnz_t *, bnz_t *, bnz_t *);
+void bnz_add_i32(bnz_t *, const bnz_t *, int32_t);
+void bnz_add_bnz(bnz_t *, const bnz_t *, const bnz_t *);
+void bnz_addition(bnz_t *, const bnz_t *, const bnz_t *);
+void bnz_subtract_bnz(bnz_t *, const bnz_t *, const bnz_t *);
+void bnz_subtraction(bnz_t *, const bnz_t *, const bnz_t *);
+void bnz_multiply_i32(bnz_t *, const bnz_t *, int32_t);
+void bnz_multiply_bnz(bnz_t *, const bnz_t *, const bnz_t *);
+void bnz_division_signs(bnz_t *, bnz_t *, const bnz_t *, const bnz_t *);
+void bnz_divide_bnz(bnz_t *, bnz_t *, const bnz_t *, const bnz_t *);
+void bnz_division(bnz_t *, bnz_t *, const bnz_t *, const bnz_t *);
+void bnz_mod_bnz(bnz_t *, const bnz_t *, const bnz_t *);
 
-void bnz_mod_pow(bnz_t *, bnz_t *, bnz_t *, bnz_t *);
-void bnz_modular_multiplicative_inverse(bnz_t *, bnz_t *, bnz_t *);
+void bnz_mod_pow(bnz_t *, const bnz_t *, const bnz_t *, const bnz_t *);
+void bnz_modular_multiplicative_inverse(bnz_t *, const bnz_t *, const bnz_t *);
 
 void bnz_init(bnz_t *a) // initiate bnz_t components
 {
@@ -790,7 +792,7 @@ void bnz_trim(bnz_t *a) // trim 0 value bytes from msb end of a->digits
     bnz_resize(a, new_size, 1);
 }
 
-void bnz_print(bnz_t *a, int32_t base, const char *txt) // print a in a given base, preceded by optional string 
+void bnz_print(const bnz_t *a, int32_t base, const char *txt) // print a in a given base, preceded by optional string 
 {
     uint8_t *str = NULL;
     size_t i, j;
@@ -860,7 +862,7 @@ void bnz_print(bnz_t *a, int32_t base, const char *txt) // print a in a given ba
             if (bnz_is_zero(&tmp)) {
                 printf("0\n");
             } else {
-                if (!(str = get_base_n_str(&tmp, 58, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"))) return;
+                if (!(str = get_base_n_str(&tmp, 58, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv"))) return;
                 if (tmp.sign) printf("-");
                 printf("%s\n", str);
             }
@@ -1596,7 +1598,7 @@ uint8_t get_val_from_char_64(uint8_t ch) /* look-up table for numberical value o
     }
 }
 
-uint8_t *get_base_n_str(bnz_t *a, uint32_t base, const char *alpha) // return a null terminated string representing a->digits in given base, big endian order
+uint8_t *get_base_n_str(const bnz_t *a, uint32_t base, const char *alpha) // return a null terminated string representing a->digits in given base, big endian order
 {
     uint8_t *base_n_str = NULL, *base_n_str_trimmed = NULL;
     uint32_t base_abs = base < 0 ? base * -1 : base;
@@ -1667,7 +1669,7 @@ void bnz_set_str(bnz_t *a, const uint8_t *str, uint8_t base) // set bnz_t to num
     bnz_trim(a);
 }
 
-void bnz_set_bnz(bnz_t *a, bnz_t *b) // set bnz-t equivalent to another bnz_t
+void bnz_set_bnz(bnz_t *a, const bnz_t *b) // set bnz-t equivalent to another bnz_t
 {
     bnz_resize(a, b->size, 0);
     memcpy(a->digits, b->digits, b->size);
@@ -1684,7 +1686,7 @@ int32_t cmp_uint8_arr(uint8_t *a, uint8_t *b, size_t len) // compare two uint8_t
     return 0;
 }
 
-int32_t bnz_cmp_i32(bnz_t *a, int32_t b) // compare bnz_t with int_t, by converting int8_t to bnz_t and invoking bnz_cmp_bnz
+int32_t bnz_cmp_i32(const bnz_t *a, int32_t b) // compare bnz_t with int_t, by converting int8_t to bnz_t and invoking bnz_cmp_bnz
 {
     int32_t res;
     bnz_t tmp;
@@ -1695,7 +1697,7 @@ int32_t bnz_cmp_i32(bnz_t *a, int32_t b) // compare bnz_t with int_t, by convert
     return res;
 }
 
-int32_t bnz_cmp_bnz(bnz_t *a, bnz_t *b) // compare two bnz_t numbers, taking account of signs, and invoking cmp_uint8_arr to compare their digits
+int32_t bnz_cmp_bnz(const bnz_t *a, const bnz_t *b) // compare two bnz_t numbers, taking account of signs, and invoking cmp_uint8_arr to compare their digits
 {
     size_t res;
     bnz_t aa, bb;
@@ -1733,7 +1735,7 @@ int32_t bnz_cmp_bnz(bnz_t *a, bnz_t *b) // compare two bnz_t numbers, taking acc
     return res;
 }
 
-int32_t bnz_is_zero(bnz_t *a) // return 1 if a == 0, return 0 if a != 0
+int32_t bnz_is_zero(const bnz_t *a) // return 1 if a == 0, return 0 if a != 0
 {
     size_t i = a->size;
     while (i--) {
@@ -1742,13 +1744,13 @@ int32_t bnz_is_zero(bnz_t *a) // return 1 if a == 0, return 0 if a != 0
     return 1;
 }
 
-int32_t bnz_bit_set(bnz_t *a, uint32_t idx) // return 1 if a specific bit in a is set, return 0 if it is not set
+int32_t bnz_bit_set(const bnz_t *a, uint32_t idx) // return 1 if a specific bit in a is set, return 0 if it is not set
 {
     uint32_t byte = idx / 8, bit = idx % 8;
     return (a->digits[byte] >> bit) & 1;
 }
 
-void bnz_concatenate_ui8(bnz_t *c, bnz_t *a, uint8_t b, size_t order) // convert uint_t to bnz_t and invoke bnz_concatenate_bnz
+void bnz_concatenate_ui8(bnz_t *c, const bnz_t *a, uint8_t b, size_t order) // convert uint_t to bnz_t and invoke bnz_concatenate_bnz
 {
     bnz_t bb;
     bnz_init(&bb);
@@ -1758,7 +1760,7 @@ void bnz_concatenate_ui8(bnz_t *c, bnz_t *a, uint8_t b, size_t order) // convert
     bnz_free(&bb);
 }
 
-void bnz_concatenate_bnz(bnz_t *c, bnz_t *a, bnz_t *b, size_t order) // c = a concatenated to b, in sepcified order
+void bnz_concatenate_bnz(bnz_t *c, const bnz_t *a, const bnz_t *b, size_t order) // c = a concatenated to b, in sepcified order
 {
     bnz_t cc; // local copy permits a = a || b, a = b || a
     bnz_init(&cc);
@@ -1774,7 +1776,7 @@ void bnz_concatenate_bnz(bnz_t *c, bnz_t *a, bnz_t *b, size_t order) // c = a co
     bnz_free(&cc);
 }
 
-void bnz_add_i32(bnz_t *c, bnz_t *a, int32_t b) // convert int32_t to bnz_t and invoke bnz_add_bnz
+void bnz_add_i32(bnz_t *c, const bnz_t *a, int32_t b) // convert int32_t to bnz_t and invoke bnz_add_bnz
 {
     bnz_t bb;
     bnz_init(&bb);
@@ -1782,7 +1784,7 @@ void bnz_add_i32(bnz_t *c, bnz_t *a, int32_t b) // convert int32_t to bnz_t and 
     bnz_add_bnz(c, a, &bb);
 }
 
-void bnz_add_bnz(bnz_t *c, bnz_t *a, bnz_t *b) // c = a + b, taking account of signs, invoking bnz_addition or bnz_subtraction
+void bnz_add_bnz(bnz_t *c, const bnz_t *a, const bnz_t *b) // c = a + b, taking account of signs, invoking bnz_addition or bnz_subtraction
 {
     int32_t cmp;
     bnz_t tmp, aa, bb;
@@ -1834,7 +1836,7 @@ void bnz_add_bnz(bnz_t *c, bnz_t *a, bnz_t *b) // c = a + b, taking account of s
     bnz_free(&bb);
 }
 
-void bnz_addition(bnz_t *c, bnz_t *a, bnz_t *b) // |a| + |b|
+void bnz_addition(bnz_t *c, const bnz_t *a, const bnz_t *b) // |a| + |b|
 {
     size_t i, carry = 0;
     bnz_t tmp;
@@ -1851,7 +1853,7 @@ void bnz_addition(bnz_t *c, bnz_t *a, bnz_t *b) // |a| + |b|
     bnz_free(&tmp);
 }
 
-void bnz_subtract_bnz(bnz_t *c, bnz_t *a, bnz_t *b) // c = a - b, taking account of signs, invoking bnz_subtraction or bnz_addition
+void bnz_subtract_bnz(bnz_t *c, const bnz_t *a, const bnz_t *b) // c = a - b, taking account of signs, invoking bnz_subtraction or bnz_addition
 {
     int32_t cmp;
     bnz_t tmp, aa, bb;
@@ -1904,7 +1906,7 @@ void bnz_subtract_bnz(bnz_t *c, bnz_t *a, bnz_t *b) // c = a - b, taking account
     bnz_free(&bb);
 }
 
-void bnz_subtraction(bnz_t *c, bnz_t *a, bnz_t *b) // c = |a| - |b|
+void bnz_subtraction(bnz_t *c, const bnz_t *a, const bnz_t *b) // c = |a| - |b|
 {
     size_t i, borrow = 0;
     bnz_t tmp;
@@ -1920,7 +1922,7 @@ void bnz_subtraction(bnz_t *c, bnz_t *a, bnz_t *b) // c = |a| - |b|
     bnz_free(&tmp);
 }
 
-void bnz_multiply_i32(bnz_t *c, bnz_t *a, int32_t b) // convert int32_t to bnz_t and invoke bnz_multiply_bnz
+void bnz_multiply_i32(bnz_t *c, const const bnz_t *a, int32_t b) // convert int32_t to bnz_t and invoke bnz_multiply_bnz
 {
     bnz_t bb;
     bnz_init(&bb);
@@ -1929,7 +1931,7 @@ void bnz_multiply_i32(bnz_t *c, bnz_t *a, int32_t b) // convert int32_t to bnz_t
     bnz_free(&bb);
 }
 
-void bnz_multiply_bnz(bnz_t *c, bnz_t *a, bnz_t *b) // c = |a| * |b|
+void bnz_multiply_bnz(bnz_t *c, const bnz_t *a, const bnz_t *b) // c = |a| * |b|
 {
     uint8_t k, t[2];
     uint16_t m;
@@ -1988,7 +1990,7 @@ void bnz_multiply_bnz(bnz_t *c, bnz_t *a, bnz_t *b) // c = |a| * |b|
     bnz_free(&bb);
 }
 
-void bnz_division_signs(bnz_t *q, bnz_t *r, bnz_t *a, bnz_t *b) // process signs of q and r in a / b
+void bnz_division_signs(bnz_t *q, bnz_t *r, const bnz_t *a, const bnz_t *b) // process signs of q and r in a / b
 {
     if (a->sign) { // -a
         if (b->sign) { // -a, -b
@@ -2009,7 +2011,7 @@ void bnz_division_signs(bnz_t *q, bnz_t *r, bnz_t *a, bnz_t *b) // process signs
     }
 }
 
-void bnz_divide_bnz(bnz_t *q, bnz_t *r, bnz_t *a, bnz_t *b) // get q and r of a / b, taking account of signs, invoking bnz_division
+void bnz_divide_bnz(bnz_t *q, bnz_t *r, const bnz_t *a, const bnz_t *b) // get q and r of a / b, taking account of signs, invoking bnz_division
 {
     int32_t cmp;
 
@@ -2060,7 +2062,7 @@ void bnz_divide_bnz(bnz_t *q, bnz_t *r, bnz_t *a, bnz_t *b) // get q and r of a 
     bnz_free(&bb);   
 }
 
-void bnz_division(bnz_t *q, bnz_t *r, bnz_t *a, bnz_t *b) // get q and r of |a| / |b|
+void bnz_division(bnz_t *q, bnz_t *r, const bnz_t *a, const bnz_t *b) // get q and r of |a| / |b|
 {
     uint8_t *an = NULL, *bn = NULL, tmp = b->digits[b->size - 1];
     uint16_t q_hat, r_hat, p, base = 256;
@@ -2141,7 +2143,7 @@ void bnz_division(bnz_t *q, bnz_t *r, bnz_t *a, bnz_t *b) // get q and r of |a| 
     free(bn);
 }
 
-void bnz_mod_bnz(bnz_t *c, bnz_t *a, bnz_t *b) // get c = a % b, invoking bnz_divide_bnz
+void bnz_mod_bnz(bnz_t *c, const bnz_t *a, const bnz_t *b) // get c = a % b, invoking bnz_divide_bnz
 {
     bnz_t q, r;
 
@@ -2157,7 +2159,7 @@ void bnz_mod_bnz(bnz_t *c, bnz_t *a, bnz_t *b) // get c = a % b, invoking bnz_di
     bnz_free(&r);
 }
 
-void bnz_mod_pow(bnz_t *d, bnz_t *a, bnz_t *b, bnz_t *c) // get d = a^b mod c
+void bnz_mod_pow(bnz_t *d, const bnz_t *a, const bnz_t *b, const bnz_t *c) // get d = a^b mod c
 {
     bnz_t aa, bb;
 
@@ -2182,7 +2184,7 @@ void bnz_mod_pow(bnz_t *d, bnz_t *a, bnz_t *b, bnz_t *c) // get d = a^b mod c
     bnz_free(&bb);
 }
 
-void bnz_modular_multiplicative_inverse(bnz_t *c, bnz_t *a, bnz_t *b) // get c where (c * a) mod b = 1
+void bnz_modular_multiplicative_inverse(bnz_t *c, const bnz_t *a, const bnz_t *b) // get c where (c * a) mod b = 1
 {
     bnz_t q, rem, tmp1, t, new_t, r, new_r, tmp2;
 
@@ -2247,9 +2249,9 @@ typedef struct {
 
 SECP256K1 secp256k1_init(void);
 void secp256k1_free(SECP256K1);
-void secp256k1_point_doubling(SECP256K1, PT *, PT *);
-void secp256k1_point_addition(SECP256K1, PT *, PT *, PT *);
-void secp256k1_scalar_multiplication(SECP256K1, PT *, bnz_t *);
+void secp256k1_point_doubling(const SECP256K1, const PT *, PT *);
+void secp256k1_point_addition(const SECP256K1, PT *, PT *, PT *);
+void secp256k1_scalar_multiplication(const SECP256K1, const bnz_t *, PT *);
 
 SECP256K1 secp256k1_init() // initiate secp256k1 curve
 {
@@ -2285,7 +2287,7 @@ void secp256k1_free(SECP256K1 secp256k1) // free secp256k1 curve
     bnz_free(&secp256k1.h);
 }
 
-void secp256k1_point_doubling(SECP256K1 secp256k1, PT *p, PT *r) // r = 2p on secp256k1
+void secp256k1_point_doubling(const SECP256K1 secp256k1, const PT *p, PT *r) // r = 2p on secp256k1
 {
     bnz_t slope, tmp;
 
@@ -2317,7 +2319,7 @@ void secp256k1_point_doubling(SECP256K1 secp256k1, PT *p, PT *r) // r = 2p on se
     bnz_free(&slope);
 }
 
-void secp256k1_point_addition(SECP256K1 secp256k1, PT *p, PT *q, PT *r) // r = (p + q) mod secp256k1.p
+void secp256k1_point_addition(const SECP256K1 secp256k1, PT *p, PT *q, PT *r) // r = (p + q) mod secp256k1.p
 {
     bnz_t tmp, slope;
 
@@ -2385,7 +2387,7 @@ void secp256k1_point_addition(SECP256K1 secp256k1, PT *p, PT *q, PT *r) // r = (
     bnz_free(&slope);
 }
 
-void secp256k1_scalar_multiplication(SECP256K1 secp256k1, PT *r, bnz_t *m) // r = (secp256k1.G * m) mod secp256k1.p
+void secp256k1_scalar_multiplication(const SECP256K1 secp256k1, const bnz_t *m, PT *r) // r = (secp256k1.G * m) mod secp256k1.p
 {
     size_t i, bits = 8 * m->size;
 
@@ -2455,12 +2457,14 @@ uint8_t *get_salt(const char *passphrase) // generate salt string from passphras
     return salt;
 }
 
-void bnz_256_bit_rnd(bnz_t *rnd) // generate pseudo random 256 bit entropy - NOT SECURE
+void bnz_256_bit_rnd(bnz_t *rnd) // generate pseudo random 256 bit entropy
 {
+    uint32_t random;
     size_t i;
     bnz_resize(rnd, 32, 0);
     for (i = 0; i < 32; i++) {
-        rnd->digits[i] = rand() & 255;
+        rand_s(&random); // on non-Windows systems, change this to some other source of cryptographically secure random numbers
+        rnd->digits[i] = random & 255;
     }
 }
 
@@ -2567,7 +2571,7 @@ void get_public_key(PT *public_key, bnz_t *public_key_compressed, bnz_t *private
 {
     SECP256K1 secp256k1 = secp256k1_init();
 
-    secp256k1_scalar_multiplication(secp256k1, public_key, private_key);
+    secp256k1_scalar_multiplication(secp256k1, private_key, public_key);
 
     if (bnz_bit_set(&public_key->y, 0) == 0) { // even y
         bnz_concatenate_ui8(public_key_compressed, &public_key->x, 2, 0); // prepend 2
@@ -2674,7 +2678,7 @@ void menu_4_2_secp256k1_point_addition(const char *);
 void menu_4_3_secp256k1_point_doubling(const char *);
 void menu_4_4_secp256k1_scalar_multiplication(const char *);
 
-uint32_t get_num_input(uint32_t max_len, uint32_t min, uint32_t max) // get number between min and max from stdin
+uint32_t get_num_input(uint32_t max_len, uint32_t min, uint32_t max) // get base 10 number between min and max from stdin
 {
     char str[max_len + 1];
     int i = 0, ch;
@@ -2692,7 +2696,10 @@ void get_str_input(char str[], int max_len) // get string from stdin with strlen
 {
     int i = 0, ch;
     while ((ch = getchar()) != '\n' && ch != EOF) {
-        if (ch >= 0 && i < max_len) str[i++] = ch;
+        // confine ch to the characters up to base 64
+        if (((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '+' || ch == '/') && i < max_len) {
+            str[i++] = ch;
+        }
     }
     str[i] = 0;
 }
@@ -3161,7 +3168,7 @@ void menu_2_3_public_child(const char *version)
     memcpy(tmp.digits, mac, 32);
     bnz_reverse_digits(&tmp);
 
-    secp256k1_scalar_multiplication(secp256k1, &tmp_key, &tmp);
+    secp256k1_scalar_multiplication(secp256k1, &tmp, &tmp_key);
     secp256k1_point_addition(secp256k1, &parent_public_key, &tmp_key, &child_public_key);
 
     if (bnz_bit_set(&child_public_key.y, 0) == 0) { // even
@@ -3534,7 +3541,7 @@ void menu_4_4_secp256k1_scalar_multiplication(const char *version)
 
     printf("\n");
 
-    secp256k1_scalar_multiplication(secp256k1, &p, &multiplier);
+    secp256k1_scalar_multiplication(secp256k1, &multiplier, &p);
 
     printf("SECP256K1 POINT:\n");
     bnz_print(&p.x, 16, " x: ");
@@ -3549,9 +3556,8 @@ void menu_4_4_secp256k1_scalar_multiplication(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.06, 2025-04-13";
+    static char *version = "bitcoin_math\nv0.07, 2025-04-18";
     int menu, running = 1;
-    srand(time(NULL));
     while (running) {
         system("cls");
         printf("%s\n\n", version);
