@@ -3,7 +3,7 @@ Zero dependency Bitcoin math implementation in C
 
 **WARNING:**
 **THIS PROGRAM USES THE rand_s FUNCTION FROM THE WINDOWS**
-**stdlib.h TO GENERATE PSEUDO RANDOM ENTROPY**
+**stdlib.h TO GENERATE PSEUDO RANDOM ENTROPY.**
 **MICROSOFT CLAIMS THAT rand_s PRODUCES CRYPTOGRAPHICALLY** 
 **SECURE RANDOM NUMBERS. HOWEVER, IT IS RECOMMENDED THAT**
 **USERS DO NOT SEND COINS TO "RANDOM" ADDRESSES GENERATED**
@@ -26,13 +26,15 @@ Outputs from `bitcoin_math` can be verified using online tools. My preferred sou
 
 ## Getting started with `bitcoin_math` 
 
-Compilation: The source code of bitcoin_math compiles with gcc under Windows using the following simple command:
+Compilation: The source code of `bitcoin_math` compiles with gcc under Windows using the following simple command:
 
 `gcc -o bitcoin_math.exe bitcoin_math.c`
 
 The compilation command works on Linux, although you may have to append `-lm` to ensure that the `math.h` functions `log10` and `log` are recognised. Note that the `system(cls);` command in the menu functions is not recognised by Linux, so non-fatal errors will be raised on execution.
 
-I have found bitcoin_math.exe to be fast enough for its intended illustrative / educational purposes. However, it can be trivially speeded-up using compiler optimisation flags such as `-O3`. Conversion to a library should also be relatively simple. Obviously, many further improvements in efficiency are potentially available.
+Linux developers should note that the source code has been updated to use the (allegedly) crytographically secure random number generation function `rand_s`, which is part of the Microsoft `stdlib` (see the function entitled `bnz_256_bit_rnd` under the /* BITCOIN */ heading). Linux developers will need to replace `rand_s` with functions based on `/dev/random` or `/dev/urandom`, or delete the random number based functions altogether.
+
+I have found `bitcoin_math.exe` to be fast enough for its intended illustrative / educational purposes. However, it can be trivially speeded-up using compiler optimisation flags such as `-O3`. Conversion to a library should also be relatively simple. Obviously, many further improvements in efficiency are potentially available.
 
 There are four menus, some with sub-menus:
 

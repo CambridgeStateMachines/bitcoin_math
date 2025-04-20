@@ -769,7 +769,7 @@ void bnz_reverse_digits(bnz_t *a) // reverse the order of the bytes in a->digits
     }
 }
 
-void bnz_shift_r(bnz_t *a, uint32_t sh) // shift the bits in a->digits to the right by sh bits, adding 0 value bits to msb end
+void bnz_shift_r(bnz_t *a, uint32_t sh) // shift the bits in a->digits to the right by sh bits, adding 0 value bits to MSB end
 {
     uint8_t msk = 255 >> (8 - sh);
     size_t i, orig_size = a->size;
@@ -783,7 +783,7 @@ void bnz_shift_r(bnz_t *a, uint32_t sh) // shift the bits in a->digits to the ri
     bnz_resize(a, orig_size, 1);
 }
 
-void bnz_trim(bnz_t *a) // trim 0 value bytes from msb end of a->digits
+void bnz_trim(bnz_t *a) // trim 0 value bytes from MSB end of a->digits
 {
     size_t new_size = a->size;
     while (a->digits[new_size - 1] == 0 && new_size >= 0) {
@@ -947,7 +947,7 @@ uint8_t get_digit(const uint8_t *str, size_t idx, uint8_t base) // return numeri
     return dgt;
 }
 
-uint8_t get_val_from_char_d(uint8_t ch) /* look-up table for numberical value of digits, used for binary decimal, octal, and general up to base 63 */
+uint8_t get_val_from_char_d(uint8_t ch) /* look-up table for numerical value of digits, used for binary decimal, octal, and general up to base 63 */
 {
     switch (ch) {
         case '0':
@@ -1145,7 +1145,7 @@ uint8_t get_val_from_char_d(uint8_t ch) /* look-up table for numberical value of
     }
 }
 
-uint8_t get_val_from_char_16(uint8_t ch) /* look-up table for numberical value of digits, used for hex, case insensitive, "0x" treated as leading zeros */
+uint8_t get_val_from_char_16(uint8_t ch) /* look-up table for numerical value of digits, used for hex, case insensitive, "0x" treated as leading zeros */
 {
     switch (ch) {
         case '0':
@@ -1214,7 +1214,7 @@ uint8_t get_val_from_char_16(uint8_t ch) /* look-up table for numberical value o
     }
 }
 
-uint8_t get_val_from_char_58(uint8_t ch) /* look-up table for numberical value of digits, used for bitcoin base 58 */
+uint8_t get_val_from_char_58(uint8_t ch) /* look-up table for numerical value of digits, used for bitcoin base 58 */
 {
     switch (ch) {
         case '1':
@@ -1397,7 +1397,7 @@ uint8_t get_val_from_char_58(uint8_t ch) /* look-up table for numberical value o
     }
 }
 
-uint8_t get_val_from_char_64(uint8_t ch) /* look-up table for numberical value of digits, used for base 64 */
+uint8_t get_val_from_char_64(uint8_t ch) /* look-up table for numerical value of digits, used for base 64 */
 {
     switch (ch) {
         case 'A':
@@ -1615,7 +1615,7 @@ uint8_t *get_base_n_str(const bnz_t *a, uint32_t base, const char *alpha) // ret
         }
     }
 
-    while (alpha[base_n_str[trim]] == '0' || (base == 58 && alpha[base_n_str[trim]] == '1') || (base == 64 && alpha[base_n_str[trim]] == 'A')) { // trim leading zeros at msb end, 1 for base 58, A for base 64
+    while (alpha[base_n_str[trim]] == '0' || (base == 58 && alpha[base_n_str[trim]] == '1') || (base == 64 && alpha[base_n_str[trim]] == 'A')) { // trim leading zeros at MSB end, 1 for base 58, A for base 64
         trim++;
         len--;
     }
@@ -1630,50 +1630,50 @@ uint8_t *get_base_n_str(const bnz_t *a, uint32_t base, const char *alpha) // ret
     return base_n_str_trimmed;
 }
 
-void bnz_set_i32(bnz_t *a, int32_t b) // convert int32_t to bnz_t and invoke bnz_set_bnz
+void bnz_set_i32(bnz_t *res, int32_t val) // set bnz_t to 32 bit signed int
 {
-    if (b < 0) { // b is negative
-        a->sign = 1; // sign == 1 for negative b,  0 for positive b
-        b *= -1; // multiply negative int32_t by -1 to de-complement bytes to |b|
+    if (val < 0) { // val is negative
+        res->sign = 1; // sign == 1 for negative val, 0 for positive val
+        val *= -1; // multiply negative int32_t by -1 to de-complement bytes
     }
-    bnz_resize(a, 4, 0);
-    memcpy(a->digits, &b, 4);
-    bnz_trim(a);
+    bnz_resize(res, 4, 0); // resize res to 4 bytes, zero bytes
+    memcpy(res->digits, &val, 4); // copy bytes from val to res->digits
+    bnz_trim(res); // trim zero bytes from MSB end
 }
 
-void bnz_set_ui32(bnz_t *a, uint32_t b) // convert uint32_t to bnz_t and invoke bnz_set_bnz
+void bnz_set_ui32(bnz_t *res, uint32_t val) // set bnz_t to 32 bit unsigned int
 {
-    bnz_resize(a, 4, 0);
-    memcpy(a->digits, &b, 4);
-    bnz_trim(a);
+    bnz_resize(res, 4, 0); // resize res to 4 bytes, zero bytes
+    memcpy(res->digits, &val, 4); // copy bytes from val to res->digits
+    bnz_trim(res); // trim zero bytes from MSB end
 }
 
-void bnz_set_str(bnz_t *a, const uint8_t *str, uint8_t base) // set bnz_t to number represented by str with radix between 2 and 64, and with its digits in big endian order
+void bnz_set_str(bnz_t *res, const uint8_t *str, uint8_t base) // set bnz_t to number represented by str with radix between 2 and 64, and with its digits in big endian order
 {
-    uint32_t d;
+    uint32_t dgt;
     size_t i, j, len = (size_t)((double)strlen(str) * log(base)/log(256)) + 1, idx = 0;
-    bnz_resize(a, len, 0);
+    bnz_resize(res, len, 0);
     if (str[0] == '-') { // if first symbol of str is "-", set sign to 1 and set starting index of digits to 1 
-        a->sign = 1;
+        res->sign = 1;
         idx = 1;
     }
     for (i = idx; i < strlen(str); i++) {
-        d = get_digit(str, i, base);
+        dgt = get_digit(str, i, base);
         for (j = len; j > 0; j--) {
-            d += a->digits[j - 1] * base;
-            a->digits[j - 1] = d & 255;
-            d >>= 8;
+            dgt += res->digits[j - 1] * base;
+            res->digits[j - 1] = dgt & 255;
+            dgt >>= 8;
         }
     }
-    bnz_reverse_digits(a); // convert a->digits to lsb order
-    bnz_trim(a);
+    bnz_reverse_digits(res); // convert a->digits to little endian order
+    bnz_trim(res); // trim zero bytes from MSB end
 }
 
-void bnz_set_bnz(bnz_t *a, const bnz_t *b) // set bnz-t equivalent to another bnz_t
+void bnz_set_bnz(bnz_t *res, const bnz_t *val) // set bnz_t equivalent to another bnz_t
 {
-    bnz_resize(a, b->size, 0);
-    memcpy(a->digits, b->digits, b->size);
-    a->sign = b->sign;
+    bnz_resize(res, val->size, 0);
+    memcpy(res->digits, val->digits, val->size);
+    res->sign = val->sign;
 }
 
 int32_t cmp_uint8_arr(uint8_t *a, uint8_t *b, size_t len) // compare two uint8_t arrays a and b, return -1 if a < b, 0 if a == b, and 1 if a > b 
@@ -1686,7 +1686,7 @@ int32_t cmp_uint8_arr(uint8_t *a, uint8_t *b, size_t len) // compare two uint8_t
     return 0;
 }
 
-int32_t bnz_cmp_i32(const bnz_t *a, int32_t b) // compare bnz_t with int_t, by converting int8_t to bnz_t and invoking bnz_cmp_bnz
+int32_t bnz_cmp_i32(const bnz_t *a, int32_t b) // compare bnz_t with int32_t by converting int32_t to bnz_t and invoking bnz_cmp_bnz
 {
     int32_t res;
     bnz_t tmp;
@@ -1735,56 +1735,57 @@ int32_t bnz_cmp_bnz(const bnz_t *a, const bnz_t *b) // compare two bnz_t numbers
     return res;
 }
 
-int32_t bnz_is_zero(const bnz_t *a) // return 1 if a == 0, return 0 if a != 0
+int32_t bnz_is_zero(const bnz_t *val) // return 1 if val == 0, return 0 if val != 0
 {
-    size_t i = a->size;
+    size_t i = val->size;
     while (i--) {
-        if (a->digits[i] != 0) return 0;
+        if (val->digits[i] != 0) return 0;
     }
     return 1;
 }
 
-int32_t bnz_bit_set(const bnz_t *a, uint32_t idx) // return 1 if a specific bit in a is set, return 0 if it is not set
+int32_t bnz_bit_set(const bnz_t *val, uint32_t idx) // return 1 if a specific bit in val is set, return 0 if it is not set
 {
     uint32_t byte = idx / 8, bit = idx % 8;
-    return (a->digits[byte] >> bit) & 1;
+    return (val->digits[byte] >> bit) & 1;
 }
 
-void bnz_concatenate_ui8(bnz_t *c, const bnz_t *a, uint8_t b, size_t order) // convert uint_t to bnz_t and invoke bnz_concatenate_bnz
+void bnz_concatenate_ui8(bnz_t *res, const bnz_t *a, uint8_t b, size_t order) // convert uint8_t to bnz_t and invoke bnz_concatenate_bnz
 {
     bnz_t bb;
     bnz_init(&bb);
     bnz_resize(&bb, 1, 0);
     memcpy(bb.digits, &b, 1);
-    bnz_concatenate_bnz(c, a, &bb, order);
+    bnz_concatenate_bnz(res, a, &bb, order);
     bnz_free(&bb);
 }
 
-void bnz_concatenate_bnz(bnz_t *c, const bnz_t *a, const bnz_t *b, size_t order) // c = a concatenated to b, in sepcified order
+void bnz_concatenate_bnz(bnz_t *res, const bnz_t *a, const bnz_t *b, size_t order) // res = a || b, in specified order
 {
-    bnz_t cc; // local copy permits a = a || b, a = b || a
-    bnz_init(&cc);
-    bnz_resize(&cc, a->size + b->size, 0);
+    bnz_t tmp; // local variable permits a = a || b, a = b || a
+    bnz_init(&tmp);
+    bnz_resize(&tmp, a->size + b->size, 0);
     if (order) {
-        memcpy(cc.digits, b->digits, b->size);
-        memcpy(cc.digits + b->size, a->digits, a->size);
+        memcpy(tmp.digits, b->digits, b->size);
+        memcpy(tmp.digits + b->size, a->digits, a->size);
     } else {
-        memcpy(cc.digits, a->digits, a->size);
-        memcpy(cc.digits + a->size, b->digits, b->size);
+        memcpy(tmp.digits, a->digits, a->size);
+        memcpy(tmp.digits + a->size, b->digits, b->size);
     }
-    bnz_set_bnz(c, &cc);
-    bnz_free(&cc);
+    bnz_set_bnz(res, &tmp);
+    bnz_free(&tmp);
 }
 
-void bnz_add_i32(bnz_t *c, const bnz_t *a, int32_t b) // convert int32_t to bnz_t and invoke bnz_add_bnz
+void bnz_add_i32(bnz_t *res, const bnz_t *a, int32_t b) // convert int32_t to bnz_t and invoke bnz_add_bnz
 {
     bnz_t bb;
     bnz_init(&bb);
-    bnz_set_i32(&bb, b);
-    bnz_add_bnz(c, a, &bb);
+    bnz_set_i32(&bb, b); // convert b to bnz_t
+    bnz_add_bnz(res, a, &bb);
+    bnz_free(&bb);
 }
 
-void bnz_add_bnz(bnz_t *c, const bnz_t *a, const bnz_t *b) // c = a + b, taking account of signs, invoking bnz_addition or bnz_subtraction
+void bnz_add_bnz(bnz_t *res, const bnz_t *a, const bnz_t *b) // res = a + b, taking account of signs, invoking bnz_addition or bnz_subtraction
 {
     int32_t cmp;
     bnz_t tmp, aa, bb;
@@ -1829,14 +1830,14 @@ void bnz_add_bnz(bnz_t *c, const bnz_t *a, const bnz_t *b) // c = a + b, taking 
 
     bnz_trim(&tmp);
 
-    bnz_set_bnz(c, &tmp);
+    bnz_set_bnz(res, &tmp);
 
     bnz_free(&tmp);
     bnz_free(&aa);
     bnz_free(&bb);
 }
 
-void bnz_addition(bnz_t *c, const bnz_t *a, const bnz_t *b) // |a| + |b|
+void bnz_addition(bnz_t *res, const bnz_t *a, const bnz_t *b) // res = |a| + |b|
 {
     size_t i, carry = 0;
     bnz_t tmp;
@@ -1849,11 +1850,11 @@ void bnz_addition(bnz_t *c, const bnz_t *a, const bnz_t *b) // |a| + |b|
         if (tmp.digits[i] < b->digits[i]) carry = 1;
     }
     tmp.digits[a->size] = carry;
-    bnz_set_bnz(c, &tmp);
+    bnz_set_bnz(res, &tmp);
     bnz_free(&tmp);
 }
 
-void bnz_subtract_bnz(bnz_t *c, const bnz_t *a, const bnz_t *b) // c = a - b, taking account of signs, invoking bnz_subtraction or bnz_addition
+void bnz_subtract_bnz(bnz_t *res, const bnz_t *a, const bnz_t *b) // res = a - b, taking account of signs, invoking bnz_subtraction or bnz_addition
 {
     int32_t cmp;
     bnz_t tmp, aa, bb;
@@ -1899,14 +1900,14 @@ void bnz_subtract_bnz(bnz_t *c, const bnz_t *a, const bnz_t *b) // c = a - b, ta
 
     bnz_trim(&tmp);
 
-    bnz_set_bnz(c, &tmp);
+    bnz_set_bnz(res, &tmp);
 
     bnz_free(&tmp);
     bnz_free(&aa);
     bnz_free(&bb);
 }
 
-void bnz_subtraction(bnz_t *c, const bnz_t *a, const bnz_t *b) // c = |a| - |b|
+void bnz_subtraction(bnz_t *res, const bnz_t *a, const bnz_t *b) // res = |a| - |b|
 {
     size_t i, borrow = 0;
     bnz_t tmp;
@@ -1918,20 +1919,20 @@ void bnz_subtraction(bnz_t *c, const bnz_t *a, const bnz_t *b) // c = |a| - |b|
         tmp.digits[i] -= b->digits[i];
         if (tmp.digits[i] > 255 - b->digits[i]) borrow = 1;
     }
-    bnz_set_bnz(c, &tmp);
+    bnz_set_bnz(res, &tmp);
     bnz_free(&tmp);
 }
 
-void bnz_multiply_i32(bnz_t *c, const const bnz_t *a, int32_t b) // convert int32_t to bnz_t and invoke bnz_multiply_bnz
+void bnz_multiply_i32(bnz_t *res, const const bnz_t *a, int32_t b) // convert int32_t to bnz_t and invoke bnz_multiply_bnz
 {
     bnz_t bb;
     bnz_init(&bb);
     bnz_set_i32(&bb, b);
-    bnz_multiply_bnz(c, a, &bb);
+    bnz_multiply_bnz(res, a, &bb);
     bnz_free(&bb);
 }
 
-void bnz_multiply_bnz(bnz_t *c, const bnz_t *a, const bnz_t *b) // c = |a| * |b|
+void bnz_multiply_bnz(bnz_t *res, const bnz_t *a, const bnz_t *b) // res = |a| * |b|
 {
     uint8_t k, t[2];
     uint16_t m;
@@ -1983,7 +1984,7 @@ void bnz_multiply_bnz(bnz_t *c, const bnz_t *a, const bnz_t *b) // c = |a| * |b|
 
     bnz_trim(&tmp);
 
-    bnz_set_bnz(c, &tmp);
+    bnz_set_bnz(res, &tmp);
 
     bnz_free(&tmp);
     bnz_free(&aa);
@@ -2143,7 +2144,7 @@ void bnz_division(bnz_t *q, bnz_t *r, const bnz_t *a, const bnz_t *b) // get q a
     free(bn);
 }
 
-void bnz_mod_bnz(bnz_t *c, const bnz_t *a, const bnz_t *b) // get c = a % b, invoking bnz_divide_bnz
+void bnz_mod_bnz(bnz_t *res, const bnz_t *a, const bnz_t *b) // res = a % b, invoking bnz_divide_bnz
 {
     bnz_t q, r;
 
@@ -2153,27 +2154,27 @@ void bnz_mod_bnz(bnz_t *c, const bnz_t *a, const bnz_t *b) // get c = a % b, inv
     bnz_divide_bnz(&q, &r, a, b);
     bnz_trim(&r);
     if (r.sign) bnz_add_bnz(&r, &r, b);
-    bnz_set_bnz(c, &r);
+    bnz_set_bnz(res, &r);
     
     bnz_free(&q);
     bnz_free(&r);
 }
 
-void bnz_mod_pow(bnz_t *d, const bnz_t *a, const bnz_t *b, const bnz_t *c) // get d = a^b mod c
+void bnz_mod_pow(bnz_t *res, const bnz_t *a, const bnz_t *b, const bnz_t *c) // get res = a^b mod c
 {
     bnz_t aa, bb;
 
     bnz_init(&aa);
     bnz_init(&bb);
 
-    bnz_set_i32(d, 1);
+    bnz_set_i32(res, 1);
     bnz_set_bnz(&aa, a);
     bnz_set_bnz(&bb, b);
 
     while (bnz_cmp_i32(&bb, 0) == 1) {
         if (bnz_bit_set(&bb, 0)) {
-            bnz_multiply_bnz(d, d, &aa);
-            bnz_mod_bnz(d, d, c);
+            bnz_multiply_bnz(res, res, &aa);
+            bnz_mod_bnz(res, res, c);
         }
         bnz_multiply_bnz(&aa, &aa, &aa);
         bnz_mod_bnz(&aa, &aa, c);
@@ -2184,7 +2185,7 @@ void bnz_mod_pow(bnz_t *d, const bnz_t *a, const bnz_t *b, const bnz_t *c) // ge
     bnz_free(&bb);
 }
 
-void bnz_modular_multiplicative_inverse(bnz_t *c, const bnz_t *a, const bnz_t *b) // get c where (c * a) mod b = 1
+void bnz_modular_multiplicative_inverse(bnz_t *res, const bnz_t *a, const bnz_t *b) // get res where (res * a) mod b = 1
 {
     bnz_t q, rem, tmp1, t, new_t, r, new_r, tmp2;
 
@@ -2215,10 +2216,10 @@ void bnz_modular_multiplicative_inverse(bnz_t *c, const bnz_t *a, const bnz_t *b
     }
 
     if (bnz_cmp_i32(&r, 1) == 1) {
-        bnz_set_i32(c, 0);
+        bnz_set_i32(res, 0);
     } else {
         if (t.sign) bnz_add_bnz(&t, &t, b);
-        bnz_set_bnz(c, &t);
+        bnz_set_bnz(res, &t);
     }
 
     bnz_free(&q);
@@ -2602,12 +2603,12 @@ void get_public_key_xy(PT *public_key, bnz_t *public_key_compressed) // regenera
     bnz_multiply_bnz(&y_sq, &y_sq, &public_key->x); //y_sq = public_key.x^2
     bnz_multiply_bnz(&y_sq, &y_sq, &public_key->x); //y_sq = public_key.x^3
     bnz_add_i32(&y_sq, &y_sq, 7); //y_sq = public_key.x^3 + 7
-    bnz_mod_bnz(&y_sq, &y_sq, &secp256k1.p); //y_sq mod p = (public_key.x^3 + 7) mod secp256k1.p
+    bnz_mod_bnz(&y_sq, &y_sq, &secp256k1.p); //y_sq mod secp256k1.p = (public_key.x^3 + 7) mod secp256k1.p
 
     bnz_mod_pow(&public_key->y, &y_sq, &exp, &secp256k1.p); // y = (y_sq^(secp256k1.p + 1) / 4) mod secp256k1.p
 
     if ((typ == 2 && bnz_bit_set(&public_key->y, 0) == 1) || (typ == 3 && bnz_bit_set(&public_key->y, 0) == 0)) { // mismatched typ and y
-        bnz_subtract_bnz(&public_key->y, &secp256k1.p, &public_key->y); // y = secp256k1 - y, negation of y mod p
+        bnz_subtract_bnz(&public_key->y, &secp256k1.p, &public_key->y); // y = secp256k1.p - y, negation of y mod p
     }
 
     bnz_free(&exp);
@@ -2650,15 +2651,15 @@ void get_p2pkh_address(bnz_t *p2pkh, bnz_t *public_key_compressed) // get p2pkh 
     ripemd160(h1, 32, h2); // h2 = ripemd160(sha256(public_key_compressed)), big endian order
     bnz_resize(p2pkh, 20, 0); // prepare p2pkh.digits to receive the 20 bytes of h2
     memcpy(p2pkh->digits, h2, 20); // copy h2 into p2pkh.digits, big endian order
-    bnz_concatenate_ui8(p2pkh, p2pkh, 0, 1); // concatenate 0 byte to msb end of p2pkh.digits
+    bnz_concatenate_ui8(p2pkh, p2pkh, 0, 1); // concatenate 0 byte to MSB end of p2pkh.digits
     sha256(p2pkh->digits, 21, h3); // h3 = sha256(p2pkh.digits), big endian order
     sha256(h3, 32, h4); // h4 = sha256(sha256(p2pkh.digits)), big endian order
     bnz_concatenate_ui8(p2pkh, p2pkh, h4[0], 0); // add first
     bnz_concatenate_ui8(p2pkh, p2pkh, h4[1], 0); // four bytes
-    bnz_concatenate_ui8(p2pkh, p2pkh, h4[2], 0); // of h4 to lsb
+    bnz_concatenate_ui8(p2pkh, p2pkh, h4[2], 0); // of h4 to LSB
     bnz_concatenate_ui8(p2pkh, p2pkh, h4[3], 0); // end of p2pkh
     bnz_reverse_digits(p2pkh); // change digit order of p2pkh.digits to little endian, default for bnz_t
-    bnz_trim(p2pkh); // remove zero value bytes from msb end of p2pkh
+    bnz_trim(p2pkh); // remove zero value bytes from MSB end of p2pkh
     bnz_free(&tmp); // free tmp
 }
 
@@ -3556,7 +3557,7 @@ void menu_4_4_secp256k1_scalar_multiplication(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.07, 2025-04-18";
+    static char *version = "bitcoin_math\nv0.07, 2025-04-20";
     int menu, running = 1;
     while (running) {
         system("cls");
