@@ -44,7 +44,7 @@ There are four menus, some with sub-menus:
 
 **3. Base converter** This function takes a number of arbitrary length (typed or pasted) in any specified base between 2 and 64, and outputs a radix converted version of the number for each base between 2 and 64. Note that, in `bitcoin_math` base "-2" corresponds to a binary representation with a space between each set of eight bits, whereas base "2" corresponds to an unbroken binary string. Likewise, base "16" corresponds to lower case hex preceded by "0x", whereas base "-16" corresponds to upper case hex with no prefix. Finally, base "58" corresponds to Bitcoin base 58, whereas base "-58" corresponds to regular base 58.
 
-**4. Functions** This menu enables some individual functions, including P2PKH serialisation, and Secp256k1 functions for point addition, point doubling, and scalar multiplication, to be independently executed. Parameters such as private keys, chain codes, and Secp256k1 coordinates must be typed or pasted in hex format.
+**4. Functions** This menu enables some individual functions, including P2PKH serialisation, mnemonic phrase checksum validation, and Secp256k1 functions for point addition, point doubling, and scalar multiplication, to be independently executed. Parameters such as private keys, chain codes, and Secp256k1 coordinates must be typed or pasted in hex format. Do not enter any mnemonic phrase that corresponds to any private key / Bitcoin address to which coins will be sent!
 
 
 ## Acknowledgements

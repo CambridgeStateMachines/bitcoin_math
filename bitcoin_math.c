@@ -594,11 +594,11 @@ typedef struct {
     uint8_t block_opad[128];
 } HMAC_SHA512_CTX;
 
-void hmac_sha512_init(HMAC_SHA512_CTX *ctx, const uint8_t *key, uint32_t key_size);
-void hmac_sha512_reinit(HMAC_SHA512_CTX *ctx);
-void hmac_sha512_update(HMAC_SHA512_CTX *ctx, const uint8_t *message, uint32_t message_len);
-void hmac_sha512_final(HMAC_SHA512_CTX *ctx, uint8_t *mac, uint32_t mac_size);
-void hmac_sha512(const uint8_t *key, uint32_t key_size, const uint8_t *message, uint32_t message_len, uint8_t *mac, uint32_t mac_size);
+void hmac_sha512_init(HMAC_SHA512_CTX *, const uint8_t *, uint32_t);
+void hmac_sha512_reinit(HMAC_SHA512_CTX *);
+void hmac_sha512_update(HMAC_SHA512_CTX *, const uint8_t *, uint32_t);
+void hmac_sha512_final(HMAC_SHA512_CTX *, uint8_t *, uint32_t);
+void hmac_sha512(const uint8_t *, uint32_t, const uint8_t *, uint32_t, uint8_t *, uint32_t);
 
 void hmac_sha512_init(HMAC_SHA512_CTX *ctx, const uint8_t *key, uint32_t key_size)
 {
@@ -2440,7 +2440,8 @@ void secp256k1_scalar_multiplication(const SECP256K1 secp256k1, const bnz_t *m, 
 uint8_t *get_salt(const char *);
 void bnz_256_bit_rnd(bnz_t *);
 void entropy_checksum(bnz_t *);
-void get_bip39_word_ids(bnz_t *, uint32_t *);
+void get_bip39_word_ids_bnz(bnz_t *, uint32_t *);
+void get_bip39_word_ids_str(bnz_t *, bnz_t *, uint8_t *, char *);
 uint8_t *get_mnemonic_phrase(uint32_t *);
 void get_seed_from_mnemonic_phrase(bnz_t *, const char *, const char *);
 void get_master_keys(bnz_t *, bnz_t *, bnz_t *);
@@ -2487,7 +2488,7 @@ void entropy_checksum(bnz_t *entropy) // append checksum byte to 256 bits of ent
     bnz_free(&tmp);
 }
 
-void get_bip39_word_ids(bnz_t *entropy_chk, uint32_t *wd_ids) // convert 33 bytes into 24 numbers of 11 bits
+void get_bip39_word_ids_bnz(bnz_t *entropy_chk, uint32_t *wd_ids) // convert 33 bytes into 24 numbers of 11 bits
 {
     size_t i;
     bnz_t tmp;
@@ -2509,6 +2510,46 @@ void get_bip39_word_ids(bnz_t *entropy_chk, uint32_t *wd_ids) // convert 33 byte
     }
 
     bnz_free(&tmp);
+}
+
+void get_bip39_word_ids_str(bnz_t *entropy_chk, bnz_t *entropy, uint8_t *chk, char *mnemonic_str) // convert 24 words into 32 bytes of entropy + 1 byte of checksum
+{
+    size_t i = 0, j;
+    char sha256_digest[32], *tok = strtok(mnemonic_str, " "); // split mnemonic string into an array of BIP39 words
+    uint32_t wd_ids[24];
+
+    bnz_resize(entropy_chk, 33, 0);
+
+    while (tok != NULL) { // traverse array
+        for (j = 0; j < 2048; j++) { // search BIP39 list for matches
+            if (!strcmp(tok, bip39_wds[j])) { // match found
+                wd_ids[i++] = j; // record id
+                break; // exit loop as soon as match found
+            }
+        }
+        tok = strtok(NULL, " "); // next array member
+    }
+
+    for (i = 0; i < 3; i++) {
+        entropy_chk->digits[(i * 11) + 0] = (wd_ids[(i * 8) + 0] >> 3) & 255;
+        entropy_chk->digits[(i * 11) + 1] = ((wd_ids[(i * 8) + 0] & 7) << 5) + (wd_ids[(i * 8) + 1] >> 6) & 255;
+        entropy_chk->digits[(i * 11) + 2] = ((wd_ids[(i * 8) + 1] & 63) << 2) + (wd_ids[(i * 8) + 2] >> 9) & 255;
+        entropy_chk->digits[(i * 11) + 3] = (wd_ids[(i * 8) + 2] >> 1) & 255;
+        entropy_chk->digits[(i * 11) + 4] = ((wd_ids[(i * 8) + 2] & 1) << 7) + (wd_ids[(i * 8) + 3] >> 4) & 255;
+        entropy_chk->digits[(i * 11) + 5] = ((wd_ids[(i * 8) + 3] & 15) << 4) + (wd_ids[(i * 8) + 4] >> 7) & 255;
+        entropy_chk->digits[(i * 11) + 6] = ((wd_ids[(i * 8) + 4] & 127) << 1) + (wd_ids[(i * 8) + 5] >> 10) & 255;
+        entropy_chk->digits[(i * 11) + 7] = (wd_ids[(i * 8) + 5] >> 2) & 255;
+        entropy_chk->digits[(i * 11) + 8] = ((wd_ids[(i * 8) + 5] & 3) << 6) + (wd_ids[(i * 8) + 6] >> 5) & 255;
+        entropy_chk->digits[(i * 11) + 9] = ((wd_ids[(i * 8) + 6] & 31) << 3) + (wd_ids[(i * 8) + 7] >> 8) & 255;
+        entropy_chk->digits[(i * 11) + 10] = wd_ids[(i * 8) + 7] & 255;
+    }
+
+    bnz_set_bnz(entropy, entropy_chk); // copy 33 bytes of entropy_chk into entropy
+    bnz_resize(entropy, 32, 1); // resize entropy to 32 bytes of entropy
+    sha256(entropy->digits, 32, sha256_digest); // get SHA256 hash digest of entropy->digits
+    *chk = sha256_digest[0]; // set chk to first byte of SHA256 hash digest
+    bnz_reverse_digits(entropy); // convert to little
+    bnz_reverse_digits(entropy_chk); // endian order
 }
 
 uint8_t *get_mnemonic_phrase(uint32_t *wd_ids) // generate mnemonic string of 24 words
@@ -2630,7 +2671,7 @@ void get_random_master_keys(bnz_t *entropy, bnz_t *master_private_key, bnz_t *ma
     bnz_set_bnz(&tmp, entropy);
 
     entropy_checksum(&tmp);
-    get_bip39_word_ids(&tmp, wd_ids);
+    get_bip39_word_ids_bnz(&tmp, wd_ids);
     mnemonic = get_mnemonic_phrase(wd_ids);
     get_seed_from_mnemonic_phrase(&seed, mnemonic, "");
     get_master_keys(master_private_key, master_chain_code, &seed);
@@ -2674,10 +2715,11 @@ void menu_2_2_hardened_child(const char *);
 void menu_2_3_public_child(const char *);
 void menu_3_base_converter(const char *);
 void menu_4_functions(const char *);
-void menu_4_1_p2pkh(const char *version);
-void menu_4_2_secp256k1_point_addition(const char *);
-void menu_4_3_secp256k1_point_doubling(const char *);
-void menu_4_4_secp256k1_scalar_multiplication(const char *);
+void menu_4_1_p2pkh(const char *);
+void menu_4_2_validate_mnemonic_phrase_checksum(const char *);
+void menu_4_3_secp256k1_point_addition(const char *);
+void menu_4_4_secp256k1_point_doubling(const char *);
+void menu_4_5_secp256k1_scalar_multiplication(const char *);
 
 uint32_t get_num_input(uint32_t max_len, uint32_t min, uint32_t max) // get base 10 number between min and max from stdin
 {
@@ -2698,7 +2740,7 @@ void get_str_input(char str[], int max_len) // get string from stdin with strlen
     int i = 0, ch;
     while ((ch = getchar()) != '\n' && ch != EOF) {
         // confine ch to the characters up to base 64
-        if (((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '+' || ch == '/') && i < max_len) {
+        if (((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '+' || ch == '/' || ch == ' ') && i < max_len) {
             str[i++] = ch;
         }
     }
@@ -2709,9 +2751,10 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
 {
     int i;
     uint32_t wd_ids[24];
-    char entropy_str[512], base = 16, passphrase_str[512], *mnemonic = NULL;
+    char entropy_str[257], base = 16, passphrase_str[257], *mnemonic = NULL;
     bnz_t entropy, master_private_key, master_chain_code, master_public_key, master_public_key_compressed, seed, p2pkh;
     PT public_key;
+    SECP256K1 secp256k1;
 
     bnz_init(&entropy);
     bnz_init(&master_private_key);
@@ -2723,11 +2766,13 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
     bnz_init(&public_key.x);
     bnz_init(&public_key.y);
 
+    secp256k1 = secp256k1_init();
+
     system("cls");
     printf("%s\n\n", version);
 
     printf("Entropy (press 'Enter' for random): ");
-    get_str_input(entropy_str, 511);
+    get_str_input(entropy_str, 256);
 
     system("cls");
     printf("%s\n\n", version);
@@ -2740,7 +2785,10 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
         if (base < 2) base = 16;
         bnz_set_str(&entropy, entropy_str, base);
     } else {
-        bnz_256_bit_rnd(&entropy);
+        while (1) {
+            bnz_256_bit_rnd(&entropy);
+            if (bnz_cmp_bnz(&entropy, &secp256k1.n) == -1) break; // ensure that entropy < Secp256k1.n 
+        }
     }
 
     system("cls");
@@ -2753,7 +2801,7 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
     }
 
     printf("Passphrase (optional): ");
-    get_str_input(passphrase_str, 511);
+    get_str_input(passphrase_str, 256);
 
     system("cls");
     printf("%s\n\n", version);
@@ -2768,7 +2816,7 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
 
     entropy_checksum(&entropy);
 
-    get_bip39_word_ids(&entropy, wd_ids);
+    get_bip39_word_ids_bnz(&entropy, wd_ids);
 
     printf("CHECKSUM: 0x%02x\n\n", entropy.digits[0]);
 
@@ -2800,6 +2848,8 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
 
     bnz_print(&p2pkh, 58, "P2PKH ADDRESS: 1");
     printf("\n");
+
+    secp256k1_free(secp256k1);
 
     printf("press any key to continue...");
 
@@ -3355,23 +3405,27 @@ void menu_4_functions(const char *version)
     system("cls");
     printf("%s\n\n", version);
     printf("1. P2PKH\n");
-    printf("2. Secp256k1 point addition\n");
-    printf("3. Secp256k1 point doubling\n");
-    printf("4. Secp256k1 scalar multiplication\n");
+    printf("2. Validate mnemonic phrase checksum\n");
+    printf("3. Secp256k1 point addition\n");
+    printf("4. Secp256k1 point doubling\n");
+    printf("5. Secp256k1 scalar multiplication\n");
     printf("\n");
-    menu = get_num_input(1, 0, 4);
+    menu = get_num_input(1, 0, 5);
     switch (menu) {
         case 1:
             menu_4_1_p2pkh(version);
             break;
         case 2:
-            menu_4_2_secp256k1_point_addition(version);
+            menu_4_2_validate_mnemonic_phrase_checksum(version);
             break;
         case 3:
-            menu_4_3_secp256k1_point_doubling(version);
+            menu_4_3_secp256k1_point_addition(version);
             break;
         case 4:
-            menu_4_4_secp256k1_scalar_multiplication(version);
+            menu_4_4_secp256k1_point_doubling(version);
+            break;
+        case 5:
+            menu_4_5_secp256k1_scalar_multiplication(version);
             break;
         default:
             break;
@@ -3408,7 +3462,57 @@ void menu_4_1_p2pkh(const char *version)
     getchar();
 }
 
-void menu_4_2_secp256k1_point_addition(const char *version)
+void menu_4_2_validate_mnemonic_phrase_checksum(const char *version) // input 23 BIP39 words (the 24th is calculated) and generate master private key, master chain code, master public key, and corresponding P2PKH address
+{
+    uint8_t chk;
+    int i;
+    uint32_t wd_ids[24];
+    char mnemonic_str[257], base = 16, passphrase_str[257];
+    bnz_t entropy, entropy_chk;
+
+    bnz_init(&entropy);
+    bnz_init(&entropy_chk);
+
+    system("cls");
+    printf("%s\n\n", version);
+
+    printf("Mnemonic phrase (24 BIP39 words): ");
+    get_str_input(mnemonic_str, 256);
+
+    system("cls");
+    printf("%s\n\n", version);
+    printf("Mnemonic phrase: ");
+
+    if (isalnum(mnemonic_str[0])) {
+        printf("%s\n", mnemonic_str);
+    } else {
+        return;
+    }
+
+    system("cls");
+    printf("%s\n\n", version);
+    printf("MNEMONIC PHRASE: ");
+
+    printf("%s\n\n", mnemonic_str);
+
+    get_bip39_word_ids_str(&entropy_chk, &entropy, &chk, mnemonic_str);
+
+    bnz_print(&entropy, 16, "ENTROPY (HEX): ");
+    printf("\n");
+    bnz_print(&entropy, 2, "ENTROPY (BINARY): ");
+    printf("\n");
+    if (chk == entropy_chk.digits[0]) {
+        printf("CHECKSUM OK: %#02x\n\n", chk);
+    } else {
+        printf("CHECKSUM ERROR: %#02x SHOULD BE %#02x\n\n", chk, entropy_chk.digits[0]);
+    }
+
+    printf("press any key to continue...");
+
+    getchar();
+}
+
+void menu_4_3_secp256k1_point_addition(const char *version)
 {
     uint8_t a_x_str[67], a_y_str[67], b_x_str[67], b_y_str[67];
     PT a, b, c;
@@ -3466,7 +3570,7 @@ void menu_4_2_secp256k1_point_addition(const char *version)
     getchar();
 }
 
-void menu_4_3_secp256k1_point_doubling(const char *version)
+void menu_4_4_secp256k1_point_doubling(const char *version)
 {
     uint8_t a_x_str[67], a_y_str[67], b_x_str[67], b_y_str[67];
     PT a, b;
@@ -3509,7 +3613,7 @@ void menu_4_3_secp256k1_point_doubling(const char *version)
     getchar();
 }
 
-void menu_4_4_secp256k1_scalar_multiplication(const char *version)
+void menu_4_5_secp256k1_scalar_multiplication(const char *version)
 {
     uint8_t multiplier_str[67];
     bnz_t multiplier;
