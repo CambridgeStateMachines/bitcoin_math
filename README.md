@@ -13,7 +13,7 @@ Zero dependency Bitcoin math implementation in C
 
 I started the `bitcoin_math` project in order to teach myself the basics of Bitcoin math from first principles, without having to wade through the source code of any of the crypto or "bignum" libraries on which standard Bitcoin implementations in Python depend.
 
-My goal was to collect together a minimal set of functions in a single C source code file with no dependencies other than the following standard C libraries: `ctype.h`, `math.h`, `stdint.h`, `stdio.h`, `stdlib.h`, `string.h`, and `time.h`.
+My goal was to collect together a minimal set of functions in a single C source code file with no dependencies other than the following standard C libraries: `ctype.h`, `math.h`, `stdint.h`, `stdio.h`, `stdlib.h`, and `string.h`.
 
 Given a choice between efficiency and readability, I have opted for the latter, for example by avoiding inline functions and macros.
 
@@ -38,7 +38,7 @@ I have found `bitcoin_math.exe` to be fast enough for its intended illustrative 
 
 There are four menus, some with sub-menus:
 
-**1. Master keys** This function takes 256 bits of random entropy (typed or pasted, in a specified base between 2 and 64) and generates the corresponding master private key, master chain code, and master public key (in compressed, uncompressed, and P2PKH formats). There is an option to generate "random" entropy. However, this option uses the standard C function `rand()` seeded using the current system time. As such, **IT IS HOPLESSLY INADEQUATE** as a source of cryptographically secure random entropy, and therefore must not be used to generate any Bitcoin addresses to which any coins will be sent!
+**1. Master keys** This function takes 256 bits of random entropy (typed or pasted, in a specified base between 2 and 64) and generates the corresponding master private key, master chain code, and master public key (in compressed, uncompressed, and P2PKH formats). There is an option to generate "random" entropy. However, this option uses the function `rand_s()` from the Windows `stdlib`. As such, **I CANNOT RECOMMEND RELIANCE ON rand_s AS A SOURCE OF CRYPTOGRAPHHICALLY SECURE RANDOM ENTROPY AND, THEREFORE, THIS PROGRAM SHOULD NOT BE USED TO GENERATE ANY BITCOIN ADDRESSES TO WHICH ANY COINS WILL BE SENT!**
 
 **2. Child keys** These functions take a parent private key or public key and a corresponding parent chain code (typed or pasted, in hex only), together with a numerical index. Depending on the function chosen and the value range of the index, these functions output a normal or hardened child private key and corresponding child chain code, or a child public key.
 
