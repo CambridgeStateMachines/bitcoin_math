@@ -32,7 +32,7 @@ Compilation: The source code of `bitcoin_math` compiles with gcc under Windows u
 
 The compilation command works on Linux, although you may have to append `-lm` to ensure that the `math.h` functions `log10` and `log` are recognised. Note that the `system(cls);` command in the menu functions is not recognised by Linux, so non-fatal errors will be raised on execution.
 
-Linux developers should note that the source code has been updated to use the (allegedly) crytographically secure random number generation function `rand_s`, which is part of the Microsoft `stdlib` (see the function entitled `bnz_256_bit_rnd` under the /* BITCOIN */ heading). Linux developers will need to replace `rand_s` with functions based on `/dev/random` or `/dev/urandom`, or delete the random number based functions altogether.
+Linux developers should note that the source code has been updated to use the (allegedly) cryptographically secure random number generation function `rand_s`, which is part of the Microsoft `stdlib` (see the function entitled `bnz_256_bit_rnd` under the /* BITCOIN */ heading). Linux developers will need to replace `rand_s` with functions based on `/dev/random` or `/dev/urandom`, or delete the random number based functions altogether.
 
 I have found `bitcoin_math.exe` to be fast enough for its intended illustrative / educational purposes. However, it can be trivially speeded-up using compiler optimisation flags such as `-O3`. Conversion to a library should also be relatively simple. Obviously, many further improvements in efficiency are potentially available.
 
