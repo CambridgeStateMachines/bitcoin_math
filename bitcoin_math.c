@@ -1138,8 +1138,6 @@ uint8_t get_val_from_char_d(uint8_t ch) /* look-up table for numerical value of 
         case '_':
             return 62;
             break;
-        case ' ': // ignore spaces in numbers
-            break;
         default:
             return 0;
             break;
@@ -1208,8 +1206,6 @@ uint8_t get_val_from_char_16(uint8_t ch) /* look-up table for numerical value of
             // fall through
         case 'F':
             return 15;
-            break;
-        case ' ': // ignore spaces in numbers
             break;
         default:
             return 0;
@@ -1393,8 +1389,6 @@ uint8_t get_val_from_char_58(uint8_t ch) /* look-up table for numerical value of
             break;
         case 'z':
             return 57;
-            break;
-        case ' ': // ignore spaces in numbers
             break;
         default:
             return 0;
@@ -1596,8 +1590,6 @@ uint8_t get_val_from_char_64(uint8_t ch) /* look-up table for numerical value of
             break;
         case '/':
             return 63;
-            break;
-            case ' ': // ignore spaces in numbers
             break;
         default:
             return 0;
@@ -2746,7 +2738,7 @@ void get_str_input(char str[], int max_len) // get string from stdin with strlen
     int i = 0, ch;
     while ((ch = getchar()) != '\n' && ch != EOF) {
         // confine ch to the characters up to base 64
-        if (((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '+' || ch == '/' || ch == ' ') && i < max_len) {
+        if (((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '+' || ch == '/') && i < max_len) {
             str[i++] = ch;
         }
     }
