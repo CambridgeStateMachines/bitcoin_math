@@ -38,13 +38,13 @@ I have found `bitcoin_math.exe` to be fast enough for its intended illustrative 
 
 There are four menus, some with sub-menus:
 
-**1. Master keys** This function takes 256 bits of random entropy (typed or pasted, in a specified base between 2 and 64) and generates the corresponding master private key, master chain code, and master public key (in compressed, uncompressed, and P2PKH formats). There is an option to generate "random" entropy. However, this option uses the function `rand_s()` from the Windows `stdlib`. As such, **I CANNOT RECOMMEND RELIANCE ON rand_s AS A SOURCE OF CRYPTOGRAPHHICALLY SECURE RANDOM ENTROPY AND, THEREFORE, THIS PROGRAM SHOULD NOT BE USED TO GENERATE ANY BITCOIN ADDRESSES TO WHICH ANY COINS WILL BE SENT!**
+**1. Master keys** This function takes 256 bits of random entropy (typed or pasted, in a specified base between 2 and 64) and generates the corresponding master private key, master chain code, and master public key (in compressed, uncompressed, and P2PKH formats). There is an option to generate "random" entropy. However, this option uses the function `rand_s()` from the Windows `stdlib`. As such, **I CANNOT RECOMMEND RELIANCE ON rand_s AS A SOURCE OF CRYPTOGRAPHICALLY SECURE RANDOM ENTROPY AND, THEREFORE, THIS PROGRAM SHOULD NOT BE USED TO GENERATE ANY BITCOIN ADDRESSES TO WHICH ANY COINS WILL BE SENT!**
 
 **2. Child keys** These functions take a parent private key or public key and a corresponding parent chain code (typed or pasted, in hex only), together with a numerical index. Depending on the function chosen and the value range of the index, these functions output a normal or hardened child private key and corresponding child chain code, or a child public key.
 
 **3. Base converter** This function takes a number of arbitrary length (typed or pasted) in any specified base between 2 and 64, and outputs a radix converted version of the number for each base between 2 and 64. Note that, in `bitcoin_math` base "-2" corresponds to a binary representation with a space between each set of eight bits, whereas base "2" corresponds to an unbroken binary string. Likewise, base "16" corresponds to lower case hex preceded by "0x", whereas base "-16" corresponds to upper case hex with no prefix. Finally, base "58" corresponds to Bitcoin base 58, whereas base "-58" corresponds to regular base 58.
 
-**4. Functions** This menu enables some individual functions, including P2PKH serialisation, mnemonic phrase checksum validation, and Secp256k1 functions for point addition, point doubling, and scalar multiplication, to be independently executed. Parameters such as private keys, chain codes, and Secp256k1 coordinates must be typed or pasted in hex format. Do not enter any mnemonic phrase that corresponds to any private key / Bitcoin address to which coins will be sent!
+**4. Functions** This menu enables some individual functions, including P2PKH serialisation, mnemonic phrase checksum validation, and Secp256k1 functions for point addition, point doubling, and scalar multiplication, to be independently executed. Parameters such as private keys, chain codes, and Secp256k1 coordinates must be typed or pasted in hex format. **DO NOT ENTER ANY MNEMONIC PHRASE THAT CORRESPONDS TO ANY PRIVATE KEY / BITCOIN ADDRESS TO WHICH COINS WILL BE SENT!**
 
 
 ## Acknowledgements
@@ -102,6 +102,8 @@ Elliptic curve math, built around two custom structs: "PT", comprising two `bnz_
 
 ### /* BITCOIN */
 Bitcoin specific functions for processing entropy, generating mnemonic phrases, seeds, private keys, chain codes, public keys, and P2PKH addresses.
+
+If a user generates a private key that is not less than the value of the order of Secp256k1, the user will be prompted to rerun the private key generation step with a different entropy value. 
 
 ### /* MENU */
 Menu functions.

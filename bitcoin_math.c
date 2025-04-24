@@ -1138,6 +1138,8 @@ uint8_t get_val_from_char_d(uint8_t ch) /* look-up table for numerical value of 
         case '_':
             return 62;
             break;
+        case ' ': // ignore spaces in numbers
+            break;
         default:
             return 0;
             break;
@@ -1207,13 +1209,15 @@ uint8_t get_val_from_char_16(uint8_t ch) /* look-up table for numerical value of
         case 'F':
             return 15;
             break;
+        case ' ': // ignore spaces in numbers
+            break;
         default:
             return 0;
             break;
     }
 }
 
-uint8_t get_val_from_char_58(uint8_t ch) /* look-up table for numerical value of digits, used for bitcoin base 58 */
+uint8_t get_val_from_char_58(uint8_t ch) /* look-up table for numerical value of digits, used for Bitcoin base 58 */
 {
     switch (ch) {
         case '1':
@@ -1389,6 +1393,8 @@ uint8_t get_val_from_char_58(uint8_t ch) /* look-up table for numerical value of
             break;
         case 'z':
             return 57;
+            break;
+        case ' ': // ignore spaces in numbers
             break;
         default:
             return 0;
@@ -1591,6 +1597,8 @@ uint8_t get_val_from_char_64(uint8_t ch) /* look-up table for numerical value of
         case '/':
             return 63;
             break;
+            case ' ': // ignore spaces in numbers
+            break;
         default:
             return 0;
             break;
@@ -1600,8 +1608,7 @@ uint8_t get_val_from_char_64(uint8_t ch) /* look-up table for numerical value of
 uint8_t *get_base_n_str(const bnz_t *a, uint32_t base, const char *alpha) // return a null terminated string representing a->digits in given base, big endian order
 {
     uint8_t *base_n_str = NULL, *base_n_str_trimmed = NULL;
-    uint32_t base_abs = base < 0 ? base * -1 : base;
-    size_t i, j, k, trim = 0, len = (a->size * log10((double)256)) / log10((double)base_abs) + 1;
+    size_t i, j, k, trim = 0, len = (a->size * log10((double)256)) / log10((double)abs(base)) + 1;
 
     if (!(base_n_str = init_uint8_array(len + 1))) return NULL;
 
@@ -1609,8 +1616,8 @@ uint8_t *get_base_n_str(const bnz_t *a, uint32_t base, const char *alpha) // ret
         k = a->digits[i];
         for (j = len; j > 0; j--) {
             k += (uint32_t)base_n_str[j - 1] * 256;
-            base_n_str[j - 1] = (uint8_t)(k % base_abs);
-            k /= base_abs;
+            base_n_str[j - 1] = (uint8_t)(k % abs(base));
+            k /= abs(base);
         }
     }
 
@@ -1675,7 +1682,7 @@ void bnz_set_bnz(bnz_t *res, const bnz_t *val) // set bnz_t equivalent to anothe
     res->sign = val->sign;
 }
 
-int32_t cmp_uint8_arr(uint8_t *a, uint8_t *b, size_t len) // compare two uint8_t arrays a and b, return -1 if a < b, 0 if a == b, and 1 if a > b 
+int32_t cmp_uint8_arr(uint8_t *a, uint8_t *b, size_t len) // compare two 1D uint8_t arrays a and b, from MSB to LSB, return -1 if a < b, 0 if a == b, and 1 if a > b 
 {
     size_t idx = len;
     while (idx--) {
@@ -1743,7 +1750,7 @@ int32_t bnz_is_zero(const bnz_t *val) // return 1 if val == 0, return 0 if val !
     return 1;
 }
 
-int32_t bnz_bit_set(const bnz_t *val, uint32_t idx) // return 1 if a specific bit in val is set, return 0 if it is not set
+int32_t bnz_bit_set(const bnz_t *val, uint32_t idx) // return 1 if the specified bit in val is set, return 0 if it is not set
 {
     uint32_t byte = idx / 8, bit = idx % 8;
     return (val->digits[byte] >> bit) & 1;
@@ -2287,7 +2294,7 @@ void secp256k1_free(SECP256K1 secp256k1) // free secp256k1 curve
     bnz_free(&secp256k1.h);
 }
 
-void secp256k1_point_doubling(const SECP256K1 secp256k1, const PT *p, PT *r) // r = 2p on secp256k1
+void secp256k1_point_doubling(const SECP256K1 secp256k1, const PT *p, PT *r) // r = 2p mod secp256k1.p
 {
     bnz_t slope, tmp;
 
@@ -2623,7 +2630,7 @@ void get_public_key(PT *public_key, bnz_t *public_key_compressed, bnz_t *private
     secp256k1_free(secp256k1);
 }
 
-void get_public_key_xy(PT *public_key, bnz_t *public_key_compressed) // regenerate public key point from compressed public key
+void get_public_key_xy(PT *public_key, bnz_t *public_key_compressed) // regenerate public key point on Secp256k1 from compressed public key
 {
     uint8_t typ = public_key_compressed->digits[public_key_compressed->size - 1]; // typ = 2 for even y, typ = 3 for odd y
     bnz_t exp, y_sq;
@@ -2784,10 +2791,7 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
         if (base < 2) base = 16;
         bnz_set_str(&entropy, entropy_str, base);
     } else {
-        while (1) {
-            bnz_256_bit_rnd(&entropy);
-            if (bnz_cmp_bnz(&entropy, &secp256k1.n) == -1) break; // ensure that entropy < Secp256k1.n 
-        }
+        bnz_256_bit_rnd(&entropy);
     }
 
     system("cls");
@@ -2834,6 +2838,34 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
 
     get_master_keys(&master_private_key, &master_chain_code, &seed);
 
+    if (bnz_cmp_bnz(&master_private_key, &secp256k1.n) != -1) { // ensure that master_private_key < Secp256k1.n
+        system("cls");
+        printf("%s\n\n", version);
+        bnz_print(&entropy, 16, "Entropy: ");
+        printf("\n");
+        bnz_print(&master_private_key, 16, "Master private key: ");
+        printf("\n");
+        printf("This private key is greater than the order of Secp256k1.\n\n");
+        printf("It is not possible to generate a public key from this private key.\n\n");
+        printf("Press any key to rerun the command with a different entropy value.\n");
+
+        getchar();
+
+        bnz_free(&entropy);
+        bnz_free(&master_private_key);
+        bnz_free(&master_chain_code);
+        bnz_free(&master_public_key);
+        bnz_free(&master_public_key_compressed);
+        bnz_free(&seed);
+        bnz_free(&p2pkh);
+        bnz_free(&public_key.x);
+        bnz_free(&public_key.y);
+
+        secp256k1_free(secp256k1);
+
+        menu_1_master_keys(version);
+    }
+    
     get_public_key(&public_key, &master_public_key_compressed, &master_private_key);
 
     bnz_print(&master_private_key, 16, "MASTER PRIVATE KEY: ");
@@ -2847,6 +2879,16 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
 
     bnz_print(&p2pkh, 58, "P2PKH ADDRESS: 1");
     printf("\n");
+
+    bnz_free(&entropy);
+    bnz_free(&master_private_key);
+    bnz_free(&master_chain_code);
+    bnz_free(&master_public_key);
+    bnz_free(&master_public_key_compressed);
+    bnz_free(&seed);
+    bnz_free(&p2pkh);
+    bnz_free(&public_key.x);
+    bnz_free(&public_key.y);
 
     secp256k1_free(secp256k1);
 
@@ -2987,8 +3029,6 @@ void menu_2_1_normal_child(const char *version)
     bnz_print(&child_public_key_pt.y, 16, " y: ");
     printf("\n");
 
-    printf("press any key to continue...");
-
     bnz_free(&parent_public_key_pt.x);
     bnz_free(&parent_public_key_pt.y);
     bnz_free(&child_public_key_pt.x);
@@ -3005,6 +3045,8 @@ void menu_2_1_normal_child(const char *version)
     bnz_free(&child_public_key_compressed);
 
     secp256k1_free(secp256k1);
+
+    printf("press any key to continue...");
 
     getchar();
 }
@@ -3118,8 +3160,6 @@ void menu_2_2_hardened_child(const char *version)
 
     printf("\n");
 
-    printf("press any key to continue...");
-    
     bnz_free(&child_public_key_pt.x);
     bnz_free(&child_public_key_pt.y);
 
@@ -3134,6 +3174,8 @@ void menu_2_2_hardened_child(const char *version)
     bnz_free(&child_public_key_compressed);
 
     secp256k1_free(secp256k1);
+
+    printf("press any key to continue...");
 
     getchar();
 }
@@ -3238,8 +3280,6 @@ void menu_2_3_public_child(const char *version)
 
     printf("\n");
 
-    printf("press any key to continue...");
-
     bnz_free(&parent_public_key_compressed);
     bnz_free(&parent_chain_code);
     bnz_free(&child_public_key_compressed);
@@ -3255,12 +3295,14 @@ void menu_2_3_public_child(const char *version)
 
     secp256k1_free(secp256k1);
 
+    printf("press any key to continue...");
+
     getchar();
 }
 
 void menu_3_base_converter(const char *version)
 {
-    char number_str[2048], base = 16;
+    char number_str[2049], base = 16;
     bnz_t number;
 
     bnz_init(&number);
@@ -3269,7 +3311,7 @@ void menu_3_base_converter(const char *version)
     printf("%s\n\n", version);
 
     printf("Number (press 'Enter' for random): ");
-    get_str_input(number_str, 2047);
+    get_str_input(number_str, 2048);
 
     system("cls");
     printf("%s\n\n", version);
@@ -3391,9 +3433,9 @@ void menu_3_base_converter(const char *version)
 
     printf("\n");
 
-    printf("press any key to continue...");
-
     bnz_free(&number);
+
+    printf("press any key to continue...");
 
     getchar();
 }
@@ -3457,7 +3499,11 @@ void menu_4_1_p2pkh(const char *version)
     bnz_print(&p2pkh, 58, "P2PKH: 1");
     printf("\n");
 
+    bnz_free(&public_key_compressed);
+    bnz_free(&p2pkh);
+
     printf("press any key to continue...");
+
     getchar();
 }
 
@@ -3505,6 +3551,9 @@ void menu_4_2_validate_mnemonic_phrase_checksum(const char *version) // input 23
     } else {
         printf("CHECKSUM ERROR: %#02x SHOULD BE %#02x\n\n", chk, entropy_chk.digits[0]);
     }
+
+    bnz_free(&entropy);
+    bnz_free(&entropy_chk);
 
     printf("press any key to continue...");
 
@@ -3564,6 +3613,15 @@ void menu_4_3_secp256k1_point_addition(const char *version)
     bnz_print(&c.y, 16, "y: ");
     printf("\n");
 
+    secp256k1_free(secp256k1);
+
+    bnz_free(&a.x);
+    bnz_free(&a.y);
+    bnz_free(&b.x);
+    bnz_free(&b.y);
+    bnz_free(&c.x);
+    bnz_free(&c.y);
+
     printf("press any key to continue...");
 
     getchar();
@@ -3606,6 +3664,13 @@ void menu_4_4_secp256k1_point_doubling(const char *version)
     bnz_print(&b.x, 16, "x: ");
     bnz_print(&b.y, 16, "y: ");
     printf("\n");
+
+    secp256k1_free(secp256k1);
+
+    bnz_free(&a.x);
+    bnz_free(&a.y);
+    bnz_free(&b.x);
+    bnz_free(&b.y);
 
     printf("press any key to continue...");
 
@@ -3652,7 +3717,14 @@ void menu_4_5_secp256k1_scalar_multiplication(const char *version)
     bnz_print(&p.y, 16, " y: ");
     printf("\n");
 
+    bnz_free(&multiplier);
+    bnz_free(&p.x);
+    bnz_free(&p.y);
+
+    secp256k1_free(secp256k1);
+
     printf("press any key to continue...");
+
     getchar();
 }
 
@@ -3660,7 +3732,7 @@ void menu_4_5_secp256k1_scalar_multiplication(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.07, 2025-04-20";
+    static char *version = "bitcoin_math\nv0.08, 2025-04-24";
     int menu, running = 1;
     while (running) {
         system("cls");
