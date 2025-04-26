@@ -1613,7 +1613,7 @@ uint8_t *get_base_n_str(const bnz_t *a, uint32_t base, const char *alpha) // ret
         }
     }
 
-    while (alpha[base_n_str[trim]] == '0' || (base == 58 && alpha[base_n_str[trim]] == '1') || (base == 64 && alpha[base_n_str[trim]] == 'A')) { // trim leading zeros at MSB end, 1 for base 58, A for base 64
+    while ((base != 64 && alpha[base_n_str[trim]] == '0') || (base == 58 && alpha[base_n_str[trim]] == '1') || (base == 64 && alpha[base_n_str[trim]] == 'A')) { // trim leading zeros at MSB end, 1 for base 58, A for base 64
         trim++;
         len--;
     }
@@ -2715,9 +2715,11 @@ void menu_3_base_converter(const char *);
 void menu_4_functions(const char *);
 void menu_4_1_p2pkh(const char *);
 void menu_4_2_validate_mnemonic_phrase_checksum(const char *);
-void menu_4_3_secp256k1_point_addition(const char *);
-void menu_4_4_secp256k1_point_doubling(const char *);
-void menu_4_5_secp256k1_scalar_multiplication(const char *);
+void menu_4_3_private_key_to_WIF(const char *);
+void menu_4_4_WIF_to_private_key(const char *);
+void menu_4_5_secp256k1_point_addition(const char *);
+void menu_4_6_secp256k1_point_doubling(const char *);
+void menu_4_7_secp256k1_scalar_multiplication(const char *);
 
 uint32_t get_num_input(uint32_t max_len, uint32_t min, uint32_t max) // get base 10 number between min and max from stdin
 {
@@ -2837,7 +2839,7 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
         printf("\n");
         bnz_print(&master_private_key, 16, "Master private key: ");
         printf("\n");
-        printf("This private key is greater than the order of Secp256k1.\n\n");
+        printf("This private key is not less than the order of Secp256k1.\n\n");
         printf("It is not possible to generate a public key from this private key.\n\n");
         printf("Press any key to rerun the command with a different entropy value.\n");
 
@@ -3439,11 +3441,13 @@ void menu_4_functions(const char *version)
     printf("%s\n\n", version);
     printf("1. P2PKH\n");
     printf("2. Validate mnemonic phrase checksum\n");
-    printf("3. Secp256k1 point addition\n");
-    printf("4. Secp256k1 point doubling\n");
-    printf("5. Secp256k1 scalar multiplication\n");
+    printf("3. Private key to WIF\n");
+    printf("4. WIF to private key\n");
+    printf("5. Secp256k1 point addition\n");
+    printf("6. Secp256k1 point doubling\n");
+    printf("7. Secp256k1 scalar multiplication\n");
     printf("\n");
-    menu = get_num_input(1, 0, 5);
+    menu = get_num_input(1, 0, 7);
     switch (menu) {
         case 1:
             menu_4_1_p2pkh(version);
@@ -3452,13 +3456,19 @@ void menu_4_functions(const char *version)
             menu_4_2_validate_mnemonic_phrase_checksum(version);
             break;
         case 3:
-            menu_4_3_secp256k1_point_addition(version);
+            menu_4_3_private_key_to_WIF(version);
             break;
         case 4:
-            menu_4_4_secp256k1_point_doubling(version);
+            menu_4_4_WIF_to_private_key(version);
             break;
         case 5:
-            menu_4_5_secp256k1_scalar_multiplication(version);
+            menu_4_5_secp256k1_point_addition(version);
+            break;
+        case 6:
+            menu_4_6_secp256k1_point_doubling(version);
+            break;
+        case 7:
+            menu_4_7_secp256k1_scalar_multiplication(version);
             break;
         default:
             break;
@@ -3499,7 +3509,7 @@ void menu_4_1_p2pkh(const char *version)
     getchar();
 }
 
-void menu_4_2_validate_mnemonic_phrase_checksum(const char *version) // input 23 BIP39 words (the 24th is calculated) and generate master private key, master chain code, master public key, and corresponding P2PKH address
+void menu_4_2_validate_mnemonic_phrase_checksum(const char *version) // check validity of entropy checksum from mnemonic phrase comprising 24 BIP39 words
 {
     uint8_t chk;
     int i;
@@ -3552,7 +3562,149 @@ void menu_4_2_validate_mnemonic_phrase_checksum(const char *version) // input 23
     getchar();
 }
 
-void menu_4_3_secp256k1_point_addition(const char *version)
+void menu_4_3_private_key_to_WIF(const char *version)
+{
+    uint8_t h1[32], h2[32], private_key_str[67]; // optional "0x" + 32 bytes + null terminator
+    bnz_t private_key_wif, private_key, entropy, chain_code;
+    
+    SECP256K1 secp256k1;
+
+    bnz_init(&private_key_wif);
+    bnz_init(&private_key);
+    bnz_init(&entropy);
+    bnz_init(&chain_code);
+
+    secp256k1 = secp256k1_init();
+
+    system("cls");
+    printf("%s\n\n", version);
+
+    printf("Private key (press 'Enter' for random): ");
+    get_str_input(private_key_str, 66);
+
+    if (isalnum(private_key_str[0])) {
+        printf("%s\n", private_key_str);
+        bnz_set_str(&private_key, private_key_str, 16);
+        system("cls");
+        printf("%s\n\n", version);
+        bnz_print(&private_key, 16, "Private key: ");
+    } else {
+        get_random_master_keys(&entropy, &private_key, &chain_code);
+        system("cls");
+        printf("%s\n\n", version);
+        bnz_print(&entropy, 16, "Entropy: ");
+        bnz_print(&private_key, 16, "Private key: ");
+    }
+
+    printf("\n");
+
+    if (bnz_cmp_bnz(&private_key, &secp256k1.n) != -1) { // ensure that private_key < Secp256k1.n
+        system("cls");
+        printf("%s\n\n", version);
+        bnz_print(&entropy, 16, "Entropy: ");
+        printf("\n");
+        bnz_print(&private_key, 16, "Master private key: ");
+        printf("\n");
+        printf("This private key is not less than the order of Secp256k1.\n\n");
+        printf("It is not possible to generate a public key from this private key.\n\n");
+        printf("Press any key to rerun the command with a different entropy value.\n");
+
+        getchar();
+
+        bnz_free(&private_key_wif);
+        bnz_free(&private_key);
+        bnz_free(&entropy);
+        bnz_free(&chain_code);
+    
+        secp256k1_free(secp256k1);
+
+        menu_4_3_private_key_to_WIF(version);
+    }
+
+    bnz_set_bnz(&private_key_wif, &private_key); // copy private key to private_key_wif
+    bnz_concatenate_ui8(&private_key_wif, &private_key_wif, 0x80, 0); // mainnet version, concatenate 0x80 to MSB end (for testnet version concatenate 0xef)
+    bnz_concatenate_ui8(&private_key_wif, &private_key_wif, 0x01, 1); // compressed, concatenate 0x01 to LSB end (no concatenatation for uncompressed)
+    bnz_reverse_digits(&private_key_wif); // convert private_key_wif digits to big endian order in anticipation of hashing
+
+    sha256(private_key_wif.digits, private_key_wif.size, h1); // h1 = sha256(private_key_wif.digits)
+    sha256(h1, 32, h2); // h2 = sha256(sha256(private_key_wif.digits))
+    bnz_concatenate_ui8(&private_key_wif, &private_key_wif, h2[0], 0); // add first
+    bnz_concatenate_ui8(&private_key_wif, &private_key_wif, h2[1], 0); // four bytes
+    bnz_concatenate_ui8(&private_key_wif, &private_key_wif, h2[2], 0); // of h2 to LSB
+    bnz_concatenate_ui8(&private_key_wif, &private_key_wif, h2[3], 0); // end of private_key_wif.digits
+
+    bnz_reverse_digits(&private_key_wif); // convert private_key_wif.digits to stadard little endian order
+
+    system("cls");
+    printf("%s\n\n", version);
+
+    if (!bnz_is_zero(&entropy)) bnz_print(&entropy, 16, "ENTROPY: ");
+    bnz_print(&private_key, 16, "PRIVATE KEY: ");
+    bnz_print(&private_key_wif, 16, "PRIVATE KEY WIF (HEX): "); // hex version of WIF
+    bnz_print(&private_key_wif, 58, "PRIVATE KEY WIF (BITCOIN BASE 58): "); // Bitcoin Base 58 version of WIF (standard)
+
+    printf("\n");
+
+    bnz_free(&private_key_wif);
+    bnz_free(&private_key);
+    bnz_free(&entropy);
+    bnz_free(&chain_code);
+
+    secp256k1_free(secp256k1);
+
+    printf("press any key to continue...");
+
+    getchar();
+}
+
+void menu_4_4_WIF_to_private_key(const char *version)
+{
+    uint8_t h1[32], h2[32], wif_str[53]; // 51 or 52 Bitcoin base 58 characters + null terminator
+    bnz_t private_key_wif, private_key;
+    
+    bnz_init(&private_key_wif);
+    bnz_init(&private_key);
+
+    system("cls");
+    printf("%s\n\n", version);
+
+    printf("Private key WIF (Bitcoin base 58): ");
+    get_str_input(wif_str, 52);
+
+    printf("%s\n", wif_str);
+    bnz_set_str(&private_key_wif, wif_str, 58);
+    system("cls");
+    printf("%s\n\n", version);
+    bnz_print(&private_key_wif, 58, "Private key WIF: ");
+
+    printf("\n");
+
+    bnz_set_bnz(&private_key, &private_key_wif);
+
+    bnz_resize(&private_key, private_key.size - 1, 1); // remove version byte from MSB end
+    bnz_reverse_digits(&private_key); // reverse private_key.digits to enable bytes to be removed from MSB end
+    bnz_resize(&private_key, private_key.size - 4, 1); // remove 4 checksum bytes from MSB end
+    bnz_resize(&private_key, 32, 1); // resize private_key.digits to 32 bytes to ensure than the compression byte (if present) is deleted
+    bnz_reverse_digits(&private_key); // reverse private_key.digits to standard little endian order
+
+    system("cls");
+    printf("%s\n\n", version);
+
+    bnz_print(&private_key_wif, 58, "PRIVATE KEY WIF (BITCOIN BASE 58): "); // Bitcoin Base 58 version of WIF (standard)
+    bnz_print(&private_key_wif, 16, "PRIVATE KEY WIF (HEX): "); // hex version of WIF
+    bnz_print(&private_key, 16, "PRIVATE KEY: "); // hex version of private key
+
+    printf("\n");
+
+    bnz_free(&private_key_wif);
+    bnz_free(&private_key);
+
+    printf("press any key to continue...");
+
+    getchar();
+}
+
+void menu_4_5_secp256k1_point_addition(const char *version)
 {
     uint8_t a_x_str[67], a_y_str[67], b_x_str[67], b_y_str[67];
     PT a, b, c;
@@ -3619,7 +3771,7 @@ void menu_4_3_secp256k1_point_addition(const char *version)
     getchar();
 }
 
-void menu_4_4_secp256k1_point_doubling(const char *version)
+void menu_4_6_secp256k1_point_doubling(const char *version)
 {
     uint8_t a_x_str[67], a_y_str[67], b_x_str[67], b_y_str[67];
     PT a, b;
@@ -3669,7 +3821,7 @@ void menu_4_4_secp256k1_point_doubling(const char *version)
     getchar();
 }
 
-void menu_4_5_secp256k1_scalar_multiplication(const char *version)
+void menu_4_7_secp256k1_scalar_multiplication(const char *version)
 {
     uint8_t multiplier_str[67];
     bnz_t multiplier;
@@ -3724,7 +3876,7 @@ void menu_4_5_secp256k1_scalar_multiplication(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.08, 2025-04-24";
+    static char *version = "bitcoin_math\nv0.09, 2025-04-27";
     int menu, running = 1;
     while (running) {
         system("cls");
