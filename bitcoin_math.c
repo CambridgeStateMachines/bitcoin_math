@@ -2739,8 +2739,8 @@ void get_str_input(char str[], int max_len) // get string from stdin with strlen
 {
     int i = 0, ch;
     while ((ch = getchar()) != '\n' && ch != EOF) {
-        // confine ch to the characters up to base 64
-        if (((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '+' || ch == '/') && i < max_len) {
+        // confine ch to the characters up to base 64 or space
+        if (((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '+' || ch == '/' || ch == ' ') && i < max_len) {
             str[i++] = ch;
         }
     }
@@ -3603,7 +3603,7 @@ void menu_4_3_private_key_to_WIF(const char *version)
         printf("%s\n\n", version);
         bnz_print(&entropy, 16, "Entropy: ");
         printf("\n");
-        bnz_print(&private_key, 16, "Master private key: ");
+        bnz_print(&private_key, 16, "Private key: ");
         printf("\n");
         printf("This private key is not less than the order of Secp256k1.\n\n");
         printf("It is not possible to generate a public key from this private key.\n\n");
@@ -3633,7 +3633,7 @@ void menu_4_3_private_key_to_WIF(const char *version)
     bnz_concatenate_ui8(&private_key_wif, &private_key_wif, h2[2], 0); // of h2 to LSB
     bnz_concatenate_ui8(&private_key_wif, &private_key_wif, h2[3], 0); // end of private_key_wif.digits
 
-    bnz_reverse_digits(&private_key_wif); // convert private_key_wif.digits to stadard little endian order
+    bnz_reverse_digits(&private_key_wif); // convert private_key_wif.digits to standard little endian order
 
     system("cls");
     printf("%s\n\n", version);
