@@ -3441,7 +3441,7 @@ void menu_4_functions(const char *version)
     printf("%s\n\n", version);
     printf("1. P2PKH\n");
     printf("2. Validate mnemonic phrase checksum\n");
-    printf("3. Private key to WIF\n");
+    printf("3. Private key to WIF / public key / P2PKH address\n");
     printf("4. WIF to private key / public key / P2PKH address\n");
     printf("5. Secp256k1 point addition\n");
     printf("6. Secp256k1 point doubling\n");
@@ -3565,7 +3565,8 @@ void menu_4_2_validate_mnemonic_phrase_checksum(const char *version) // check va
 void menu_4_3_private_key_to_WIF(const char *version)
 {
     uint8_t h1[32], h2[32], private_key_str[67]; // optional "0x" + 32 bytes + null terminator
-    bnz_t private_key_wif, private_key, entropy, chain_code;
+    bnz_t private_key_wif, private_key, entropy, chain_code, public_key_compressed, p2pkh;
+    PT public_key;
     
     SECP256K1 secp256k1;
 
@@ -3573,6 +3574,10 @@ void menu_4_3_private_key_to_WIF(const char *version)
     bnz_init(&private_key);
     bnz_init(&entropy);
     bnz_init(&chain_code);
+    bnz_init(&public_key_compressed);
+    bnz_init(&p2pkh);
+    bnz_init(&public_key.x);
+    bnz_init(&public_key.y);
 
     secp256k1 = secp256k1_init();
 
@@ -3643,12 +3648,25 @@ void menu_4_3_private_key_to_WIF(const char *version)
     bnz_print(&private_key_wif, 16, "PRIVATE KEY WIF (HEX): "); // hex version of WIF
     bnz_print(&private_key_wif, 58, "PRIVATE KEY WIF (BITCOIN BASE 58): "); // Bitcoin Base 58 version of WIF (standard)
 
+    get_public_key(&public_key, &public_key_compressed, &private_key);
+    get_p2pkh_address(&p2pkh, &public_key_compressed);
+
+    printf("\n");
+
+    bnz_print(&public_key_compressed, 16, "PUBLIC KEY (COMPRESSED): ");
+    bnz_print(&p2pkh, 58, "P2PKH: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
+
     printf("\n");
 
     bnz_free(&private_key_wif);
     bnz_free(&private_key);
     bnz_free(&entropy);
     bnz_free(&chain_code);
+    bnz_free(&public_key.x);
+    bnz_free(&public_key.y);
+    bnz_free(&public_key_compressed);
+    get_p2pkh_address(&p2pkh, &public_key_compressed);
+
 
     secp256k1_free(secp256k1);
 
@@ -3685,20 +3703,16 @@ void menu_4_4_WIF_to_private_key(const char *version)
     bnz_set_str(&private_key_wif, wif_str, 58);
     system("cls");
     printf("%s\n\n", version);
-    bnz_print(&private_key_wif, 58, "Private key WIF: ");
+    bnz_print(&private_key_wif, 58, "Private key WIF (Bitcoin base 58): ");
 
     printf("\n");
 
-    bnz_set_bnz(&private_key, &private_key_wif);
-
+    bnz_set_bnz(&private_key, &private_key_wif); // copy wif to private key
     bnz_resize(&private_key, private_key.size - 1, 1); // remove version byte from MSB end
-    bnz_reverse_digits(&private_key); // reverse private_key.digits to enable bytes to be removed from MSB end
+    bnz_reverse_digits(&private_key); // reverse private_key.digits to enable 4 checksum bytes to be removed from MSB end
     bnz_resize(&private_key, private_key.size - 4, 1); // remove 4 checksum bytes from MSB end
     bnz_resize(&private_key, 32, 1); // resize private_key.digits to 32 bytes to ensure than the compression byte (if present) is deleted
     bnz_reverse_digits(&private_key); // reverse private_key.digits to standard little endian order
-
-    get_public_key(&public_key, &public_key_compressed, &private_key);
-    get_p2pkh_address(&p2pkh, &public_key_compressed);
 
     system("cls");
     printf("%s\n\n", version);
@@ -3706,6 +3720,9 @@ void menu_4_4_WIF_to_private_key(const char *version)
     bnz_print(&private_key_wif, 58, "PRIVATE KEY WIF (BITCOIN BASE 58): "); // Bitcoin Base 58 version of WIF (standard)
     bnz_print(&private_key_wif, 16, "PRIVATE KEY WIF (HEX): "); // hex version of WIF
     bnz_print(&private_key, 16, "PRIVATE KEY: "); // hex version of private key
+
+    get_public_key(&public_key, &public_key_compressed, &private_key);
+    get_p2pkh_address(&p2pkh, &public_key_compressed);
 
     printf("\n");
 
@@ -3718,6 +3735,8 @@ void menu_4_4_WIF_to_private_key(const char *version)
     bnz_free(&private_key);
     bnz_free(&public_key_compressed);
     bnz_free(&p2pkh);
+    bnz_free(&public_key.x);
+    bnz_free(&public_key.y);
 
     secp256k1_free(secp256k1);
 
