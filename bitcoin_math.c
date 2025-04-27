@@ -3442,7 +3442,7 @@ void menu_4_functions(const char *version)
     printf("1. P2PKH\n");
     printf("2. Validate mnemonic phrase checksum\n");
     printf("3. Private key to WIF\n");
-    printf("4. WIF to private key\n");
+    printf("4. WIF to private key / public key / P2PKH address\n");
     printf("5. Secp256k1 point addition\n");
     printf("6. Secp256k1 point doubling\n");
     printf("7. Secp256k1 scalar multiplication\n");
@@ -3660,10 +3660,20 @@ void menu_4_3_private_key_to_WIF(const char *version)
 void menu_4_4_WIF_to_private_key(const char *version)
 {
     uint8_t h1[32], h2[32], wif_str[53]; // 51 or 52 Bitcoin base 58 characters + null terminator
-    bnz_t private_key_wif, private_key;
+    bnz_t private_key_wif, private_key, public_key_compressed, p2pkh;
+
+    PT public_key;
+
+    SECP256K1 secp256k1;
     
     bnz_init(&private_key_wif);
     bnz_init(&private_key);
+    bnz_init(&public_key_compressed);
+    bnz_init(&p2pkh);
+    bnz_init(&public_key.x);
+    bnz_init(&public_key.y);
+
+    secp256k1 = secp256k1_init();
 
     system("cls");
     printf("%s\n\n", version);
@@ -3687,6 +3697,9 @@ void menu_4_4_WIF_to_private_key(const char *version)
     bnz_resize(&private_key, 32, 1); // resize private_key.digits to 32 bytes to ensure than the compression byte (if present) is deleted
     bnz_reverse_digits(&private_key); // reverse private_key.digits to standard little endian order
 
+    get_public_key(&public_key, &public_key_compressed, &private_key);
+    get_p2pkh_address(&p2pkh, &public_key_compressed);
+
     system("cls");
     printf("%s\n\n", version);
 
@@ -3696,8 +3709,17 @@ void menu_4_4_WIF_to_private_key(const char *version)
 
     printf("\n");
 
+    bnz_print(&public_key_compressed, 16, "PUBLIC KEY (COMPRESSED): ");
+    bnz_print(&p2pkh, 58, "P2PKH: 1");
+
+    printf("\n");
+
     bnz_free(&private_key_wif);
     bnz_free(&private_key);
+    bnz_free(&public_key_compressed);
+    bnz_free(&p2pkh);
+
+    secp256k1_free(secp256k1);
 
     printf("press any key to continue...");
 

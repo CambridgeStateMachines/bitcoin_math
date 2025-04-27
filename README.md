@@ -101,7 +101,7 @@ Finally, arbitrary precision implementations of the special functions of mod, mo
 Elliptic curve math, built around two custom structs: "PT", comprising two `bnz_t` numbers, representing a point on Secp256k1, and "SECP256K1" representing the elliptic curve itself. The "a" and "h" parameters of the curve are included for completeness, but play no role in the  functions.
 
 ### /* BITCOIN */
-Bitcoin specific functions for processing entropy, generating mnemonic phrases, seeds, private keys (including WIF format), chain codes, public keys, and P2PKH addresses.
+Bitcoin specific functions for processing entropy, generating mnemonic phrases, seeds, private keys (including two-way WIF format conversion), chain codes, public keys, and P2PKH addresses.
 
 If a user generates a private key that is not less than the value of the order of Secp256k1, the user will be prompted to rerun the private key generation step with a different entropy value. 
 
