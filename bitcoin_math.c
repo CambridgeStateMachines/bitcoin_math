@@ -2871,7 +2871,7 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
 
     get_p2pkh_address(&p2pkh, &master_public_key_compressed);
 
-    bnz_print(&p2pkh, 58, "P2PKH ADDRESS: 1");
+    bnz_print(&p2pkh, 58, "P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
     printf("\n");
 
     bnz_free(&entropy);
@@ -3498,7 +3498,7 @@ void menu_4_1_p2pkh(const char *version)
 
     get_p2pkh_address(&p2pkh, &public_key_compressed);
 
-    bnz_print(&p2pkh, 58, "P2PKH: 1");
+    bnz_print(&p2pkh, 58, "P2PKH: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
     printf("\n");
 
     bnz_free(&public_key_compressed);
@@ -3662,11 +3662,10 @@ void menu_4_3_private_key_to_WIF(const char *version)
     bnz_free(&private_key);
     bnz_free(&entropy);
     bnz_free(&chain_code);
+    bnz_free(&public_key_compressed);
+    bnz_free(&p2pkh);
     bnz_free(&public_key.x);
     bnz_free(&public_key.y);
-    bnz_free(&public_key_compressed);
-    get_p2pkh_address(&p2pkh, &public_key_compressed);
-
 
     secp256k1_free(secp256k1);
 
@@ -3727,7 +3726,7 @@ void menu_4_4_WIF_to_private_key(const char *version)
     printf("\n");
 
     bnz_print(&public_key_compressed, 16, "PUBLIC KEY (COMPRESSED): ");
-    bnz_print(&p2pkh, 58, "P2PKH: 1");
+    bnz_print(&p2pkh, 58, "P2PKH: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
 
     printf("\n");
 
