@@ -2158,7 +2158,7 @@ void bnz_mod_bnz(bnz_t *res, const bnz_t *a, const bnz_t *b) // res = a % b, inv
     bnz_free(&r);
 }
 
-void bnz_mod_pow(bnz_t *res, const bnz_t *a, const bnz_t *b, const bnz_t *c) // get res = a^b mod c
+void bnz_mod_pow(bnz_t *res, const bnz_t *a, const bnz_t *b, const bnz_t *c) // get res = a^b mod c, code adapted from the pseudocode at https://en.wikipedia.org/wiki/Modular_exponentiation
 {
     bnz_t aa, bb;
 
@@ -2183,7 +2183,7 @@ void bnz_mod_pow(bnz_t *res, const bnz_t *a, const bnz_t *b, const bnz_t *c) // 
     bnz_free(&bb);
 }
 
-void bnz_modular_multiplicative_inverse(bnz_t *res, const bnz_t *a, const bnz_t *b) // get res where (res * a) mod b = 1
+void bnz_modular_multiplicative_inverse(bnz_t *res, const bnz_t *a, const bnz_t *b) // get res where (res * a) mod b = 1, code adapted from the pseudocode of various examples of the extended Euclidean algorithm
 {
     bnz_t q, rem, tmp1, t, new_t, r, new_r, tmp2;
 
@@ -2252,7 +2252,7 @@ void secp256k1_point_doubling(const SECP256K1, const PT *, PT *);
 void secp256k1_point_addition(const SECP256K1, PT *, PT *, PT *);
 void secp256k1_scalar_multiplication(const SECP256K1, const bnz_t *, PT *);
 
-SECP256K1 secp256k1_init() // initiate secp256k1 curve
+SECP256K1 secp256k1_init() // initiate secp256k1 curve, y^2 = (x^3 + 7) mod secp256k1.p
 {
     SECP256K1 secp256k1;
 
@@ -2571,7 +2571,7 @@ void get_seed_from_mnemonic_phrase(bnz_t *seed, const char *mnemonic, const char
     size_t i, j;
     bnz_resize(seed, 64, 0);
     if (!(salt = get_salt(passphrase))) return;
-    hmac_sha512(mnemonic, strlen(mnemonic), salt, strlen(passphrase) + 12 /* strlen("mnemonic") + 4 bytes of uint32_t */, tmp, 64);
+    hmac_sha512(mnemonic, strlen(mnemonic), salt, strlen(passphrase) + 12, tmp, 64); // 12 = strlen("mnemonic") + 4 bytes of uint32_t
     memcpy(seed->digits, tmp, 64);
     for (i = 1; i < 2048; i++) {
         hmac_sha512(mnemonic, strlen(mnemonic), tmp, 64, tmp, 64);
@@ -2590,19 +2590,19 @@ void get_master_keys(bnz_t *master_private_key, bnz_t *master_chain_code, bnz_t 
     bnz_t tmp;
     bnz_init(&tmp);
 
-    bnz_set_bnz(&tmp, seed);
+    bnz_set_bnz(&tmp, seed); // copy seed to tmp
 
-    bnz_resize(&tmp, 64, 1);
-    bnz_reverse_digits(&tmp);
-    hmac_sha512("Bitcoin seed", 12, tmp.digits, tmp.size, mac, 64);
+    bnz_resize(&tmp, 64, 1); // ensure that tmp is 64 bytes
+    bnz_reverse_digits(&tmp); // convert tmp.digits to big endian order
+    hmac_sha512("Bitcoin seed", 12, tmp.digits, tmp.size, mac, 64); // generate 64 byte MAC from tmp.digits and the initial key "Bitcoin seed"
 
-    bnz_resize(master_private_key, 32, 0);
-    memcpy(master_private_key->digits, mac, 32);
-    bnz_reverse_digits(master_private_key);
+    bnz_resize(master_private_key, 32, 0); // prepare master_private_key to receive the first 32 bytes of the MAC
+    memcpy(master_private_key->digits, mac, 32); // copy the first 32 bytes of the MAC into master_private_key
+    bnz_reverse_digits(master_private_key); // convert master_private_key.digits to default little endian order
 
-    bnz_resize(master_chain_code, 32, 0);
-    memcpy(master_chain_code->digits, mac + 32, 32);
-    bnz_reverse_digits(master_chain_code);
+    bnz_resize(master_chain_code, 32, 0); // prepare master_chain_code to receive the last 32 bytes of the MAC
+    memcpy(master_chain_code->digits, mac + 32, 32); // copy the last 32 bytes of the MAC into master_chain_code
+    bnz_reverse_digits(master_chain_code); // convert master_chain_code.digits to default little endian order
 
     bnz_free(&tmp);
 }
@@ -2611,20 +2611,20 @@ void get_public_key(PT *public_key, bnz_t *public_key_compressed, bnz_t *private
 {
     SECP256K1 secp256k1 = secp256k1_init();
 
-    secp256k1_scalar_multiplication(secp256k1, private_key, public_key);
+    secp256k1_scalar_multiplication(secp256k1, private_key, public_key); // public_key = (secp256k1.G * private_key) mod secp256k1.p
 
     if (bnz_bit_set(&public_key->y, 0) == 0) { // even y
         bnz_concatenate_ui8(public_key_compressed, &public_key->x, 2, 0); // prepend 2
-    } else { // odd
+    } else { // odd y
         bnz_concatenate_ui8(public_key_compressed, &public_key->x, 3, 0); // prepend 3
     }
     
     secp256k1_free(secp256k1);
 }
 
-void get_public_key_xy(PT *public_key, bnz_t *public_key_compressed) // regenerate public key point on Secp256k1 from compressed public key
+void get_public_key_xy(PT *public_key, bnz_t *public_key_compressed) // regenerate public key point on secp256k1 from compressed public key
 {
-    uint8_t typ = public_key_compressed->digits[public_key_compressed->size - 1]; // typ = 2 for even y, typ = 3 for odd y
+    uint8_t typ = public_key_compressed->digits[public_key_compressed->size - 1]; // byte at MSB encodes the parity of y: typ = 0x02 for even y, typ = 0x03 for odd y
     bnz_t exp, y_sq;
     SECP256K1 secp256k1;
 
@@ -2633,10 +2633,25 @@ void get_public_key_xy(PT *public_key, bnz_t *public_key_compressed) // regenera
 
     secp256k1 = secp256k1_init();
 
+    /*
+
+    In this function we wish to regenerate the x,y coordinates of a point on secp256k1 from a compressed public key, which is
+    the x coordinate of the point concatenated (at the MSB end) with a byte of value 2 or 3, depending on whether the value of
+    y is even (0x02) or odd (0x03).
+
+    Generating the y coordinate of a point on secp256k1, given the corresponding x coordinate, leverages a nice property of secp256k1
+    which is that, given y^2 mod secp256k1.p (easily calculated from x given the formula of secp256k1: y^2 = x^3 + 7), we can
+    calculate y as follows:
+
+        y mod secp256k1.p = (y_sq^((secp256k1.p + 1) / 4)) mod secp256k1.p
+
+    In this function we use a pre-calculated value of (secp256k1.p + 1) / 4.
+
+    */
     bnz_set_str(&exp, "28948022309329048855892746252171976963317496166410141009864396001977208667916", 10); // (secp256k1.p + 1) / 4
 
     bnz_set_bnz(&public_key->x, public_key_compressed); // public_key.x = compressed public key
-    bnz_resize(&public_key->x, public_key->x.size - 1, 1); // public_key.x = decompressed public key
+    bnz_resize(&public_key->x, public_key->x.size - 1, 1); // public_key.x = decompressed public key, byte at MSB end removed
 
     bnz_set_bnz(&y_sq, &public_key->x); //y_sq = public_key.x
     bnz_multiply_bnz(&y_sq, &y_sq, &public_key->x); //y_sq = public_key.x^2
@@ -2644,7 +2659,7 @@ void get_public_key_xy(PT *public_key, bnz_t *public_key_compressed) // regenera
     bnz_add_i32(&y_sq, &y_sq, 7); //y_sq = public_key.x^3 + 7
     bnz_mod_bnz(&y_sq, &y_sq, &secp256k1.p); //y_sq mod secp256k1.p = (public_key.x^3 + 7) mod secp256k1.p
 
-    bnz_mod_pow(&public_key->y, &y_sq, &exp, &secp256k1.p); // y = (y_sq^(secp256k1.p + 1) / 4) mod secp256k1.p
+    bnz_mod_pow(&public_key->y, &y_sq, &exp, &secp256k1.p); // y mod secp256k1.p = (y_sq^((secp256k1.p + 1) / 4)) mod secp256k1.p
 
     if ((typ == 2 && bnz_bit_set(&public_key->y, 0) == 1) || (typ == 3 && bnz_bit_set(&public_key->y, 0) == 0)) { // mismatched typ and y
         bnz_subtract_bnz(&public_key->y, &secp256k1.p, &public_key->y); // y = secp256k1.p - y, negation of y mod p
@@ -2665,14 +2680,14 @@ void get_random_master_keys(bnz_t *entropy, bnz_t *master_private_key, bnz_t *ma
     bnz_init(&tmp);
     bnz_init(&seed);
 
-    bnz_256_bit_rnd(entropy);
-    bnz_set_bnz(&tmp, entropy);
+    bnz_256_bit_rnd(entropy); // generate 32 bytes of random entropy
+    bnz_set_bnz(&tmp, entropy); // copy entropy into tmp
 
-    entropy_checksum(&tmp);
-    get_bip39_word_ids_bnz(&tmp, wd_ids);
-    mnemonic = get_mnemonic_phrase(wd_ids);
-    get_seed_from_mnemonic_phrase(&seed, mnemonic, "");
-    get_master_keys(master_private_key, master_chain_code, &seed);
+    entropy_checksum(&tmp); // calculate and append checksum byte to copy of entropy, 33 byte result
+    get_bip39_word_ids_bnz(&tmp, wd_ids); // get the ids of the 24 BIP39 words from the 33 byte tmp
+    mnemonic = get_mnemonic_phrase(wd_ids); // generate mnemonic phrase string from BIP39 word ids
+    get_seed_from_mnemonic_phrase(&seed, mnemonic, ""); // generate 64 byte seed from mnemonic phrase
+    get_master_keys(master_private_key, master_chain_code, &seed); // generate master private key and master chain code from seed
 
     free(mnemonic);
     bnz_free(&tmp);

@@ -21,7 +21,7 @@ The result is `bitcoin_math.exe`, a simple menu driven console application which
 
 Wherever possible, hash digests, MACs, seeds, keys, and addresses are manipulated as arbitrary precision integers, reflecting their essentially numerical nature. These numbers are typically rendered onscreen in hex or Bitcoin base 58 format, but can be rendered in any base between 2 and 64 using the base conversion function.
 
-Outputs from `bitcoin_math` can be verified using online tools. My preferred source of verification is the excellent https://learnmeabitcoin.com/technical/keys/ and associated pages.
+Outputs from `bitcoin_math` can be verified using online tools. My preferred source of verification is the excellent https://learnmeabitcoin.com/technical/keys/ and associated pages. I have also checked the entropy-to-seed outputs of `bitcoin_math.exe` against the 256 bit entropy examples in the "english" section of https://github.com/trezor/python-mnemonic/blob/master/vectors.json, using "TREZOR" as the passphrase.
 
 
 ## Getting started with `bitcoin_math` 
