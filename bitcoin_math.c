@@ -2436,6 +2436,8 @@ void secp256k1_scalar_multiplication(const SECP256K1 secp256k1, const bnz_t *m, 
 /* BITCOIN */
 
 uint8_t *get_salt(const char *);
+void get_ripemd160_sha256(bnz_t *, const bnz_t *, size_t);
+void get_sha256_sha256(bnz_t *, const bnz_t *, size_t);
 void bnz_256_bit_rnd(bnz_t *);
 void entropy_checksum(bnz_t *);
 void get_bip39_word_ids_bnz(bnz_t *, uint32_t *);
@@ -2447,14 +2449,48 @@ void get_public_key(PT *, bnz_t *, bnz_t *);
 void get_public_key_xy(PT *, bnz_t *);
 void get_random_master_keys(bnz_t *, bnz_t *, bnz_t *);
 void get_p2pkh_address(bnz_t *, bnz_t *);
+void get_xprv_master(bnz_t *, bnz_t *, bnz_t *);
+void get_xpub_master(bnz_t *, bnz_t *, bnz_t *);
+void get_xprv_child(bnz_t *, uint8_t, uint32_t, bnz_t *, bnz_t *, bnz_t *);
+void get_xpub_child(bnz_t *, uint8_t, uint32_t, bnz_t *, bnz_t *, bnz_t *);
 
 uint8_t *get_salt(const char *passphrase) // generate salt string from passphrase
 {
     uint8_t *salt = NULL;
-    if (!(salt = init_uint8_array(strlen(passphrase) + 12))) return NULL;  // strlen("mnemonic") + sizeof(uint32_t)
+    if (!(salt = init_uint8_array(strlen(passphrase) + 12))) return NULL; // strlen("mnemonic") + sizeof(uint32_t)
     sprintf(salt, "mnemonic%s", passphrase); // concatenate "mnemonic" with passphrase string
     salt[strlen(passphrase) + 11] = 1; // last 4 bytes = 1 formatted as uint32_t
     return salt;
+}
+
+void get_ripemd160_sha256(bnz_t *res, const bnz_t *a, size_t len) // res = first len bytes of ripemd160(sha256(a.digits)) as a bnz_t
+{
+    uint8_t h1[32], h2[20];
+    bnz_t aa; // aa is a mutable local copy of a 
+    bnz_init(&aa); // initiate aa
+    bnz_set_bnz(&aa, a); // set aa = a, standard little endian order
+    bnz_reverse_digits(&aa); // convert aa.digits to big endian order
+    sha256(aa.digits, aa.size, h1); // h1 = sha256(aa.digits)
+    ripemd160(h1, 32, h2); // h2 = ripemd160(sha256(aa.digits))
+    bnz_resize(res, len, 0); // prepare res.digits to receive first len bytes of h2
+    memcpy(res->digits, h2, len); // copy first len bytes of h2 into res.digits, big endian order
+    bnz_reverse_digits(res); // convert res.digits to standard bnz_t little endian order
+    bnz_free(&aa); // free aa resources
+}
+
+void get_sha256_sha256(bnz_t *res, const bnz_t *a, size_t len) // res = first len bytes of sha256(sha256(a.digits)) as a bnz_t
+{
+    uint8_t h1[32], h2[32];
+    bnz_t aa; // aa is a mutable local copy of a
+    bnz_init(&aa); // initiate aa
+    bnz_set_bnz(&aa, a); // set aa = a, standard little endian order
+    bnz_reverse_digits(&aa); // convert aa.digits to big endian order
+    sha256(aa.digits, aa.size, h1); // h1 = sha256(aa.digits)
+    sha256(h1, 32, h2); // h2 = sha256(sha256(aa.digits))
+    bnz_resize(res, len, 0); // prepare res.digits to receive the first len bytes of h2
+    memcpy(res->digits, h2, len); // copy first len bytes of h2 into res.digits, big endian order
+    bnz_reverse_digits(res); // convert res.digits to standard bnz_t little endian order
+    bnz_free(&aa); // free aa resources
 }
 
 void bnz_256_bit_rnd(bnz_t *rnd) // generate pseudo random 256 bit entropy
@@ -2696,25 +2732,108 @@ void get_random_master_keys(bnz_t *entropy, bnz_t *master_private_key, bnz_t *ma
 
 void get_p2pkh_address(bnz_t *p2pkh, bnz_t *public_key_compressed) // get p2pkh address from compressed public key
 {
-    uint8_t h1[32], h2[20], h3[32], h4[32];
-    bnz_t tmp;
-    bnz_init(&tmp);
-    bnz_set_bnz(&tmp, public_key_compressed); // copy public_key_compressed to tmp, digits in default bnz_t little endian order
-    bnz_reverse_digits(&tmp); // change digit order of tmp to big endian
-    sha256(tmp.digits, tmp.size, h1); // h1 = sha256(public_key_compressed), big endian order
-    ripemd160(h1, 32, h2); // h2 = ripemd160(sha256(public_key_compressed)), big endian order
-    bnz_resize(p2pkh, 20, 0); // prepare p2pkh.digits to receive the 20 bytes of h2
-    memcpy(p2pkh->digits, h2, 20); // copy h2 into p2pkh.digits, big endian order
-    bnz_concatenate_ui8(p2pkh, p2pkh, 0, 1); // concatenate 0 byte to MSB end of p2pkh.digits
-    sha256(p2pkh->digits, 21, h3); // h3 = sha256(p2pkh.digits), big endian order
-    sha256(h3, 32, h4); // h4 = sha256(sha256(p2pkh.digits)), big endian order
-    bnz_concatenate_ui8(p2pkh, p2pkh, h4[0], 0); // add first
-    bnz_concatenate_ui8(p2pkh, p2pkh, h4[1], 0); // four bytes
-    bnz_concatenate_ui8(p2pkh, p2pkh, h4[2], 0); // of h4 to LSB
-    bnz_concatenate_ui8(p2pkh, p2pkh, h4[3], 0); // end of p2pkh
-    bnz_reverse_digits(p2pkh); // change digit order of p2pkh.digits to little endian, default for bnz_t
+    bnz_t fingerprint;
+    bnz_init(&fingerprint);
+    get_ripemd160_sha256(p2pkh, public_key_compressed, 20); // set p2pkh to ripemd160(sha256(public_key_compressed.digits))
+    bnz_concatenate_ui8(p2pkh, p2pkh, 0, 0); // concatenate 0 byte to MSB end of p2pkh.digits
+    get_sha256_sha256(&fingerprint, p2pkh, 4); // set fingerprint to first four bytes of sha256(sha256(p2pkh.digits))
+    bnz_concatenate_bnz(p2pkh, p2pkh, &fingerprint, 1); // concatenate fingerprint to LSB end of p2pkh
     bnz_trim(p2pkh); // remove zero value bytes from MSB end of p2pkh
-    bnz_free(&tmp); // free tmp
+    bnz_free(&fingerprint); // free fingerprint
+}
+
+void get_xprv_master(bnz_t *xprv, bnz_t *master_private_key, bnz_t *master_chain_code)
+{
+    bnz_t chk;
+    bnz_init(&chk);
+
+    bnz_resize(master_private_key, 32, 1); // ensure master_private_key is 32 bytes
+    bnz_resize(master_chain_code, 32, 1); // ensure master_chain_code is 32 bytes
+
+    bnz_set_str(xprv, "0488ade4000000000000000000", 16); // 0x0488ade4 + 9 zero bytes: depth (1 byte), index (4 bytes), and parent public key hash fingerprint (4 bytes) are all 0 
+    bnz_concatenate_bnz(xprv, xprv, master_chain_code, 1); // append master_chain_code at LSB end
+    bnz_concatenate_ui8(xprv, xprv, 0, 1); // append 0x0 before master_private_key at LSB  end
+    bnz_concatenate_bnz(xprv, xprv, master_private_key, 1); // append master master_private_key at LSB end
+    get_sha256_sha256(&chk, xprv, 4); // get 4 byte checksum
+    bnz_concatenate_bnz(xprv, xprv, &chk, 1); // append checksum at LSB end
+
+    bnz_free(&chk);
+}
+
+void get_xpub_master(bnz_t *xpub, bnz_t *master_public_key_compressed, bnz_t *master_chain_code)
+{
+    bnz_t chk;
+    bnz_init(&chk);
+
+    bnz_resize(master_public_key_compressed, 33, 1); // ensure master_public_key_compressed is 33 bytes
+    bnz_resize(master_chain_code, 32, 1); // ensure master_chain_code is 32 bytes
+
+    bnz_set_str(xpub, "0488b21e000000000000000000", 16); // 0x0488b21e + 9 zero bytes: depth (1 byte), index (4 bytes), and parent public key hash fingerprint (4 bytes) are all 0 
+    bnz_concatenate_bnz(xpub, xpub, master_chain_code, 1); // append master_chain_code at LSB end
+    bnz_concatenate_bnz(xpub, xpub, master_public_key_compressed, 1); // append master_public_key_compressed at LSB end
+    get_sha256_sha256(&chk, xpub, 4); // get 4 byte checksum
+    bnz_concatenate_bnz(xpub, xpub, &chk, 1); // append checksum at LSB end
+
+    bnz_free(&chk);
+}
+
+void get_xprv_child(bnz_t *xprv, uint8_t depth_num, uint32_t index_num, bnz_t *parent_public_key_compressed, bnz_t *child_private_key, bnz_t *child_chain_code)
+{
+    bnz_t chk, index, parent_public_key_hash_fingerprint;
+    bnz_init(&chk);
+    bnz_init(&index);
+    bnz_init(&parent_public_key_hash_fingerprint);
+
+    bnz_set_ui32(&index, index_num);
+
+    get_ripemd160_sha256(&parent_public_key_hash_fingerprint, parent_public_key_compressed, 4);
+
+    bnz_resize(&index, 4, 1); // ensure index is four bytes
+    bnz_resize(child_private_key, 32, 1); // ensure child_private_key is 32 bytes
+    bnz_resize(child_chain_code, 32, 1); // ensure child_chain_code is 32 bytes
+
+    bnz_set_str(xprv, "0488ade4", 16); // 0x0488ade4
+    bnz_concatenate_ui8(xprv, xprv, depth_num, 1); // append depth byte at LSB end
+    bnz_concatenate_bnz(xprv, xprv, &parent_public_key_hash_fingerprint, 1); // append four byte parent_public_key_hash_fingerprint at LSB end
+    bnz_concatenate_bnz(xprv, xprv, &index, 1); // append four byte index at LSB end
+    bnz_concatenate_bnz(xprv, xprv, child_chain_code, 1); // append 32 byte child_chain_code at LSB end
+    bnz_concatenate_ui8(xprv, xprv, 0, 1); // append 0x0 before child_private_key at LSB  end
+    bnz_concatenate_bnz(xprv, xprv, child_private_key, 1); // append 32 byte child_private_key at LSB end
+    get_sha256_sha256(&chk, xprv, 4); // get 4 byte checksum
+    bnz_concatenate_bnz(xprv, xprv, &chk, 1); // append checksum at LSB end
+
+    bnz_free(&chk);
+    bnz_free(&index);
+    bnz_free(&parent_public_key_hash_fingerprint);
+}
+
+void get_xpub_child(bnz_t *xprv, uint8_t depth_num, uint32_t index_num, bnz_t *parent_public_key_compressed, bnz_t *child_public_key_compressed, bnz_t *child_chain_code)
+{
+    bnz_t chk, index, parent_public_key_hash_fingerprint;
+    bnz_init(&chk);
+    bnz_init(&index);
+    bnz_init(&parent_public_key_hash_fingerprint);
+
+    bnz_set_ui32(&index, index_num);
+
+    get_ripemd160_sha256(&parent_public_key_hash_fingerprint, parent_public_key_compressed, 4);
+
+    bnz_resize(&index, 4, 1); // ensure index is four bytes
+    bnz_resize(child_public_key_compressed, 33, 1); // ensure child_public_key_compressed is 33 bytes
+    bnz_resize(child_chain_code, 32, 1); // ensure child_chain_code is 32 bytes
+
+    bnz_set_str(xprv, "0488b21e", 16); // 0x0488b21e
+    bnz_concatenate_ui8(xprv, xprv, depth_num, 1); // append depth byte at LSB end
+    bnz_concatenate_bnz(xprv, xprv, &parent_public_key_hash_fingerprint, 1); // append four byte parent_public_key_hash_fingerprint at LSB end
+    bnz_concatenate_bnz(xprv, xprv, &index, 1); // append four byte index at LSB end
+    bnz_concatenate_bnz(xprv, xprv, child_chain_code, 1); // append 32 byte child_chain_code at LSB end
+    bnz_concatenate_bnz(xprv, xprv, child_public_key_compressed, 1); // append 33 byte child_public_key_compressed at LSB end
+    get_sha256_sha256(&chk, xprv, 4); // get 4 byte checksum
+    bnz_concatenate_bnz(xprv, xprv, &chk, 1); // append checksum at LSB end
+
+    bnz_free(&chk);
+    bnz_free(&index);
+    bnz_free(&parent_public_key_hash_fingerprint);
 }
 
 /* MENU */
@@ -2764,18 +2883,21 @@ void get_str_input(char str[], int max_len) // get string from stdin with strlen
 
 void menu_1_master_keys(const char *version) // input 256 bits of entropy and generate master private key, master chain code, master public key, and corresponding P2PKH address
 {
-    int i;
-    uint32_t wd_ids[24];
+    uint32_t i, wd_ids[24];
     char entropy_str[257], base = 16, passphrase_str[257], *mnemonic = NULL;
-    bnz_t entropy, master_private_key, master_chain_code, master_public_key, master_public_key_compressed, seed, p2pkh;
+    bnz_t entropy, master_private_key, master_chain_code, xprv, master_public_key, master_public_key_compressed, xpub, seed, p2pkh;
+
     PT public_key;
+
     SECP256K1 secp256k1;
 
     bnz_init(&entropy);
     bnz_init(&master_private_key);
     bnz_init(&master_chain_code);
+    bnz_init(&xprv);
     bnz_init(&master_public_key);
     bnz_init(&master_public_key_compressed);
+    bnz_init(&xpub);
     bnz_init(&seed);
     bnz_init(&p2pkh);
     bnz_init(&public_key.x);
@@ -2875,25 +2997,31 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
         menu_1_master_keys(version);
     }
     
-    get_public_key(&public_key, &master_public_key_compressed, &master_private_key);
+    get_xprv_master(&xprv, &master_private_key, &master_chain_code);
 
     bnz_print(&master_private_key, 16, "MASTER PRIVATE KEY: ");
     bnz_print(&master_chain_code, 16, "MASTER CHAIN CODE: ");
+    bnz_print(&xprv, 58, "MASTER XPRV: ");
+    printf("\n");
+
+    get_public_key(&public_key, &master_public_key_compressed, &master_private_key);
+    get_xpub_master(&xpub, &master_public_key_compressed, &master_chain_code);
+    get_p2pkh_address(&p2pkh, &master_public_key_compressed);
+
     bnz_print(&master_public_key_compressed, 16, "MASTER PUBLIC KEY COMPRESSED: ");
     bnz_print(&public_key.x, 16, " x: ");
     bnz_print(&public_key.y, 16, " y: ");
-    printf("\n");
-
-    get_p2pkh_address(&p2pkh, &master_public_key_compressed);
-
-    bnz_print(&p2pkh, 58, "P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
+    bnz_print(&xpub, 58, "MASTER XPUB: ");
+    bnz_print(&p2pkh, 58, "MASTER P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
     printf("\n");
 
     bnz_free(&entropy);
     bnz_free(&master_private_key);
     bnz_free(&master_chain_code);
+    bnz_free(&xprv);
     bnz_free(&master_public_key);
     bnz_free(&master_public_key_compressed);
+    bnz_free(&xpub);
     bnz_free(&seed);
     bnz_free(&p2pkh);
     bnz_free(&public_key.x);
@@ -2933,18 +3061,13 @@ void menu_2_child_keys(const char *version)
 
 void menu_2_1_normal_child(const char *version)
 {
-    uint8_t parent_private_key_str[67], parent_chain_code_str[67], index_str[11], mac[65];
+    uint8_t parent_private_key_str[67], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
     uint32_t index_num;
-    bnz_t tmp, index, entropy, parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, child_public_key_compressed;
+    bnz_t tmp, index, entropy, parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, xprv, child_public_key_compressed, xpub, p2pkh;
     PT parent_public_key_pt, child_public_key_pt;
     SECP256K1 secp256k1;
 
     secp256k1 = secp256k1_init();
-
-    bnz_init(&parent_public_key_pt.x);
-    bnz_init(&parent_public_key_pt.y);
-    bnz_init(&child_public_key_pt.x);
-    bnz_init(&child_public_key_pt.y);
 
     bnz_init(&tmp);
     bnz_init(&index);
@@ -2954,7 +3077,15 @@ void menu_2_1_normal_child(const char *version)
     bnz_init(&parent_public_key_compressed);
     bnz_init(&child_private_key);
     bnz_init(&child_chain_code);
+    bnz_init(&xprv);
     bnz_init(&child_public_key_compressed);
+    bnz_init(&xpub);
+    bnz_init(&p2pkh);
+
+    bnz_init(&parent_public_key_pt.x);
+    bnz_init(&parent_public_key_pt.y);
+    bnz_init(&child_public_key_pt.x);
+    bnz_init(&child_public_key_pt.y);
 
     system("cls");
     printf("%s\n\n", version);
@@ -2984,64 +3115,76 @@ void menu_2_1_normal_child(const char *version)
         bnz_print(&parent_chain_code, 16, "Parent chain code: ");
     }
 
-    get_public_key(&parent_public_key_pt, &parent_public_key_compressed, &parent_private_key);
-
-    printf("Index (0 to 2147483647): ");
-    index_num = get_num_input(11, 0, 2147483647);
+    printf("\n");
+    printf("Depth (1 to 255): ");
+    depth_num = get_num_input(3, 1, 255);
 
     system("cls");
     printf("%s\n\n", version);
+    if (!bnz_is_zero(&entropy)) bnz_print(&entropy, 16, "Entropy: ");
+    bnz_print(&parent_private_key, 16, "Parent private key: ");
+    bnz_print(&parent_chain_code, 16, "Parent chain code: ");
+    printf("\n");
+    printf("Depth: %u\n", depth_num);
+    printf("Index (0 to 2147483647): ");
+    index_num = get_num_input(11, 0, 2147483647);
 
+    get_public_key(&parent_public_key_pt, &parent_public_key_compressed, &parent_private_key);
+
+    system("cls");
+    printf("%s\n\n", version);
     if (!bnz_is_zero(&entropy)) bnz_print(&entropy, 16, "ENTROPY: ");
     bnz_print(&parent_private_key, 16, "PARENT PRIVATE KEY: ");
     bnz_print(&parent_chain_code, 16, "PARENT CHAIN CODE: ");
     bnz_print(&parent_public_key_compressed, 16, "PARENT PUBLIC KEY COMPRESSED: ");
     bnz_print(&parent_public_key_pt.x, 16, " x: ");
     bnz_print(&parent_public_key_pt.y, 16, " y: ");
-
     printf("\n");
-
+    printf("DEPTH: %u\n", depth_num);
     printf("INDEX: %u\n", index_num);
-
     printf("\n");
 
-    bnz_resize(&tmp, 32, 1); // ensure that the parameters sent to the hmac-512 function are padded with leading zeros
-    bnz_resize(&parent_chain_code, 32, 1); // ditto
+    bnz_set_i32(&index, index_num); // convert index to bnz_t
+    bnz_resize(&index, 4, 1); // ensure that index is four bytes
+    bnz_resize(&parent_public_key_compressed, 33, 1); // ensure that parent_public_key_compressed is 33 bytes
+    bnz_resize(&parent_chain_code, 32, 1);  // ensure that parent_chain_code is 32 bytes
 
-    bnz_set_i32(&index, index_num);
-    bnz_resize(&index, 4, 1);
-    bnz_concatenate_bnz(&tmp, &parent_public_key_compressed, &index, 1);
+    bnz_concatenate_bnz(&tmp, &parent_public_key_compressed, &index, 1); // tmp = parent_public_key_compressed concatenated with index
 
-    bnz_reverse_digits(&tmp);
-    bnz_reverse_digits(&parent_chain_code);
+    bnz_reverse_digits(&tmp); // convert tmp.digits to big endian in preparation for hmac_512
+    bnz_reverse_digits(&parent_chain_code); // convert parent_chain_code.digits to big endian in preparation for hmac_512
 
-    hmac_sha512(parent_chain_code.digits, parent_chain_code.size, tmp.digits, tmp.size, mac, 64);
-    bnz_reverse_digits(&parent_chain_code);
+    hmac_sha512(parent_chain_code.digits, parent_chain_code.size, tmp.digits, tmp.size, mac, 64); // generate mac
+    bnz_reverse_digits(&parent_chain_code); // convert parent_chain_code.digits back to default little endian
 
-    bnz_resize(&child_private_key, 32, 0);
-    memcpy(child_private_key.digits, mac, 32);
-    bnz_reverse_digits(&child_private_key);
+    bnz_resize(&child_private_key, 32, 0); // convert child_private_key.digits to big endian in preparation for receipt of first 32 bytes of mac
+    memcpy(child_private_key.digits, mac, 32); // copy first 32 bytes of mac into child_private_key.digits
+    bnz_reverse_digits(&child_private_key); // convert child_private_key.digits back to default little endian
 
-    bnz_add_bnz(&child_private_key, &child_private_key, &parent_private_key); //child_private_key
-    bnz_mod_bnz(&child_private_key, &child_private_key, &secp256k1.n); //child_private_key mod secp256ki.n
+    bnz_add_bnz(&child_private_key, &child_private_key, &parent_private_key); // child_private_key = (child_private_key +
+    bnz_mod_bnz(&child_private_key, &child_private_key, &secp256k1.n); //  parent_private_key) mod secp256ki.n
 
-    bnz_resize(&child_chain_code, 32, 0);
-    memcpy(child_chain_code.digits, mac + 32, 32);
-    bnz_reverse_digits(&child_chain_code);
+    bnz_resize(&child_chain_code, 32, 0); // convert child_chain_code.digits to big endian in preparation for receipt of last 32 bytes of mac
+    memcpy(child_chain_code.digits, mac + 32, 32); // copy first 32 bytes of mac into child_chain_code.digits
+    bnz_reverse_digits(&child_chain_code); // convert child_chain_code.digits back to default little endian
 
-    get_public_key(&child_public_key_pt, &child_public_key_compressed, &child_private_key); // generate compressed public key from private key
+    get_xprv_child(&xprv, depth_num, index_num, &parent_public_key_compressed, &child_private_key, &child_chain_code); // serialise xprv
 
     bnz_print(&child_private_key, 16, "CHILD PRIVATE KEY: ");
     bnz_print(&child_chain_code, 16, "CHILD CHAIN CODE: ");
+    bnz_print(&xprv, 58, "CHILD XPRV: ");
+    printf("\n");
+
+    get_public_key(&child_public_key_pt, &child_public_key_compressed, &child_private_key); // generate compressed public key from private key
+    get_xpub_child(&xpub, depth_num, index_num, &parent_public_key_compressed, &child_public_key_compressed, &child_chain_code); // serialise xpub
+    get_p2pkh_address(&p2pkh, &child_public_key_compressed); // serialise p2pkh address
+
     bnz_print(&child_public_key_compressed, 16, "CHILD PUBLIC KEY COMPRESSED: ");
     bnz_print(&child_public_key_pt.x, 16, " x: ");
     bnz_print(&child_public_key_pt.y, 16, " y: ");
+    bnz_print(&xpub, 58, "CHILD XPUB: ");
+    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
     printf("\n");
-
-    bnz_free(&parent_public_key_pt.x);
-    bnz_free(&parent_public_key_pt.y);
-    bnz_free(&child_public_key_pt.x);
-    bnz_free(&child_public_key_pt.y);
 
     bnz_free(&tmp);
     bnz_free(&index);
@@ -3051,7 +3194,15 @@ void menu_2_1_normal_child(const char *version)
     bnz_free(&parent_public_key_compressed);
     bnz_free(&child_private_key);
     bnz_free(&child_chain_code);
+    bnz_free(&xprv);
     bnz_free(&child_public_key_compressed);
+    bnz_free(&xpub);
+    bnz_free(&p2pkh);
+
+    bnz_free(&parent_public_key_pt.x);
+    bnz_free(&parent_public_key_pt.y);
+    bnz_free(&child_public_key_pt.x);
+    bnz_free(&child_public_key_pt.y);
 
     secp256k1_free(secp256k1);
 
@@ -3062,18 +3213,13 @@ void menu_2_1_normal_child(const char *version)
 
 void menu_2_2_hardened_child(const char *version)
 {
-    uint8_t parent_private_key_str[67], parent_chain_code_str[67], index_str[11], mac[65];
+    uint8_t parent_private_key_str[67], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
     uint32_t index_num;
-    bnz_t tmp, index, entropy, parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, child_public_key_compressed;
+    bnz_t tmp, index, entropy, parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, xprv, child_public_key_compressed, xpub, p2pkh;
     PT parent_public_key_pt, child_public_key_pt;
     SECP256K1 secp256k1;
 
     secp256k1 = secp256k1_init();
-
-    bnz_init(&parent_public_key_pt.x);
-    bnz_init(&parent_public_key_pt.y);
-    bnz_init(&child_public_key_pt.x);
-    bnz_init(&child_public_key_pt.y);
 
     bnz_init(&tmp);
     bnz_init(&index);
@@ -3083,7 +3229,15 @@ void menu_2_2_hardened_child(const char *version)
     bnz_init(&parent_public_key_compressed);
     bnz_init(&child_private_key);
     bnz_init(&child_chain_code);
+    bnz_init(&xprv);
     bnz_init(&child_public_key_compressed);
+    bnz_init(&xpub);
+    bnz_init(&p2pkh);
+
+    bnz_init(&parent_public_key_pt.x);
+    bnz_init(&parent_public_key_pt.y);
+    bnz_init(&child_public_key_pt.x);
+    bnz_init(&child_public_key_pt.y);
 
     system("cls");
     printf("%s\n\n", version);
@@ -3113,10 +3267,21 @@ void menu_2_2_hardened_child(const char *version)
         bnz_print(&parent_chain_code, 16, "Parent chain code: ");
     }
 
-    get_public_key(&parent_public_key_pt, &parent_public_key_compressed, &parent_private_key);
+    printf("\n");
+    printf("Depth (1 to 255): ");
+    depth_num = get_num_input(3, 1, 255);
 
+    system("cls");
+    printf("%s\n\n", version);
+    if (!bnz_is_zero(&entropy)) bnz_print(&entropy, 16, "Entropy: ");
+    bnz_print(&parent_private_key, 16, "Parent private key: ");
+    bnz_print(&parent_chain_code, 16, "Parent chain code: ");
+    printf("\n");
+    printf("Depth: %u\n", depth_num);
     printf("Index (2147483648 to 4294967295): ");
     index_num = get_num_input(10, 2147483648, 4294967295);
+
+    get_public_key(&parent_public_key_pt, &parent_public_key_compressed, &parent_private_key);
 
     system("cls");
     printf("%s\n\n", version);
@@ -3126,51 +3291,53 @@ void menu_2_2_hardened_child(const char *version)
     bnz_print(&parent_public_key_compressed, 16, "PARENT PUBLIC KEY COMPRESSED: ");
     bnz_print(&parent_public_key_pt.x, 16, " x: ");
     bnz_print(&parent_public_key_pt.y, 16, " y: ");
-
     printf("\n");
-
+    printf("DEPTH: %u\n", depth_num);
     printf("INDEX: %u\n", index_num);
-
     printf("\n");
 
-    bnz_resize(&tmp, 32, 1); // ensure that the parameters sent to the hmac-512 function are padded with leading zeros
-    bnz_resize(&parent_private_key, 32, 1); // ditto
-    bnz_resize(&parent_chain_code, 32, 1); // ditto
+    bnz_set_ui32(&index, index_num); // convert index to bnz_t
+    bnz_resize(&index, 4, 1); // ensure that index is four bytes
+    bnz_resize(&parent_private_key, 32, 1); // ensure that parent_private_key is 32 bytes
+    bnz_resize(&parent_chain_code, 32, 1); // ensure that parent_chain_code is 32 bytes
 
-    bnz_set_ui32(&index, index_num);
-    bnz_resize(&index, 4, 1);
-    bnz_concatenate_bnz(&tmp, &parent_private_key, &index, 1); // concatenate with index as uint32_t
+    bnz_concatenate_bnz(&tmp, &parent_private_key, &index, 1); // tmp = parent_private_key concatenated with index
     bnz_concatenate_ui8(&tmp, &tmp, 0, 0); // prepend 0x00
 
-    bnz_reverse_digits(&tmp);
-    bnz_reverse_digits(&parent_chain_code);
+    bnz_reverse_digits(&tmp); // convert tmp.digits to big endian in preparation for hmac_512
+    bnz_reverse_digits(&parent_chain_code); // convert parent_chain_code.digits to big endian in preparation for hmac_512
 
-    hmac_sha512(parent_chain_code.digits, parent_chain_code.size, tmp.digits, tmp.size, mac, 64);
-    bnz_reverse_digits(&parent_chain_code);
+    hmac_sha512(parent_chain_code.digits, parent_chain_code.size, tmp.digits, tmp.size, mac, 64); // generate mac
+    bnz_reverse_digits(&parent_chain_code); // convert parent_chain_code.digits back to default little endian
 
-    bnz_resize(&child_private_key, 32, 0);
-    memcpy(child_private_key.digits, mac, 32);
-    bnz_reverse_digits(&child_private_key);
+    bnz_resize(&child_private_key, 32, 0); // convert child_private_key.digits to big endian in preparation for receipt of first 32 bytes of mac
+    memcpy(child_private_key.digits, mac, 32); // copy first 32 bytes of mac into child_private_key.digits
+    bnz_reverse_digits(&child_private_key); // convert child_private_key.digits back to default little endian
 
-    bnz_add_bnz(&child_private_key, &child_private_key, &parent_private_key);
-    bnz_mod_bnz(&child_private_key, &child_private_key, &secp256k1.n); //child_private_key % secp256ki.n
+    bnz_add_bnz(&child_private_key, &child_private_key, &parent_private_key); // child_private_key = (child_private_key +
+    bnz_mod_bnz(&child_private_key, &child_private_key, &secp256k1.n); // parent_private_key) mod secp256ki.n
 
-    bnz_resize(&child_chain_code, 32, 0);
-    memcpy(child_chain_code.digits, mac + 32, 32);
-    bnz_reverse_digits(&child_chain_code);
+    bnz_resize(&child_chain_code, 32, 0); // convert child_chain_code.digits to big endian in preparation for receipt of last 32 bytes of mac
+    memcpy(child_chain_code.digits, mac + 32, 32); // copy first 32 bytes of mac into child_chain_code.digits
+    bnz_reverse_digits(&child_chain_code); // convert child_chain_code.digits back to default little endian
 
-    get_public_key(&child_public_key_pt, &child_public_key_compressed, &child_private_key); // generate compressed public key from private key
+    get_xprv_child(&xprv, depth_num, index_num, &parent_public_key_compressed, &child_private_key, &child_chain_code); // serialise xprv
 
     bnz_print(&child_private_key, 16, "CHILD PRIVATE KEY: ");
     bnz_print(&child_chain_code, 16, "CHILD CHAIN CODE: ");
+    bnz_print(&xprv, 58, "CHILD XPRV: ");
+    printf("\n");
+
+    get_public_key(&child_public_key_pt, &child_public_key_compressed, &child_private_key); // generate compressed public key from private key
+    get_xpub_child(&xpub, depth_num, index_num, &parent_public_key_compressed, &child_public_key_compressed, &child_chain_code); // serialise xpub
+    get_p2pkh_address(&p2pkh, &child_public_key_compressed); // serialise p2pkh address
+
     bnz_print(&child_public_key_compressed, 16, "CHILD PUBLIC KEY COMPRESSED: ");
     bnz_print(&child_public_key_pt.x, 16, " x: ");
     bnz_print(&child_public_key_pt.y, 16, " y: ");
-
+    bnz_print(&xpub, 58, "CHILD XPUB: ");
+    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
     printf("\n");
-
-    bnz_free(&child_public_key_pt.x);
-    bnz_free(&child_public_key_pt.y);
 
     bnz_free(&tmp);
     bnz_free(&index);
@@ -3182,6 +3349,9 @@ void menu_2_2_hardened_child(const char *version)
     bnz_free(&child_chain_code);
     bnz_free(&child_public_key_compressed);
 
+    bnz_free(&child_public_key_pt.x);
+    bnz_free(&child_public_key_pt.y);
+
     secp256k1_free(secp256k1);
 
     printf("press any key to continue...");
@@ -3191,10 +3361,10 @@ void menu_2_2_hardened_child(const char *version)
 
 void menu_2_3_public_child(const char *version)
 {
-    uint8_t parent_public_key_compressed_str[69], parent_chain_code_str[67], index_str[11], mac[65];
+    uint8_t parent_public_key_compressed_str[69], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
     uint32_t index_num;
-    bnz_t parent_public_key_compressed, parent_chain_code, child_public_key_compressed, child_chain_code, index, tmp;
-    PT tmp_key, parent_public_key, child_public_key;
+    bnz_t tmp, index, parent_public_key_compressed, parent_chain_code, child_public_key_compressed, child_chain_code, xpub, p2pkh;
+    PT tmp_key, parent_public_key_pt, child_public_key_pt;
 
     SECP256K1 secp256k1;
 
@@ -3204,12 +3374,15 @@ void menu_2_3_public_child(const char *version)
     bnz_init(&parent_chain_code);
     bnz_init(&child_public_key_compressed);
     bnz_init(&child_chain_code);
+    bnz_init(&xpub);
+    bnz_init(&p2pkh);
+
     bnz_init(&tmp_key.x);
     bnz_init(&tmp_key.y);
-    bnz_init(&parent_public_key.x);
-    bnz_init(&parent_public_key.y);
-    bnz_init(&child_public_key.x);
-    bnz_init(&child_public_key.y);
+    bnz_init(&parent_public_key_pt.x);
+    bnz_init(&parent_public_key_pt.y);
+    bnz_init(&child_public_key_pt.x);
+    bnz_init(&child_public_key_pt.y);
 
     secp256k1 = secp256k1_init();
 
@@ -3236,71 +3409,86 @@ void menu_2_3_public_child(const char *version)
         return;
     }
 
-    printf("Index (0 to 2147483647): ");
-    index_num = get_num_input(10, 0, 2147483647);
-
-    get_public_key_xy(&parent_public_key, &parent_public_key_compressed);
+    printf("\n");
+    printf("Depth (1 to 255): ");
+    depth_num = get_num_input(3, 1, 255);
 
     system("cls");
     printf("%s\n\n", version);
+    bnz_print(&parent_public_key_compressed, 16, "Parent public key compressed: ");
+    bnz_print(&parent_chain_code, 16, "Parent chain code: ");
+    printf("\n");
+    printf("Depth: %u\n", depth_num);
+    printf("Index (0 to 2147483647): ");
+    index_num = get_num_input(10, 0, 2147483647);
 
+    get_public_key_xy(&parent_public_key_pt, &parent_public_key_compressed);
+
+    system("cls");
+    printf("%s\n\n", version);
     bnz_print(&parent_chain_code, 16, "PARENT CHAIN CODE: ");
     bnz_print(&parent_public_key_compressed, 16, "PARENT PUBLIC KEY COMPRESSED: ");
-    bnz_print(&parent_public_key.x, 16, " x: ");
-    bnz_print(&parent_public_key.y, 16, " y: ");
+    bnz_print(&parent_public_key_pt.x, 16, " x: ");
+    bnz_print(&parent_public_key_pt.y, 16, " y: ");
+    printf("\n");
+    printf("DEPTH: %u\n", depth_num);
+    printf("INDEX: %u\n", index_num);
     printf("\n");
 
-    printf("INDEX: %u\n\n", index_num);
+    bnz_set_i32(&index, index_num); // convert index to bnz_t
+    bnz_resize(&index, 4, 1); // ensure that index is four bytes
+    bnz_resize(&parent_public_key_compressed, 33, 1); // ensure that parent_public_key_compressed is 33 bytes
+    bnz_resize(&parent_chain_code, 32, 1); // ensure that parent_chain_code is 32 bytes
 
-    bnz_resize(&tmp, 32, 1); // ensure that the parameters sent to the hmac-512 function are padded with leading zeros
-    bnz_resize(&parent_chain_code, 32, 1); // ditto
+    bnz_concatenate_bnz(&tmp, &parent_public_key_compressed, &index, 1); // tmp = parent_public_key_compressed concatenated with index
 
-    bnz_set_i32(&index, index_num);
-    bnz_resize(&index, 4, 1);
-    bnz_concatenate_bnz(&tmp, &parent_public_key_compressed, &index, 1);
+    bnz_reverse_digits(&tmp);  // convert tmp.digits to big endian in preparation for hmac_512
+    bnz_reverse_digits(&parent_chain_code); // convert parent_chain_code.digits to big endian in preparation for hmac_512
 
-    bnz_reverse_digits(&tmp);
-    bnz_reverse_digits(&parent_chain_code);
+    hmac_sha512(parent_chain_code.digits, parent_chain_code.size, tmp.digits, tmp.size, mac, 64); // generate mac
+    bnz_reverse_digits(&parent_chain_code); // convert parent_chain_code.digits back to default little endian
 
-    hmac_sha512(parent_chain_code.digits, parent_chain_code.size, tmp.digits, tmp.size, mac, 64);
-    bnz_reverse_digits(&parent_chain_code);
+    bnz_resize(&tmp, 32, 0); // resize and zero tmp in preparation for receipt of first 32 bytes of mac
+    memcpy(tmp.digits, mac, 32); // copy first 32 bytes of mac into tmp.digits
+    bnz_reverse_digits(&tmp); // convert tmp.digits back to default little endian
 
-    bnz_resize(&tmp, 32, 0);
-    memcpy(tmp.digits, mac, 32);
-    bnz_reverse_digits(&tmp);
+    secp256k1_scalar_multiplication(secp256k1, &tmp, &tmp_key); // tmp = (secp256k1.G * tmp) mod secp256k1.p, a point on secp256k1
+    secp256k1_point_addition(secp256k1, &parent_public_key_pt, &tmp_key, &child_public_key_pt); // child_public_key_pt = (parent_public_key_pt + tmp) mod secp256k1.p
 
-    secp256k1_scalar_multiplication(secp256k1, &tmp, &tmp_key);
-    secp256k1_point_addition(secp256k1, &parent_public_key, &tmp_key, &child_public_key);
-
-    if (bnz_bit_set(&child_public_key.y, 0) == 0) { // even
-        bnz_concatenate_ui8(&child_public_key_compressed, &child_public_key.x, 2, 0); // prepend 2
+    if (bnz_bit_set(&child_public_key_pt.y, 0) == 0) { // even
+        bnz_concatenate_ui8(&child_public_key_compressed, &child_public_key_pt.x, 2, 0); // prepend 2
     } else { // odd
-        bnz_concatenate_ui8(&child_public_key_compressed, &child_public_key.x, 3, 0); // prepend 3
+        bnz_concatenate_ui8(&child_public_key_compressed, &child_public_key_pt.x, 3, 0); // prepend 3
     }
 
-    bnz_resize(&child_chain_code, 32, 0);
-    memcpy(child_chain_code.digits, mac + 32, 32);
-    bnz_reverse_digits(&child_chain_code);
+    bnz_resize(&child_chain_code, 32, 0); // resize and zero child_chain_code in preparation for receipt of last 32 bytes of mac
+    memcpy(child_chain_code.digits, mac + 32, 32); // copy first 32 bytes of mac into child_chain_code.digits
+    bnz_reverse_digits(&child_chain_code); // convert child_chain_code.digits back to default little endian
+
+    get_xpub_child(&xpub, depth_num, index_num, &parent_public_key_compressed, &child_public_key_compressed, &child_chain_code); // serialise xpub
+    get_p2pkh_address(&p2pkh, &child_public_key_compressed); // serialise p2pkh address
 
     bnz_print(&child_chain_code, 16, "CHILD CHAIN CODE: ");
     bnz_print(&child_public_key_compressed, 16, "CHILD PUBLIC KEY COMPRESSED: ");
-    bnz_print(&child_public_key.x, 16, " x: ");
-    bnz_print(&child_public_key.y, 16, " y: ");
-
+    bnz_print(&child_public_key_pt.x, 16, " x: ");
+    bnz_print(&child_public_key_pt.y, 16, " y: ");
+    bnz_print(&xpub, 58, "CHILD XPUB: ");
+    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
     printf("\n");
 
+    bnz_free(&tmp);
+    bnz_free(&index);
     bnz_free(&parent_public_key_compressed);
     bnz_free(&parent_chain_code);
     bnz_free(&child_public_key_compressed);
     bnz_free(&child_chain_code);
-    bnz_free(&index);
-    bnz_free(&tmp);
+
     bnz_free(&tmp_key.x);
     bnz_free(&tmp_key.y);
-    bnz_free(&parent_public_key.x);
-    bnz_free(&parent_public_key.y);
-    bnz_free(&child_public_key.x);
-    bnz_free(&child_public_key.y);
+    bnz_free(&parent_public_key_pt.x);
+    bnz_free(&parent_public_key_pt.y);
+    bnz_free(&child_public_key_pt.x);
+    bnz_free(&child_public_key_pt.y);
 
     secp256k1_free(secp256k1);
 
@@ -3579,8 +3767,8 @@ void menu_4_2_validate_mnemonic_phrase_checksum(const char *version) // check va
 
 void menu_4_3_private_key_to_WIF(const char *version)
 {
-    uint8_t h1[32], h2[32], private_key_str[67]; // optional "0x" + 32 bytes + null terminator
-    bnz_t private_key_wif, private_key, entropy, chain_code, public_key_compressed, p2pkh;
+    uint8_t private_key_str[67]; // optional "0x" + 32 bytes + null terminator
+    bnz_t private_key_wif, private_key, entropy, chain_code, public_key_compressed, p2pkh, fingerprint;
     PT public_key;
     
     SECP256K1 secp256k1;
@@ -3593,6 +3781,7 @@ void menu_4_3_private_key_to_WIF(const char *version)
     bnz_init(&p2pkh);
     bnz_init(&public_key.x);
     bnz_init(&public_key.y);
+    bnz_init(&fingerprint);
 
     secp256k1 = secp256k1_init();
 
@@ -3644,16 +3833,9 @@ void menu_4_3_private_key_to_WIF(const char *version)
     bnz_set_bnz(&private_key_wif, &private_key); // copy private key to private_key_wif
     bnz_concatenate_ui8(&private_key_wif, &private_key_wif, 0x80, 0); // mainnet version, concatenate 0x80 to MSB end (for testnet version concatenate 0xef)
     bnz_concatenate_ui8(&private_key_wif, &private_key_wif, 0x01, 1); // compressed, concatenate 0x01 to LSB end (no concatenatation for uncompressed)
-    bnz_reverse_digits(&private_key_wif); // convert private_key_wif digits to big endian order in anticipation of hashing
 
-    sha256(private_key_wif.digits, private_key_wif.size, h1); // h1 = sha256(private_key_wif.digits)
-    sha256(h1, 32, h2); // h2 = sha256(sha256(private_key_wif.digits))
-    bnz_concatenate_ui8(&private_key_wif, &private_key_wif, h2[0], 0); // add first
-    bnz_concatenate_ui8(&private_key_wif, &private_key_wif, h2[1], 0); // four bytes
-    bnz_concatenate_ui8(&private_key_wif, &private_key_wif, h2[2], 0); // of h2 to LSB
-    bnz_concatenate_ui8(&private_key_wif, &private_key_wif, h2[3], 0); // end of private_key_wif.digits
-
-    bnz_reverse_digits(&private_key_wif); // convert private_key_wif.digits to standard little endian order
+    get_sha256_sha256(&fingerprint, &private_key_wif, 4); // set fingerprint to first four bytes of sha256(sha256(private_key_wif.digits))
+    bnz_concatenate_bnz(&private_key_wif, &private_key_wif, &fingerprint, 1); // concatenate fingerprint to LSB end of private_key_wif
 
     system("cls");
     printf("%s\n\n", version);
@@ -3681,6 +3863,7 @@ void menu_4_3_private_key_to_WIF(const char *version)
     bnz_free(&p2pkh);
     bnz_free(&public_key.x);
     bnz_free(&public_key.y);
+    bnz_free(&fingerprint);
 
     secp256k1_free(secp256k1);
 
@@ -3691,7 +3874,7 @@ void menu_4_3_private_key_to_WIF(const char *version)
 
 void menu_4_4_WIF_to_private_key(const char *version)
 {
-    uint8_t h1[32], h2[32], wif_str[53]; // 51 or 52 Bitcoin base 58 characters + null terminator
+    uint8_t wif_str[53]; // 51 or 52 Bitcoin base 58 characters + null terminator
     bnz_t private_key_wif, private_key, public_key_compressed, p2pkh;
 
     PT public_key;
@@ -3931,7 +4114,7 @@ void menu_4_7_secp256k1_scalar_multiplication(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.09, 2025-04-27";
+    static char *version = "bitcoin_math\nv0.10, 2025-05-06";
     int menu, running = 1;
     while (running) {
         system("cls");
