@@ -4011,7 +4011,7 @@ void menu_4_5_secp256k1_point_addition(const char *version)
 
 void menu_4_6_secp256k1_point_doubling(const char *version)
 {
-    uint8_t a_x_str[67], a_y_str[67], b_x_str[67], b_y_str[67];
+    uint8_t a_x_str[67], a_y_str[67];
     PT a, b;
     bnz_t private_key;
 
