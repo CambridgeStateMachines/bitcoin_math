@@ -677,18 +677,20 @@ typedef struct {
 void bnz_init(bnz_t *);
 void bnz_resize(bnz_t *, size_t, int32_t);
 void bnz_align(bnz_t *, bnz_t *);
-void bnz_reverse_digits(bnz_t *);
+void bnz_reverse_digits(bnz_t *); 
 void bnz_shift_r(bnz_t *, uint32_t);
 void bnz_trim(bnz_t *);
 void bnz_print(const bnz_t *, int32_t, const char *);
 void bnz_free(bnz_t *);
 
-uint8_t get_digit(const uint8_t *, size_t, uint8_t);
-uint8_t get_val_from_char_d(uint8_t);
-uint8_t get_val_from_char_16(uint8_t);
-uint8_t get_val_from_char_58(uint8_t);
-uint8_t get_val_from_char_64(uint8_t);
-uint8_t *get_base_n_str(const bnz_t *, uint32_t, const char *);
+int8_t get_digit(const uint8_t *, size_t, uint8_t);
+int8_t get_val_from_char_d(uint8_t);
+int8_t get_val_from_char_16(uint8_t);
+int8_t get_val_from_char_32(uint8_t);
+int8_t get_val_from_char_58(uint8_t);
+int8_t get_val_from_char_64(uint8_t);
+
+uint8_t *get_base_n_str(const bnz_t *, uint32_t, const char *, uint32_t *);
 
 void bnz_set_i32(bnz_t *, int32_t);
 void bnz_set_ui32(bnz_t *, uint32_t);
@@ -718,6 +720,101 @@ void bnz_mod_bnz(bnz_t *, const bnz_t *, const bnz_t *);
 
 void bnz_mod_pow(bnz_t *, const bnz_t *, const bnz_t *, const bnz_t *);
 void bnz_modular_multiplicative_inverse(bnz_t *, const bnz_t *, const bnz_t *);
+
+int8_t char_16[256] = {
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+     0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  10,  11,  12,  13,  14,  15,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  10,  11,  12,  13,  14,  15,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1
+};
+
+int8_t char_32[256] = {
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    15,  -1,  10,  17,  21,  20,  26,  30,   7,   5,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  29,  -1,  24,  -1,  25,   9,   8,  23,  -1,  -1,  22,  31,  27,  19,  -1,
+     1,   0,   3,  16,  11,  28,  12,  14,   6,   4,   2,  -1,  -1,  -1,  -1,  -1,
+    -1,  29,  -1,  24,  13,  25,   9,   8,  23,  -1,  18,  22,  31,  27,  19,  -1,
+     1,   0,   3,  16,  11,  28,  12,  14,   6,   4,   2,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  13,  -1,  -1,  -1,  -1,  -1,  18,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1
+};
+
+int8_t char_58[256] = {
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,   0,   1,   2,   3,   4,   5,   6,   7,   8,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,   9,  10,  11,  12,  13,  14,  15,  16,  -1,  17,  18,  19,  20,  21,  -1,
+    22,  23,  24,  25,  26,  27,  28,  29,  30,  31,  32,  -1,  -1,  -1,  -1,  -1,
+    -1,  33,  34,  35,  36,  37,  38,  39,  40,  41,  42,  43,  -1,  44,  45,  46,
+    47,  48,  49,  50,  51,  52,  53,  54,  55,  56,  57,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1
+};
+
+int8_t char_64[256] = {
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  62,  -1,  -1,  -1,  63,
+    52,  53,  54,  55,  56,  57,  58,  59,  60,  61,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,   0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  10,  11,  12,  13,  14,
+    15,  16,  17,  18,  19,  20,  21,  22,  23,  24,  25,  -1,  -1,  -1,  -1,  -1,
+    -1,  26,  27,  28,  29,  30,  31,  32,  33,  34,  35,  36,  37,  38,  39,  40,
+    41,  42,  43,  44,  45,  46,  47,  48,  49,  50,  51,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1
+};
+
+int8_t char_d[256] = {
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+     0,   1,   2,   3,   4,   5,   6,   7,   8,   9,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  10,  11,  12,  13,  14,  15,  16,  17,  18,  19,  20,  21,  22,  23,  24,
+    25,  26,  27,  28,  29,  30,  31,  32,  33,  34,  35,  -1,  -1,  -1,  -1,  62,
+    -1,  36,  37,  38,  39,  40,  41,  42,  43,  44,  45,  46,  47,  48,  49,  50,
+    51,  52,  53,  54,  55,  56,  57,  58,  59,  60,  61,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1
+};
 
 void bnz_init(bnz_t *a) // initiate bnz_t components
 {
@@ -768,7 +865,7 @@ void bnz_reverse_digits(bnz_t *a) // reverse the order of the bytes in a->digits
     }
 }
 
-void bnz_shift_r(bnz_t *a, uint32_t sh) // shift the bits in a->digits to the right by sh bits, adding 0 value bits to MSB end
+void bnz_shift_r(bnz_t *a, uint32_t sh) // shift the bits in a->digits to the right by sh bits, adding 0 value bits to msb end
 {
     uint8_t msk = 255 >> (8 - sh);
     size_t i, orig_size = a->size;
@@ -782,7 +879,7 @@ void bnz_shift_r(bnz_t *a, uint32_t sh) // shift the bits in a->digits to the ri
     bnz_resize(a, orig_size, 1);
 }
 
-void bnz_trim(bnz_t *a) // trim 0 value bytes from MSB end of a->digits
+void bnz_trim(bnz_t *a) // trim 0 value bytes from msb end of a->digits
 {
     size_t new_size = a->size;
     while (a->digits[new_size - 1] == 0 && new_size >= 0) {
@@ -794,7 +891,7 @@ void bnz_trim(bnz_t *a) // trim 0 value bytes from MSB end of a->digits
 void bnz_print(const bnz_t *a, int32_t base, const char *txt) // print a in a given base, preceded by optional string 
 {
     uint8_t *str = NULL;
-    size_t i, j;
+    uint32_t i, j, len;
     bnz_t tmp;
 
     bnz_init(&tmp);
@@ -838,7 +935,7 @@ void bnz_print(const bnz_t *a, int32_t base, const char *txt) // print a in a gi
             if (bnz_is_zero(&tmp)) {
                 printf("0\n");
             } else {
-                if (!(str = get_base_n_str(&tmp, 16, "0123456789ABCDEF"))) return;
+                if (!(str = get_base_n_str(&tmp, 16, "0123456789ABCDEF", &len))) return;
                 if (tmp.sign) printf("-");
                 printf("%s\n", str);
             }
@@ -856,12 +953,32 @@ void bnz_print(const bnz_t *a, int32_t base, const char *txt) // print a in a gi
                 printf("\n");
             }
             break;
+        case -32: // standard base 32
+            printf("%s", txt);
+            if (bnz_is_zero(&tmp)) {
+                printf("0\n");
+            } else {
+                if (!(str = get_base_n_str(&tmp, 32, "0123456789ABCDEFGHIJKLMNOPQRSTUV", &len))) return;
+                if (tmp.sign) printf("-");
+                printf("%s\n", str);
+            }
+            break;
+        case 32: // bech32
+            printf("%s", txt);
+            if (bnz_is_zero(&tmp)) {
+                printf("q\n");
+            } else {
+                if (!(str = get_base_n_str(&tmp, 32, "qpzry9x8gf2tvdw0s3jn54khce6mua7l", &len))) return;
+                if (tmp.sign) printf("-");
+                printf("%s\n", str);
+            }
+            break;
         case -58: // standard base 58
             printf("%s", txt);
             if (bnz_is_zero(&tmp)) {
                 printf("0\n");
             } else {
-                if (!(str = get_base_n_str(&tmp, 58, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv"))) return;
+                if (!(str = get_base_n_str(&tmp, 58, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv", &len))) return;
                 if (tmp.sign) printf("-");
                 printf("%s\n", str);
             }
@@ -871,7 +988,7 @@ void bnz_print(const bnz_t *a, int32_t base, const char *txt) // print a in a gi
             if (bnz_is_zero(&tmp)) {
                 printf("1\n");
             } else {
-                if (!(str = get_base_n_str(&tmp, 58, "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"))) return;
+                if (!(str = get_base_n_str(&tmp, 58, "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz", &len))) return;
                 if (tmp.sign) printf("-");
                 printf("%s\n", str);
             }
@@ -881,7 +998,7 @@ void bnz_print(const bnz_t *a, int32_t base, const char *txt) // print a in a gi
             if (bnz_is_zero(&tmp)) {
                 printf("A\n");
             } else {
-                if (!(str = get_base_n_str(&tmp, 64, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"))) return;
+                if (!(str = get_base_n_str(&tmp, 64, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/", &len))) return;
                 if (tmp.sign) printf("-");
                 printf("%s\n", str);
             }
@@ -905,7 +1022,7 @@ void bnz_print(const bnz_t *a, int32_t base, const char *txt) // print a in a gi
                 printf("0\n");
             } else {
                 if (base >= 2 && base <= 63) {
-                    if (!(str = get_base_n_str(&tmp, base, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"))) return;
+                    if (!(str = get_base_n_str(&tmp, base, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_", &len))) return;
                     if (tmp.sign) printf("-");
                     printf("%s\n", str);
                 }
@@ -925,702 +1042,56 @@ void bnz_free(bnz_t *a) // free bnz_t resources
     a->digits = NULL;
 }
 
-uint8_t get_digit(const uint8_t *str, size_t idx, uint8_t base) // return numerical value of char at index idx of str representing a number in the given base and in big endian order
+int8_t get_digit(const uint8_t *str, size_t idx, uint8_t base) // return numerical value of char at index idx of str representing a number in the given base and in big endian order
 {
-    uint8_t dgt;
+    int8_t dgt;
     switch (base) {
         case 16:
-            dgt = get_val_from_char_16(str[idx]);
+            dgt = char_16[str[idx]];
+            break;
+        case 32:
+            dgt = char_32[str[idx]];
             break;
         case 58:
-            dgt = get_val_from_char_58(str[idx]);
+            dgt = char_58[str[idx]];
             break;
         case 64:
-            dgt = get_val_from_char_64(str[idx]);
+            dgt = char_64[str[idx]];
             break;
         default:
-            if (base >= 2 && base <= 63) dgt = get_val_from_char_d(str[idx]);
+            if (base >= 2 && base <= 63) dgt = char_d[str[idx]];
             break;
     }
-    if (dgt < 0 || dgt >= base) return 0;
+    if (dgt < 0 || dgt >= base) return -1;
     return dgt;
 }
 
-uint8_t get_val_from_char_d(uint8_t ch) /* look-up table for numerical value of digits, used for binary decimal, octal, and general up to base 63 */
-{
-    switch (ch) {
-        case '0':
-            return 0;
-            break;
-        case '1':
-            return 1;
-            break;
-        case '2':
-            return 2;
-            break;
-        case '3':
-            return 3;
-            break;
-        case '4':
-            return 4;
-            break;
-        case '5':
-            return 5;
-            break;
-        case '6':
-            return 6;
-            break;
-        case '7':
-            return 7;
-            break;
-        case '8':
-            return 8;
-            break;
-        case '9':
-            return 9;
-            break;
-        case 'A':
-            return 10;
-            break;
-        case 'B':
-            return 11;
-            break;
-        case 'C':
-            return 12;
-            break;
-        case 'D':
-            return 13;
-            break;
-        case 'E':
-            return 14;
-            break;
-        case 'F':
-            return 15;
-            break;
-        case 'G':
-            return 16;
-            break;
-        case 'H':
-            return 17;
-            break;
-        case 'I':
-            return 18;
-            break;
-        case 'J':
-            return 19;
-            break;
-        case 'K':
-            return 20;
-            break;
-        case 'L':
-            return 21;
-            break;
-        case 'M':
-            return 22;
-            break;
-        case 'N':
-            return 23;
-            break;
-        case 'O':
-            return 24;
-            break;
-        case 'P':
-            return 25;
-            break;
-        case 'Q':
-            return 26;
-            break;
-        case 'R':
-            return 27;
-            break;
-        case 'S':
-            return 28;
-            break;
-        case 'T':
-            return 29;
-            break;
-        case 'U':
-            return 30;
-            break;
-        case 'V':
-            return 31;
-            break;
-        case 'W':
-            return 32;
-            break;
-        case 'X':
-            return 33;
-            break;
-        case 'Y':
-            return 34;
-            break;
-        case 'Z':
-            return 35;
-            break;
-        case 'a':
-            return 36;
-            break;
-        case 'b':
-            return 37;
-            break;
-        case 'c':
-            return 38;
-            break;
-        case 'd':
-            return 39;
-            break;
-        case 'e':
-            return 40;
-            break;
-        case 'f':
-            return 41;
-            break;
-        case 'g':
-            return 42;
-            break;
-        case 'h':
-            return 43;
-            break;
-        case 'i':
-            return 44;
-            break;
-        case 'j':
-            return 45;
-            break;
-        case 'k':
-            return 46;
-            break;
-        case 'l':
-            return 47;
-            break;
-        case 'm':
-            return 48;
-            break;
-        case 'n':
-            return 49;
-            break;
-        case 'o':
-            return 50;
-            break;
-        case 'p':
-            return 51;
-            break;
-        case 'q':
-            return 52;
-            break;
-        case 'r':
-            return 53;
-            break;
-        case 's':
-            return 54;
-            break;
-        case 't':
-            return 55;
-            break;
-        case 'u':
-            return 56;
-            break;
-        case 'v':
-            return 57;
-            break;
-        case 'w':
-            return 58;
-            break;
-        case 'x':
-            return 59;
-            break;
-        case 'y':
-            return 60;
-            break;
-        case 'z':
-            return 61;
-            break;
-        case '_':
-            return 62;
-            break;
-        default:
-            return 0;
-            break;
-    }
-}
-
-uint8_t get_val_from_char_16(uint8_t ch) /* look-up table for numerical value of digits, used for hex, case insensitive, "0x" treated as leading zeros */
-{
-    switch (ch) {
-        case '0':
-            return 0;
-            break;
-        case '1':
-            return 1;
-            break;
-        case '2':
-            return 2;
-            break;
-        case '3':
-            return 3;
-            break;
-        case '4':
-            return 4;
-            break;
-        case '5':
-            return 5;
-            break;
-        case '6':
-            return 6;
-            break;
-        case '7':
-            return 7;
-            break;
-        case '8':
-            return 8;
-            break;
-        case '9':
-            return 9;
-            break;
-        case 'a':
-            // fall through
-        case 'A':
-            return 10;
-            break;
-        case 'b':
-            // fall through
-        case 'B':
-            return 11;
-            break;
-        case 'c':
-            // fall through
-        case 'C':
-            return 12;
-            break;
-        case 'd':
-            // fall through
-        case 'D':
-            return 13;
-            break;
-        case 'e':
-            // fall through
-        case 'E':
-            return 14;
-            break;
-        case 'f':
-            // fall through
-        case 'F':
-            return 15;
-            break;
-        default:
-            return 0;
-            break;
-    }
-}
-
-uint8_t get_val_from_char_58(uint8_t ch) /* look-up table for numerical value of digits, used for Bitcoin base 58 */
-{
-    switch (ch) {
-        case '1':
-            return 0;
-            break;
-        case '2':
-            return 1;
-            break;
-        case '3':
-            return 2;
-            break;
-        case '4':
-            return 3;
-            break;
-        case '5':
-            return 4;
-            break;
-        case '6':
-            return 5;
-            break;
-        case '7':
-            return 6;
-            break;
-        case '8':
-            return 7;
-            break;
-        case '9':
-            return 8;
-            break;
-        case 'A':
-            return 9;
-            break;
-        case 'B':
-            return 10;
-            break;
-        case 'C':
-            return 11;
-            break;
-        case 'D':
-            return 12;
-            break;
-        case 'E':
-            return 13;
-            break;
-        case 'F':
-            return 14;
-            break;
-        case 'G':
-            return 15;
-            break;
-        case 'H':
-            return 16;
-            break;
-        case 'J':
-            return 17;
-            break;
-        case 'K':
-            return 18;
-            break;
-        case 'L':
-            return 19;
-            break;
-        case 'M':
-            return 20;
-            break;
-        case 'N':
-            return 21;
-            break;
-        case 'P':
-            return 22;
-            break;
-        case 'Q':
-            return 23;
-            break;
-        case 'R':
-            return 24;
-            break;
-        case 'S':
-            return 25;
-            break;
-        case 'T':
-            return 26;
-            break;
-        case 'U':
-            return 27;
-            break;
-        case 'V':
-            return 28;
-            break;
-        case 'W':
-            return 29;
-            break;
-        case 'X':
-            return 30;
-            break;
-        case 'Y':
-            return 31;
-            break;
-        case 'Z':
-            return 32;
-            break;
-        case 'a':
-            return 33;
-            break;
-        case 'b':
-            return 34;
-            break;
-        case 'c':
-            return 35;
-            break;
-        case 'd':
-            return 36;
-            break;
-        case 'e':
-            return 37;
-            break;
-        case 'f':
-            return 38;
-            break;
-        case 'g':
-            return 39;
-            break;
-        case 'h':
-            return 40;
-            break;
-        case 'i':
-            return 41;
-            break;
-        case 'j':
-            return 42;
-            break;
-        case 'k':
-            return 43;
-            break;
-        case 'm':
-            return 44;
-            break;
-        case 'n':
-            return 45;
-            break;
-        case 'o':
-            return 46;
-            break;
-        case 'p':
-            return 47;
-            break;
-        case 'q':
-            return 48;
-            break;
-        case 'r':
-            return 49;
-            break;
-        case 's':
-            return 50;
-            break;
-        case 't':
-            return 51;
-            break;
-        case 'u':
-            return 52;
-            break;
-        case 'v':
-            return 53;
-            break;
-        case 'w':
-            return 54;
-            break;
-        case 'x':
-            return 55;
-            break;
-        case 'y':
-            return 56;
-            break;
-        case 'z':
-            return 57;
-            break;
-        default:
-            return 0;
-        break;
-    }
-}
-
-uint8_t get_val_from_char_64(uint8_t ch) /* look-up table for numerical value of digits, used for base 64 */
-{
-    switch (ch) {
-        case 'A':
-            return 0;
-            break;
-        case 'B':
-            return 1;
-            break;
-        case 'C':
-            return 2;
-            break;
-        case 'D':
-            return 3;
-            break;
-        case 'E':
-            return 4;
-            break;
-        case 'F':
-            return 5;
-            break;
-        case 'G':
-            return 6;
-            break;
-        case 'H':
-            return 7;
-            break;
-        case 'I':
-            return 8;
-            break;
-        case 'J':
-            return 9;
-            break;
-        case 'K':
-            return 10;
-            break;
-        case 'L':
-            return 11;
-            break;
-        case 'M':
-            return 12;
-            break;
-        case 'N':
-            return 13;
-            break;
-        case 'O':
-            return 14;
-            break;
-        case 'P':
-            return 15;
-            break;
-        case 'Q':
-            return 16;
-            break;
-        case 'R':
-            return 17;
-            break;
-        case 'S':
-            return 18;
-            break;
-        case 'T':
-            return 19;
-            break;
-        case 'U':
-            return 20;
-            break;
-        case 'V':
-            return 21;
-            break;
-        case 'W':
-            return 22;
-            break;
-        case 'X':
-            return 23;
-            break;
-        case 'Y':
-            return 24;
-            break;
-        case 'Z':
-            return 25;
-            break;
-        case 'a':
-            return 26;
-            break;
-        case 'b':
-            return 27;
-            break;
-        case 'c':
-            return 28;
-            break;
-        case 'd':
-            return 29;
-            break;
-        case 'e':
-            return 30;
-            break;
-        case 'f':
-            return 31;
-            break;
-        case 'g':
-            return 32;
-            break;
-        case 'h':
-            return 33;
-            break;
-        case 'i':
-            return 34;
-            break;
-        case 'j':
-            return 35;
-            break;
-        case 'k':
-            return 36;
-            break;
-        case 'l':
-            return 37;
-            break;
-        case 'm':
-            return 38;
-            break;
-        case 'n':
-            return 39;
-            break;
-        case 'o':
-            return 40;
-            break;
-        case 'p':
-            return 41;
-            break;
-        case 'q':
-            return 42;
-            break;
-        case 'r':
-            return 43;
-            break;
-        case 's':
-            return 44;
-            break;
-        case 't':
-            return 45;
-            break;
-        case 'u':
-            return 46;
-            break;
-        case 'v':
-            return 47;
-            break;
-        case 'w':
-            return 48;
-            break;
-        case 'x':
-            return 49;
-            break;
-        case 'y':
-            return 50;
-            break;
-        case 'z':
-            return 51;
-            break;
-        case '0':
-            return 52;
-            break;
-        case '1':
-            return 53;
-            break;
-        case '2':
-            return 54;
-            break;
-        case '3':
-            return 55;
-            break;
-        case '4':
-            return 56;
-            break;
-        case '5':
-            return 57;
-            break;
-        case '6':
-            return 58;
-            break;
-        case '7':
-            return 59;
-            break;
-        case '8':
-            return 60;
-            break;
-        case '9':
-            return 61;
-            break;
-        case '+':
-            return 62;
-            break;
-        case '/':
-            return 63;
-            break;
-        default:
-            return 0;
-            break;
-    }
-}
-
-uint8_t *get_base_n_str(const bnz_t *a, uint32_t base, const char *alpha) // return a null terminated string representing a->digits in given base, big endian order
+uint8_t *get_base_n_str(const bnz_t *a, uint32_t base, const char *alpha, uint32_t *len) // return a null terminated string representing a->digits in given base, big endian order
 {
     uint8_t *base_n_str = NULL, *base_n_str_trimmed = NULL;
-    size_t i, j, k, trim = 0, len = (a->size * log10((double)256)) / log10((double)abs(base)) + 1;
+    size_t i, j, k, trim = 0;
 
-    if (!(base_n_str = init_uint8_array(len + 1))) return NULL;
+    (*len) = (a->size * log10((double)256)) / log10((double)abs(base)) + 1;
+
+    if (!(base_n_str = init_uint8_array((*len) + 1))) return NULL;
 
     for (i = 0; i < a->size; i++) {
         k = a->digits[i];
-        for (j = len; j > 0; j--) {
+        for (j = (*len); j > 0; j--) {
             k += (uint32_t)base_n_str[j - 1] * 256;
             base_n_str[j - 1] = (uint8_t)(k % abs(base));
             k /= abs(base);
         }
     }
 
-    while ((base != 64 && alpha[base_n_str[trim]] == '0') || (base == 58 && alpha[base_n_str[trim]] == '1') || (base == 64 && alpha[base_n_str[trim]] == 'A')) { // trim leading zeros at MSB end, 1 for base 58, A for base 64
+    while ((base == 32 && alpha[base_n_str[trim]] == 'q') || (base == 58 && alpha[base_n_str[trim]] == '1') || (base == 64 && alpha[base_n_str[trim]] == 'A') || (base != 64 && alpha[base_n_str[trim]] == '0')) { // trim leading zeros at msb end, 1 for base 58, A for base 64
         trim++;
-        len--;
+        (*len)--;
     }
 
-    if (!(base_n_str_trimmed = init_uint8_array(len + 1))) return NULL;
+    if (!(base_n_str_trimmed = init_uint8_array((*len) + 1))) return NULL;
 
-    for (i = 0; i < len; i++) {
+    for (i = 0; i < (*len); i++) {
         base_n_str_trimmed[i] = alpha[base_n_str[i + trim]];
     }
 
@@ -1636,19 +1107,19 @@ void bnz_set_i32(bnz_t *res, int32_t val) // set bnz_t to 32 bit signed int
     }
     bnz_resize(res, 4, 0); // resize res to 4 bytes, zero bytes
     memcpy(res->digits, &val, 4); // copy bytes from val to res->digits
-    bnz_trim(res); // trim zero bytes from MSB end
+    bnz_trim(res); // trim zero bytes from msb end
 }
 
 void bnz_set_ui32(bnz_t *res, uint32_t val) // set bnz_t to 32 bit unsigned int
 {
     bnz_resize(res, 4, 0); // resize res to 4 bytes, zero bytes
     memcpy(res->digits, &val, 4); // copy bytes from val to res->digits
-    bnz_trim(res); // trim zero bytes from MSB end
+    bnz_trim(res); // trim zero bytes from msb end
 }
 
 void bnz_set_str(bnz_t *res, const uint8_t *str, uint8_t base) // set bnz_t to number represented by str with radix between 2 and 64, and with its digits in big endian order
 {
-    uint32_t dgt;
+    int32_t dgt;
     size_t i, j, len = (size_t)((double)strlen(str) * log(base)/log(256)) + 1, idx = 0;
     bnz_resize(res, len, 0);
     if (str[0] == '-') { // if first symbol of str is "-", set sign to 1 and set starting index of digits to 1 
@@ -1657,14 +1128,16 @@ void bnz_set_str(bnz_t *res, const uint8_t *str, uint8_t base) // set bnz_t to n
     }
     for (i = idx; i < strlen(str); i++) {
         dgt = get_digit(str, i, base);
-        for (j = len; j > 0; j--) {
-            dgt += res->digits[j - 1] * base;
-            res->digits[j - 1] = dgt & 255;
-            dgt >>= 8;
+        if (dgt != -1) {
+            for (j = len; j > 0; j--) {
+                dgt += res->digits[j - 1] * base;
+                res->digits[j - 1] = dgt & 255;
+                dgt >>= 8;
+            }
         }
     }
     bnz_reverse_digits(res); // convert a->digits to little endian order
-    bnz_trim(res); // trim zero bytes from MSB end
+    bnz_trim(res); // trim zero bytes from msb end
 }
 
 void bnz_set_bnz(bnz_t *res, const bnz_t *val) // set bnz_t equivalent to another bnz_t
@@ -1674,7 +1147,7 @@ void bnz_set_bnz(bnz_t *res, const bnz_t *val) // set bnz_t equivalent to anothe
     res->sign = val->sign;
 }
 
-int32_t cmp_uint8_arr(uint8_t *a, uint8_t *b, size_t len) // compare two 1D uint8_t arrays a and b, from MSB to LSB, return -1 if a < b, 0 if a == b, and 1 if a > b 
+int32_t cmp_uint8_arr(uint8_t *a, uint8_t *b, size_t len) // compare two 1D uint8_t arrays a and b, from msb to lsb, return -1 if a < b, 0 if a == b, and 1 if a > b 
 {
     size_t idx = len;
     while (idx--) {
@@ -2453,6 +1926,9 @@ void get_xprv_master(bnz_t *, bnz_t *, bnz_t *);
 void get_xpub_master(bnz_t *, bnz_t *, bnz_t *);
 void get_xprv_child(bnz_t *, uint8_t, uint32_t, bnz_t *, bnz_t *, bnz_t *);
 void get_xpub_child(bnz_t *, uint8_t, uint32_t, bnz_t *, bnz_t *, bnz_t *);
+void get_segwit_address(bnz_t *, bnz_t *);
+uint32_t segwit_checksum_update(uint32_t, uint8_t);
+void print_segwit_address(bnz_t *, const uint8_t *);
 
 uint8_t *get_salt(const char *passphrase) // generate salt string from passphrase
 {
@@ -2660,7 +2136,7 @@ void get_public_key(PT *public_key, bnz_t *public_key_compressed, bnz_t *private
 
 void get_public_key_xy(PT *public_key, bnz_t *public_key_compressed) // regenerate public key point on secp256k1 from compressed public key
 {
-    uint8_t typ = public_key_compressed->digits[public_key_compressed->size - 1]; // byte at MSB encodes the parity of y: typ = 0x02 for even y, typ = 0x03 for odd y
+    uint8_t typ = public_key_compressed->digits[public_key_compressed->size - 1]; // byte at msb encodes the parity of y: typ = 0x02 for even y, typ = 0x03 for odd y
     bnz_t exp, y_sq;
     SECP256K1 secp256k1;
 
@@ -2672,7 +2148,7 @@ void get_public_key_xy(PT *public_key, bnz_t *public_key_compressed) // regenera
     /*
 
     In this function we wish to regenerate the x,y coordinates of a point on secp256k1 from a compressed public key, which is
-    the x coordinate of the point concatenated (at the MSB end) with a byte of value 2 or 3, depending on whether the value of
+    the x coordinate of the point concatenated (at the msb end) with a byte of value 2 or 3, depending on whether the value of
     y is even (0x02) or odd (0x03).
 
     Generating the y coordinate of a point on secp256k1, given the corresponding x coordinate, leverages a nice property of secp256k1
@@ -2687,7 +2163,7 @@ void get_public_key_xy(PT *public_key, bnz_t *public_key_compressed) // regenera
     bnz_set_str(&exp, "28948022309329048855892746252171976963317496166410141009864396001977208667916", 10); // (secp256k1.p + 1) / 4
 
     bnz_set_bnz(&public_key->x, public_key_compressed); // public_key.x = compressed public key
-    bnz_resize(&public_key->x, public_key->x.size - 1, 1); // public_key.x = decompressed public key, byte at MSB end removed
+    bnz_resize(&public_key->x, public_key->x.size - 1, 1); // public_key.x = decompressed public key, byte at msb end removed
 
     bnz_set_bnz(&y_sq, &public_key->x); //y_sq = public_key.x
     bnz_multiply_bnz(&y_sq, &y_sq, &public_key->x); //y_sq = public_key.x^2
@@ -2735,10 +2211,10 @@ void get_p2pkh_address(bnz_t *p2pkh, bnz_t *public_key_compressed) // get p2pkh 
     bnz_t fingerprint;
     bnz_init(&fingerprint);
     get_ripemd160_sha256(p2pkh, public_key_compressed, 20); // set p2pkh to ripemd160(sha256(public_key_compressed.digits))
-    bnz_concatenate_ui8(p2pkh, p2pkh, 0, 0); // concatenate 0 byte to MSB end of p2pkh.digits
+    bnz_concatenate_ui8(p2pkh, p2pkh, 0, 0); // concatenate 0 byte to msb end of p2pkh.digits
     get_sha256_sha256(&fingerprint, p2pkh, 4); // set fingerprint to first four bytes of sha256(sha256(p2pkh.digits))
-    bnz_concatenate_bnz(p2pkh, p2pkh, &fingerprint, 1); // concatenate fingerprint to LSB end of p2pkh
-    bnz_trim(p2pkh); // remove zero value bytes from MSB end of p2pkh
+    bnz_concatenate_bnz(p2pkh, p2pkh, &fingerprint, 1); // concatenate fingerprint to lsb end of p2pkh
+    bnz_trim(p2pkh); // remove zero value bytes from msb end of p2pkh
     bnz_free(&fingerprint); // free fingerprint
 }
 
@@ -2751,11 +2227,11 @@ void get_xprv_master(bnz_t *xprv, bnz_t *master_private_key, bnz_t *master_chain
     bnz_resize(master_chain_code, 32, 1); // ensure master_chain_code is 32 bytes
 
     bnz_set_str(xprv, "0488ade4000000000000000000", 16); // 0x0488ade4 + 9 zero bytes: depth (1 byte), index (4 bytes), and parent public key hash fingerprint (4 bytes) are all 0 
-    bnz_concatenate_bnz(xprv, xprv, master_chain_code, 1); // append master_chain_code at LSB end
-    bnz_concatenate_ui8(xprv, xprv, 0, 1); // append 0x0 before master_private_key at LSB  end
-    bnz_concatenate_bnz(xprv, xprv, master_private_key, 1); // append master master_private_key at LSB end
+    bnz_concatenate_bnz(xprv, xprv, master_chain_code, 1); // append master_chain_code at lsb end
+    bnz_concatenate_ui8(xprv, xprv, 0, 1); // append 0x0 before master_private_key at lsb  end
+    bnz_concatenate_bnz(xprv, xprv, master_private_key, 1); // append master master_private_key at lsb end
     get_sha256_sha256(&chk, xprv, 4); // get 4 byte checksum
-    bnz_concatenate_bnz(xprv, xprv, &chk, 1); // append checksum at LSB end
+    bnz_concatenate_bnz(xprv, xprv, &chk, 1); // append checksum at lsb end
 
     bnz_free(&chk);
 }
@@ -2769,10 +2245,10 @@ void get_xpub_master(bnz_t *xpub, bnz_t *master_public_key_compressed, bnz_t *ma
     bnz_resize(master_chain_code, 32, 1); // ensure master_chain_code is 32 bytes
 
     bnz_set_str(xpub, "0488b21e000000000000000000", 16); // 0x0488b21e + 9 zero bytes: depth (1 byte), index (4 bytes), and parent public key hash fingerprint (4 bytes) are all 0 
-    bnz_concatenate_bnz(xpub, xpub, master_chain_code, 1); // append master_chain_code at LSB end
-    bnz_concatenate_bnz(xpub, xpub, master_public_key_compressed, 1); // append master_public_key_compressed at LSB end
+    bnz_concatenate_bnz(xpub, xpub, master_chain_code, 1); // append master_chain_code at lsb end
+    bnz_concatenate_bnz(xpub, xpub, master_public_key_compressed, 1); // append master_public_key_compressed at lsb end
     get_sha256_sha256(&chk, xpub, 4); // get 4 byte checksum
-    bnz_concatenate_bnz(xpub, xpub, &chk, 1); // append checksum at LSB end
+    bnz_concatenate_bnz(xpub, xpub, &chk, 1); // append checksum at lsb end
 
     bnz_free(&chk);
 }
@@ -2786,21 +2262,21 @@ void get_xprv_child(bnz_t *xprv, uint8_t depth_num, uint32_t index_num, bnz_t *p
 
     bnz_set_ui32(&index, index_num);
 
-    get_ripemd160_sha256(&parent_public_key_hash_fingerprint, parent_public_key_compressed, 4);
+    get_ripemd160_sha256(&parent_public_key_hash_fingerprint, parent_public_key_compressed, 4); // parent_public_key_hash_fingerprint = first 4 bytes of ripemd160(sha256(parent_public_key_compressed))
 
     bnz_resize(&index, 4, 1); // ensure index is four bytes
     bnz_resize(child_private_key, 32, 1); // ensure child_private_key is 32 bytes
     bnz_resize(child_chain_code, 32, 1); // ensure child_chain_code is 32 bytes
 
     bnz_set_str(xprv, "0488ade4", 16); // 0x0488ade4
-    bnz_concatenate_ui8(xprv, xprv, depth_num, 1); // append depth byte at LSB end
-    bnz_concatenate_bnz(xprv, xprv, &parent_public_key_hash_fingerprint, 1); // append four byte parent_public_key_hash_fingerprint at LSB end
-    bnz_concatenate_bnz(xprv, xprv, &index, 1); // append four byte index at LSB end
-    bnz_concatenate_bnz(xprv, xprv, child_chain_code, 1); // append 32 byte child_chain_code at LSB end
-    bnz_concatenate_ui8(xprv, xprv, 0, 1); // append 0x0 before child_private_key at LSB  end
-    bnz_concatenate_bnz(xprv, xprv, child_private_key, 1); // append 32 byte child_private_key at LSB end
+    bnz_concatenate_ui8(xprv, xprv, depth_num, 1); // append depth byte at lsb end
+    bnz_concatenate_bnz(xprv, xprv, &parent_public_key_hash_fingerprint, 1); // append four byte parent_public_key_hash_fingerprint at lsb end
+    bnz_concatenate_bnz(xprv, xprv, &index, 1); // append four byte index at lsb end
+    bnz_concatenate_bnz(xprv, xprv, child_chain_code, 1); // append 32 byte child_chain_code at lsb end
+    bnz_concatenate_ui8(xprv, xprv, 0, 1); // append 0x0 before child_private_key at lsb  end
+    bnz_concatenate_bnz(xprv, xprv, child_private_key, 1); // append 32 byte child_private_key at lsb end
     get_sha256_sha256(&chk, xprv, 4); // get 4 byte checksum
-    bnz_concatenate_bnz(xprv, xprv, &chk, 1); // append checksum at LSB end
+    bnz_concatenate_bnz(xprv, xprv, &chk, 1); // append checksum at lsb end
 
     bnz_free(&chk);
     bnz_free(&index);
@@ -2823,17 +2299,132 @@ void get_xpub_child(bnz_t *xprv, uint8_t depth_num, uint32_t index_num, bnz_t *p
     bnz_resize(child_chain_code, 32, 1); // ensure child_chain_code is 32 bytes
 
     bnz_set_str(xprv, "0488b21e", 16); // 0x0488b21e
-    bnz_concatenate_ui8(xprv, xprv, depth_num, 1); // append depth byte at LSB end
-    bnz_concatenate_bnz(xprv, xprv, &parent_public_key_hash_fingerprint, 1); // append four byte parent_public_key_hash_fingerprint at LSB end
-    bnz_concatenate_bnz(xprv, xprv, &index, 1); // append four byte index at LSB end
-    bnz_concatenate_bnz(xprv, xprv, child_chain_code, 1); // append 32 byte child_chain_code at LSB end
-    bnz_concatenate_bnz(xprv, xprv, child_public_key_compressed, 1); // append 33 byte child_public_key_compressed at LSB end
+    bnz_concatenate_ui8(xprv, xprv, depth_num, 1); // append depth byte at lsb end
+    bnz_concatenate_bnz(xprv, xprv, &parent_public_key_hash_fingerprint, 1); // append four byte parent_public_key_hash_fingerprint at lsb end
+    bnz_concatenate_bnz(xprv, xprv, &index, 1); // append four byte index at lsb end
+    bnz_concatenate_bnz(xprv, xprv, child_chain_code, 1); // append 32 byte child_chain_code at lsb end
+    bnz_concatenate_bnz(xprv, xprv, child_public_key_compressed, 1); // append 33 byte child_public_key_compressed at lsb end
     get_sha256_sha256(&chk, xprv, 4); // get 4 byte checksum
-    bnz_concatenate_bnz(xprv, xprv, &chk, 1); // append checksum at LSB end
+    bnz_concatenate_bnz(xprv, xprv, &chk, 1); // append checksum at lsb end
 
     bnz_free(&chk);
     bnz_free(&index);
     bnz_free(&parent_public_key_hash_fingerprint);
+}
+
+void get_segwit_address(bnz_t *segwit_address, bnz_t *public_key_compressed)
+{
+    uint8_t *scriptpubkey_bech32 = NULL, *witness_program = NULL, *segwit_address_str = NULL, chk_str[7], bech32_alpha[33] = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+    uint32_t i, len, chk = 1;
+
+    bnz_t tmp;
+    bnz_init(&tmp);
+    get_ripemd160_sha256(&tmp, public_key_compressed, 20); // tmp = ripemd160(sha256(public_key_compressed)), 20  bytes, big endian order
+    bnz_reverse_digits(&tmp); // convert tmp to little endian order in preparation for generating bech32 format string
+
+    if (!(scriptpubkey_bech32 = get_base_n_str(&tmp, 32, bech32_alpha, &len))) return; // scriptpubkey_bech32 = tmp in bech32 format, little endian order
+    if (!(witness_program = init_uint8_array(45))) return; // prepare uint8_t array for witness_program, length = expanded hrp (5) + version (1) + scriptpubkey_bech32 (32) + zero padding (6) + null terminator (1)
+    if (!(segwit_address_str = init_uint8_array(27))) return; // prepare uint8_t array for numerical part of segwit_address, length = scriptpubkey_bech32 (20) + checksum (6) + null terminator (1)
+
+    /*
+
+    witness program comprises four elements: expanded hrp + version + scriptpubkey in bech32 + padding
+
+    expanded hrp = "rrqzr", prefix to witness program
+
+    derivation:
+
+    hrp = "bc" = 99 98 in ascii = 01100010 01100011 in binary
+    expanded hrp = 00011 00011 00000 00010 00011, top 3 bits of 'b' and 'c' in ascii padded left to 5 bits + 5 zero bits separator + bottom 5 bits of 'b' and 'c' in ascii
+    numerical values of expanded hrp = 3, 3, 0, 2, 3
+    bech32 encoding of expanded hrp = r, r, q, z, r
+
+    expanded hrp is followed by a 'q' zero digit representing the segwit version number
+
+    "qqqqqq" = 6 zero digits in bech32
+
+    */
+
+    sprintf(witness_program, "rrqzrqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"); // witness_program = "rrqzrq" + 32 zeroes ('q') to allow for offset in case strlen(scriptpubkey_bech32) < 32
+    sprintf(witness_program + 38 - strlen(scriptpubkey_bech32), "%sqqqqqq", scriptpubkey_bech32); // witness_program = "rrqzrq" + zero ('q') padding if required + scriptpubkey_bech32 + "qqqqqq"
+
+    //get checksum, occupying 30 bits of uint32_t
+    for (i = 0; i < strlen(witness_program); i++) {
+        chk = segwit_checksum_update(chk, char_32[witness_program[i]]); // dgt = decimal value (0 - 31) corresponding to bech32 character
+    }
+    chk ^= 1; //finalise checksum, xor with 1 means standard segwit
+
+    // convert checksum from 30 bits formatted as uint32_t (big endian order) into 6 x 5 bit digits in bech32, stored as uint8_t array, little endian order
+    for (i = 0; i < 6; i++) {
+        chk_str[i] = bech32_alpha[(chk >> ((5 - i) * 5)) & 31];
+    }
+
+    sprintf(segwit_address_str, "%s%s", scriptpubkey_bech32, chk_str); // numerical part of address = scriptpubkey_bech32 (20) + checksum (6)
+    bnz_set_str(segwit_address, segwit_address_str, 32); // convert segwit_address_str (numerical part of standard segwit address) into standard bnz_t, will be printed with non-bech32 prefix "bc1q"
+
+    // free resources
+    free(scriptpubkey_bech32);
+    free(witness_program);
+    free(segwit_address_str);
+    bnz_free(&tmp);
+}
+
+uint32_t segwit_checksum_update(uint32_t chk, uint8_t dgt)
+{
+    uint8_t top = (chk >> 25); // top = top 5 bits of current chk, formatted as uint8_t
+    uint32_t btm = (chk & 33554431) << 5; // btm = bottom 25 bits of current chk (from bitwise AND with 0x1ffffff) padded with 5 zeros at lsb end, formatted as uint32_t
+    btm ^= dgt; // xor btm with current digit of witness program, formatted as uint8_t
+    if ((top >> 0) & 1) btm ^= 996825010; // if 1st bit of top is set, xor btm with 1st constant (0x3b6a57b2)
+    if ((top >> 1) & 1) btm ^= 642813549; // if 2nd bit of top is set, xor btm with 2nd constant (0x26508e6d)
+    if ((top >> 2) & 1) btm ^= 513874426; // if 3rd bit of top is set, xor btm with 3rd constant (0x1ea119fa)
+    if ((top >> 3) & 1) btm ^= 1027748829; // if 4th bit of top is set, xor btm with 4th constant (0x3d4233dd)
+    if ((top >> 4) & 1) btm ^= 705979059; // if 5th bit of top is set, xor btm with 5th constant (0x2a1462b3)
+    return btm; // return btm, the new value of chk, formatted as uint32_t
+}
+
+void print_segwit_address(bnz_t *segwit_address, const uint8_t *str)
+{
+    uint8_t *full_string = NULL, *segwit_address_str = NULL;
+    uint32_t len;
+
+    /*
+    
+    segwit addresses have a prefix "bc1q" which contains non-bech32 characters
+    and is added to the numercial part of the address.
+    
+    the numerical part is a concatenation of the ripemd160 sha256 double hash
+    of the compressed public key encoded in bech32, and a 6 character checksum,
+    also in bech32.
+
+    in bitcoin_math, the numerical part is treated as a number and is stored in
+    a standard bnz_t, and the prefix is only added when the segwit address is
+    printed to the screen.
+
+    however, ripemd160 digests (and their bech32 representations) can have
+    zeroes at the msb end, causing issues when the numerical part is  treated
+    as a number.
+
+    bitcoin_math therefore incorporates this dedicated print function for segwit
+    addresses which ensures that, where the numerical part of a segwit addresses
+    has one or more zeroes at the msb end, it is padded with 'q' characters
+    (representing zeroes) before the prefix is appended. 
+    
+    */
+
+    bnz_t tmp;
+    bnz_init(&tmp);
+    bnz_set_bnz(&tmp, segwit_address); // tmp = local mutable copy of segwit_address bnz_t in standard little endian order 
+    bnz_reverse_digits(&tmp); // convert tmp.digits to big endian order
+
+    if (!(full_string = init_uint8_array(strlen(str) + 43))) return; // prepare full_string = str + "bc1q" + 'q' padding (to 42 digits) + null terminus
+    if (!(segwit_address_str = get_base_n_str(&tmp, 32, "qpzry9x8gf2tvdw0s3jn54khce6mua7l", &len))) return; // get bech32 string
+
+    sprintf(full_string, "%sbc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq", str); // full_string = str + "bc1q" + 38 x 'q'
+    sprintf(full_string + strlen(str) + 42 - len, segwit_address_str); // add bech32 string with appropriate offset to ensure 'q' padding at msb end
+
+    printf("%s\n", full_string); // print final string
+
+    bnz_free(&tmp);
 }
 
 /* MENU */
@@ -2885,7 +2476,7 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
 {
     uint32_t i, wd_ids[24];
     char entropy_str[257], base = 16, passphrase_str[257], *mnemonic = NULL;
-    bnz_t entropy, master_private_key, master_chain_code, xprv, master_public_key, master_public_key_compressed, xpub, seed, p2pkh;
+    bnz_t entropy, master_private_key, master_chain_code, xprv, master_public_key, master_public_key_compressed, xpub, seed, p2pkh, segwit;
 
     PT public_key;
 
@@ -2900,6 +2491,7 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
     bnz_init(&xpub);
     bnz_init(&seed);
     bnz_init(&p2pkh);
+    bnz_init(&segwit);
     bnz_init(&public_key.x);
     bnz_init(&public_key.y);
 
@@ -3007,12 +2599,14 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
     get_public_key(&public_key, &master_public_key_compressed, &master_private_key);
     get_xpub_master(&xpub, &master_public_key_compressed, &master_chain_code);
     get_p2pkh_address(&p2pkh, &master_public_key_compressed);
+    get_segwit_address(&segwit, &master_public_key_compressed);
 
     bnz_print(&master_public_key_compressed, 16, "MASTER PUBLIC KEY COMPRESSED: ");
     bnz_print(&public_key.x, 16, " x: ");
     bnz_print(&public_key.y, 16, " y: ");
     bnz_print(&xpub, 58, "MASTER XPUB: ");
-    bnz_print(&p2pkh, 58, "MASTER P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
+    bnz_print(&p2pkh, 58, "MASTER P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the msb end when treated as a number
+    print_segwit_address(&segwit, "MASTER SEGWIT ADDRESS: ");
     printf("\n");
 
     bnz_free(&entropy);
@@ -3024,6 +2618,7 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
     bnz_free(&xpub);
     bnz_free(&seed);
     bnz_free(&p2pkh);
+    bnz_free(&segwit);
     bnz_free(&public_key.x);
     bnz_free(&public_key.y);
 
@@ -3063,7 +2658,7 @@ void menu_2_1_normal_child(const char *version)
 {
     uint8_t parent_private_key_str[67], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
     uint32_t index_num;
-    bnz_t tmp, index, entropy, parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, xprv, child_public_key_compressed, xpub, p2pkh;
+    bnz_t tmp, index, entropy, parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, xprv, child_public_key_compressed, xpub, p2pkh, segwit;
     PT parent_public_key_pt, child_public_key_pt;
     SECP256K1 secp256k1;
 
@@ -3081,6 +2676,7 @@ void menu_2_1_normal_child(const char *version)
     bnz_init(&child_public_key_compressed);
     bnz_init(&xpub);
     bnz_init(&p2pkh);
+    bnz_init(&segwit);
 
     bnz_init(&parent_public_key_pt.x);
     bnz_init(&parent_public_key_pt.y);
@@ -3178,12 +2774,14 @@ void menu_2_1_normal_child(const char *version)
     get_public_key(&child_public_key_pt, &child_public_key_compressed, &child_private_key); // generate compressed public key from private key
     get_xpub_child(&xpub, depth_num, index_num, &parent_public_key_compressed, &child_public_key_compressed, &child_chain_code); // serialise xpub
     get_p2pkh_address(&p2pkh, &child_public_key_compressed); // serialise p2pkh address
+    get_segwit_address(&segwit, &parent_public_key_compressed); // serialise segwit address
 
     bnz_print(&child_public_key_compressed, 16, "CHILD PUBLIC KEY COMPRESSED: ");
     bnz_print(&child_public_key_pt.x, 16, " x: ");
     bnz_print(&child_public_key_pt.y, 16, " y: ");
     bnz_print(&xpub, 58, "CHILD XPUB: ");
-    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
+    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the msb end when treated as a number
+    print_segwit_address(&segwit, "CHILD SEGWIT ADDRESS: ");
     printf("\n");
 
     bnz_free(&tmp);
@@ -3198,6 +2796,7 @@ void menu_2_1_normal_child(const char *version)
     bnz_free(&child_public_key_compressed);
     bnz_free(&xpub);
     bnz_free(&p2pkh);
+    bnz_free(&segwit);
 
     bnz_free(&parent_public_key_pt.x);
     bnz_free(&parent_public_key_pt.y);
@@ -3215,7 +2814,7 @@ void menu_2_2_hardened_child(const char *version)
 {
     uint8_t parent_private_key_str[67], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
     uint32_t index_num;
-    bnz_t tmp, index, entropy, parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, xprv, child_public_key_compressed, xpub, p2pkh;
+    bnz_t tmp, index, entropy, parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, xprv, child_public_key_compressed, xpub, p2pkh, segwit;
     PT parent_public_key_pt, child_public_key_pt;
     SECP256K1 secp256k1;
 
@@ -3233,6 +2832,7 @@ void menu_2_2_hardened_child(const char *version)
     bnz_init(&child_public_key_compressed);
     bnz_init(&xpub);
     bnz_init(&p2pkh);
+    bnz_init(&segwit);
 
     bnz_init(&parent_public_key_pt.x);
     bnz_init(&parent_public_key_pt.y);
@@ -3331,12 +2931,14 @@ void menu_2_2_hardened_child(const char *version)
     get_public_key(&child_public_key_pt, &child_public_key_compressed, &child_private_key); // generate compressed public key from private key
     get_xpub_child(&xpub, depth_num, index_num, &parent_public_key_compressed, &child_public_key_compressed, &child_chain_code); // serialise xpub
     get_p2pkh_address(&p2pkh, &child_public_key_compressed); // serialise p2pkh address
+    get_segwit_address(&segwit, &child_public_key_compressed);
 
     bnz_print(&child_public_key_compressed, 16, "CHILD PUBLIC KEY COMPRESSED: ");
     bnz_print(&child_public_key_pt.x, 16, " x: ");
     bnz_print(&child_public_key_pt.y, 16, " y: ");
     bnz_print(&xpub, 58, "CHILD XPUB: ");
-    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
+    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the msb end when treated as a number
+    print_segwit_address(&segwit, "CHILD SEGWIT ADDRESS: ");
     printf("\n");
 
     bnz_free(&tmp);
@@ -3347,7 +2949,11 @@ void menu_2_2_hardened_child(const char *version)
     bnz_free(&parent_public_key_compressed);
     bnz_free(&child_private_key);
     bnz_free(&child_chain_code);
+    bnz_free(&xprv);
     bnz_free(&child_public_key_compressed);
+    bnz_free(&xpub);
+    bnz_free(&p2pkh);
+    bnz_free(&segwit);
 
     bnz_free(&child_public_key_pt.x);
     bnz_free(&child_public_key_pt.y);
@@ -3363,7 +2969,7 @@ void menu_2_3_public_child(const char *version)
 {
     uint8_t parent_public_key_compressed_str[69], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
     uint32_t index_num;
-    bnz_t tmp, index, parent_public_key_compressed, parent_chain_code, child_public_key_compressed, child_chain_code, xpub, p2pkh;
+    bnz_t tmp, index, parent_public_key_compressed, parent_chain_code, child_public_key_compressed, child_chain_code, xpub, p2pkh, segwit;
     PT tmp_key, parent_public_key_pt, child_public_key_pt;
 
     SECP256K1 secp256k1;
@@ -3376,6 +2982,7 @@ void menu_2_3_public_child(const char *version)
     bnz_init(&child_chain_code);
     bnz_init(&xpub);
     bnz_init(&p2pkh);
+    bnz_init(&segwit);
 
     bnz_init(&tmp_key.x);
     bnz_init(&tmp_key.y);
@@ -3473,7 +3080,8 @@ void menu_2_3_public_child(const char *version)
     bnz_print(&child_public_key_pt.x, 16, " x: ");
     bnz_print(&child_public_key_pt.y, 16, " y: ");
     bnz_print(&xpub, 58, "CHILD XPUB: ");
-    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
+    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the msb end when treated as a number
+    print_segwit_address(&segwit, "CHILD SEGWIT ADDRESS: ");
     printf("\n");
 
     bnz_free(&tmp);
@@ -3482,6 +3090,9 @@ void menu_2_3_public_child(const char *version)
     bnz_free(&parent_chain_code);
     bnz_free(&child_public_key_compressed);
     bnz_free(&child_chain_code);
+    bnz_free(&xpub);
+    bnz_free(&p2pkh);
+    bnz_free(&segwit);
 
     bnz_free(&tmp_key.x);
     bnz_free(&tmp_key.y);
@@ -3540,6 +3151,9 @@ void menu_3_base_converter(const char *version)
     bnz_print(&number, 16, "Hex: ");
     printf("\n");
 
+    bnz_print(&number, 32, "Bech32: ");
+    printf("\n");
+
     bnz_print(&number, 58, "Bitcoin base 58: ");
     printf("\n");
 
@@ -3585,7 +3199,7 @@ void menu_3_base_converter(const char *version)
 
     bnz_print(&number, 30, "Base 30: ");
     bnz_print(&number, 31, "Base 31: ");
-    bnz_print(&number, 32, "Base 32: ");
+    bnz_print(&number, -32, "Base 32: ");
     bnz_print(&number, 33, "Base 33: ");
     bnz_print(&number, 34, "Base 34: ");
     bnz_print(&number, 35, "Base 35: ");
@@ -3701,7 +3315,7 @@ void menu_4_1_p2pkh(const char *version)
 
     get_p2pkh_address(&p2pkh, &public_key_compressed);
 
-    bnz_print(&p2pkh, 58, "P2PKH: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
+    bnz_print(&p2pkh, 58, "P2PKH: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the msb end when treated as a number
     printf("\n");
 
     bnz_free(&public_key_compressed);
@@ -3831,11 +3445,11 @@ void menu_4_3_private_key_to_WIF(const char *version)
     }
 
     bnz_set_bnz(&private_key_wif, &private_key); // copy private key to private_key_wif
-    bnz_concatenate_ui8(&private_key_wif, &private_key_wif, 0x80, 0); // mainnet version, concatenate 0x80 to MSB end (for testnet version concatenate 0xef)
-    bnz_concatenate_ui8(&private_key_wif, &private_key_wif, 0x01, 1); // compressed, concatenate 0x01 to LSB end (no concatenatation for uncompressed)
+    bnz_concatenate_ui8(&private_key_wif, &private_key_wif, 0x80, 0); // mainnet version, concatenate 0x80 to msb end (for testnet version concatenate 0xef)
+    bnz_concatenate_ui8(&private_key_wif, &private_key_wif, 0x01, 1); // compressed, concatenate 0x01 to lsb end (no concatenatation for uncompressed)
 
     get_sha256_sha256(&fingerprint, &private_key_wif, 4); // set fingerprint to first four bytes of sha256(sha256(private_key_wif.digits))
-    bnz_concatenate_bnz(&private_key_wif, &private_key_wif, &fingerprint, 1); // concatenate fingerprint to LSB end of private_key_wif
+    bnz_concatenate_bnz(&private_key_wif, &private_key_wif, &fingerprint, 1); // concatenate fingerprint to lsb end of private_key_wif
 
     system("cls");
     printf("%s\n\n", version);
@@ -3851,7 +3465,7 @@ void menu_4_3_private_key_to_WIF(const char *version)
     printf("\n");
 
     bnz_print(&public_key_compressed, 16, "PUBLIC KEY (COMPRESSED): ");
-    bnz_print(&p2pkh, 58, "P2PKH: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
+    bnz_print(&p2pkh, 58, "P2PKH: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the msb end when treated as a number
 
     printf("\n");
 
@@ -3905,9 +3519,9 @@ void menu_4_4_WIF_to_private_key(const char *version)
     printf("\n");
 
     bnz_set_bnz(&private_key, &private_key_wif); // copy wif to private key
-    bnz_resize(&private_key, private_key.size - 1, 1); // remove version byte from MSB end
-    bnz_reverse_digits(&private_key); // reverse private_key.digits to enable 4 checksum bytes to be removed from MSB end
-    bnz_resize(&private_key, private_key.size - 4, 1); // remove 4 checksum bytes from MSB end
+    bnz_resize(&private_key, private_key.size - 1, 1); // remove version byte from msb end
+    bnz_reverse_digits(&private_key); // reverse private_key.digits to enable 4 checksum bytes to be removed from msb end
+    bnz_resize(&private_key, private_key.size - 4, 1); // remove 4 checksum bytes from msb end
     bnz_resize(&private_key, 32, 1); // resize private_key.digits to 32 bytes to ensure than the compression byte (if present) is deleted
     bnz_reverse_digits(&private_key); // reverse private_key.digits to standard little endian order
 
@@ -3924,7 +3538,7 @@ void menu_4_4_WIF_to_private_key(const char *version)
     printf("\n");
 
     bnz_print(&public_key_compressed, 16, "PUBLIC KEY (COMPRESSED): ");
-    bnz_print(&p2pkh, 58, "P2PKH: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the MSB end when treated as a number
+    bnz_print(&p2pkh, 58, "P2PKH: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the msb end when treated as a number
 
     printf("\n");
 
@@ -4114,7 +3728,7 @@ void menu_4_7_secp256k1_scalar_multiplication(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.10, 2025-05-06";
+    static char *version = "bitcoin_math\nv0.11, 2025-05-22";
     int menu, running = 1;
     while (running) {
         system("cls");
