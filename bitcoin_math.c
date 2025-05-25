@@ -745,11 +745,11 @@ int8_t char_32[256] = {
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     15,  -1,  10,  17,  21,  20,  26,  30,   7,   5,  -1,  -1,  -1,  -1,  -1,  -1,
-    -1,  29,  -1,  24,  -1,  25,   9,   8,  23,  -1,  -1,  22,  31,  27,  19,  -1,
+    -1,  29,  -1,  24,  13,  25,   9,   8,  23,  -1,  18,  22,  31,  27,  19,  -1,
      1,   0,   3,  16,  11,  28,  12,  14,   6,   4,   2,  -1,  -1,  -1,  -1,  -1,
     -1,  29,  -1,  24,  13,  25,   9,   8,  23,  -1,  18,  22,  31,  27,  19,  -1,
      1,   0,   3,  16,  11,  28,  12,  14,   6,   4,   2,  -1,  -1,  -1,  -1,  -1,
-    -1,  -1,  -1,  -1,  13,  -1,  -1,  -1,  -1,  -1,  18,  -1,  -1,  -1,  -1,  -1,
+    -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
@@ -1084,7 +1084,7 @@ uint8_t *get_base_n_str(const bnz_t *a, uint32_t base, const char *alpha, uint32
         }
     }
 
-    while ((base == 32 && alpha[base_n_str[trim]] == 'q') || (base == 58 && alpha[base_n_str[trim]] == '1') || (base == 64 && alpha[base_n_str[trim]] == 'A') || (base != 64 && alpha[base_n_str[trim]] == '0')) { // trim leading zeros at msb end, 1 for base 58, A for base 64
+    while ((base == 32 && alpha[base_n_str[trim]] == 'q') || (base == 58 && alpha[base_n_str[trim]] == '1') || (base == 64 && alpha[base_n_str[trim]] == 'A') || (base != 64 && alpha[base_n_str[trim]] == '0')) { // trim leading zeros at msb end, 'q' for Bech32, '1' for Bitcoin base 58, 'A' for base 64
         trim++;
         (*len)--;
     }
@@ -1926,9 +1926,9 @@ void get_xprv_master(bnz_t *, bnz_t *, bnz_t *);
 void get_xpub_master(bnz_t *, bnz_t *, bnz_t *);
 void get_xprv_child(bnz_t *, uint8_t, uint32_t, bnz_t *, bnz_t *, bnz_t *);
 void get_xpub_child(bnz_t *, uint8_t, uint32_t, bnz_t *, bnz_t *, bnz_t *);
-void get_segwit_address(bnz_t *, bnz_t *);
+void get_segwit_address(bnz_t *, const bnz_t *);
 uint32_t segwit_checksum_update(uint32_t, uint8_t);
-void print_segwit_address(bnz_t *, const uint8_t *);
+void print_segwit_address(const bnz_t *, const uint8_t *);
 
 uint8_t *get_salt(const char *passphrase) // generate salt string from passphrase
 {
@@ -2069,7 +2069,7 @@ uint8_t *get_mnemonic_phrase(uint32_t *wd_ids) // generate mnemonic string of 24
     for (i = 0; i < 24; i++) {
         len += strlen(bip39_wds[wd_ids[i]]);
     }
-    if (!(mnemonic_str = init_uint8_array(len + 24 /* 23 chars for the spaces between the individual mnemonic words + one char for the null terminator */))) return NULL;
+    if (!(mnemonic_str = init_uint8_array(len + 24 /* 23 chars for the spaces between the individual mnemonic words + one char for the null terminus */))) return NULL;
     for (i = 0; i < 23; i++) {
         sprintf(mnemonic_str + strlen(mnemonic_str), "%s ", bip39_wds[wd_ids[i]]);
     }
@@ -2312,64 +2312,64 @@ void get_xpub_child(bnz_t *xprv, uint8_t depth_num, uint32_t index_num, bnz_t *p
     bnz_free(&parent_public_key_hash_fingerprint);
 }
 
-void get_segwit_address(bnz_t *segwit_address, bnz_t *public_key_compressed)
+void get_segwit_address(bnz_t *segwit_address, const bnz_t *public_key_compressed)
 {
-    uint8_t *scriptpubkey_bech32 = NULL, *witness_program = NULL, *segwit_address_str = NULL, chk_str[7], bech32_alpha[33] = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+    uint8_t *scriptpubkey_bech32_str = NULL, *witness_program_str = NULL, *segwit_address_str = NULL, chk_str[7], bech32_alpha[33] = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
     uint32_t i, len, chk = 1;
 
     bnz_t tmp;
     bnz_init(&tmp);
-    get_ripemd160_sha256(&tmp, public_key_compressed, 20); // tmp = ripemd160(sha256(public_key_compressed)), 20  bytes, big endian order
-    bnz_reverse_digits(&tmp); // convert tmp to little endian order in preparation for generating bech32 format string
+    get_ripemd160_sha256(&tmp, public_key_compressed, 20); // tmp = ripemd160(sha256(public_key_compressed)), 20 bytes, little endian order
+    bnz_reverse_digits(&tmp); // convert tmp.digits to big endian order in preparation for generating the corresponding bech32 format string
 
-    if (!(scriptpubkey_bech32 = get_base_n_str(&tmp, 32, bech32_alpha, &len))) return; // scriptpubkey_bech32 = tmp in bech32 format, little endian order
-    if (!(witness_program = init_uint8_array(45))) return; // prepare uint8_t array for witness_program, length = expanded hrp (5) + version (1) + scriptpubkey_bech32 (32) + zero padding (6) + null terminator (1)
-    if (!(segwit_address_str = init_uint8_array(27))) return; // prepare uint8_t array for numerical part of segwit_address, length = scriptpubkey_bech32 (20) + checksum (6) + null terminator (1)
+    if (!(scriptpubkey_bech32_str = get_base_n_str(&tmp, 32, bech32_alpha, &len))) return; // scriptpubkey_bech32_str = tmp.digits in bech32 format, big endian order
+    if (!(witness_program_str = init_uint8_array(45))) return; // prepare uint8_t array for witness_program_str, length = expanded hrp (5) + version (1) + scriptpubkey_bech32_str (32) + zero padding (6) + null terminus (1)
+    if (!(segwit_address_str = init_uint8_array(27))) return; // prepare uint8_t array for numerical part of segwit_address, length = scriptpubkey_bech32_str (20) + checksum (6) + null terminus (1)
 
     /*
 
-    witness program comprises four elements: expanded hrp + version + scriptpubkey in bech32 + padding
+    The witness program comprises four elements: expanded hrp + version + scriptpubkey in bech32 + padding.
 
-    expanded hrp = "rrqzr", prefix to witness program
+    Expanded hrp = "rrqzr", the prefix to witness program.
 
-    derivation:
+    Derivation:
 
     hrp = "bc" = 99 98 in ascii = 01100010 01100011 in binary
-    expanded hrp = 00011 00011 00000 00010 00011, top 3 bits of 'b' and 'c' in ascii padded left to 5 bits + 5 zero bits separator + bottom 5 bits of 'b' and 'c' in ascii
-    numerical values of expanded hrp = 3, 3, 0, 2, 3
-    bech32 encoding of expanded hrp = r, r, q, z, r
+    Expanded hrp = 00011 00011 00000 00010 00011, top 3 bits of 'b' and 'c' in ascii padded left to 5 bits + 5 zero bits separator + bottom 5 bits of 'b' and 'c' in ascii
+    Numerical values of expanded hrp = 3, 3, 0, 2, 3
+    Bech32 encoding of expanded hrp = r, r, q, z, r
 
-    expanded hrp is followed by a 'q' zero digit representing the segwit version number
+    The expanded hrp is followed by a 'q' zero digit representing the segwit version number.
 
-    "qqqqqq" = 6 zero digits in bech32
+    "qqqqqq" = 6 zero digits in Bech32.
 
     */
 
-    sprintf(witness_program, "rrqzrqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"); // witness_program = "rrqzrq" + 32 zeroes ('q') to allow for offset in case strlen(scriptpubkey_bech32) < 32
-    sprintf(witness_program + 38 - strlen(scriptpubkey_bech32), "%sqqqqqq", scriptpubkey_bech32); // witness_program = "rrqzrq" + zero ('q') padding if required + scriptpubkey_bech32 + "qqqqqq"
+    sprintf(witness_program_str, "rrqzrqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"); // witness_program_str = "rrqzrq" + 32 zeroes ('q') to allow for offset in case strlen(scriptpubkey_bech32_str) < 32
+    sprintf(witness_program_str + 38 - strlen(scriptpubkey_bech32_str), "%sqqqqqq", scriptpubkey_bech32_str); // witness_program_str = "rrqzrq" + zero ('q') padding if required + scriptpubkey_bech32_str + "qqqqqq"
 
     //get checksum, occupying 30 bits of uint32_t
-    for (i = 0; i < strlen(witness_program); i++) {
-        chk = segwit_checksum_update(chk, char_32[witness_program[i]]); // dgt = decimal value (0 - 31) corresponding to bech32 character
+    for (i = 0; i < strlen(witness_program_str); i++) {
+        chk = segwit_checksum_update(chk, char_32[witness_program_str[i]]); // dgt = decimal value (0 - 31) corresponding to bech32 character
     }
-    chk ^= 1; //finalise checksum, xor with 1 means standard segwit
+    chk ^= 1; // finalise checksum, xor with 1 means standard segwit
 
     // convert checksum from 30 bits formatted as uint32_t (big endian order) into 6 x 5 bit digits in bech32, stored as uint8_t array, little endian order
     for (i = 0; i < 6; i++) {
         chk_str[i] = bech32_alpha[(chk >> ((5 - i) * 5)) & 31];
     }
 
-    sprintf(segwit_address_str, "%s%s", scriptpubkey_bech32, chk_str); // numerical part of address = scriptpubkey_bech32 (20) + checksum (6)
+    sprintf(segwit_address_str, "%s%s", scriptpubkey_bech32_str, chk_str); // numerical part of address = scriptpubkey_bech32_str (20) + checksum (6)
     bnz_set_str(segwit_address, segwit_address_str, 32); // convert segwit_address_str (numerical part of standard segwit address) into standard bnz_t, will be printed with non-bech32 prefix "bc1q"
 
     // free resources
-    free(scriptpubkey_bech32);
-    free(witness_program);
+    free(scriptpubkey_bech32_str);
+    free(witness_program_str);
     free(segwit_address_str);
     bnz_free(&tmp);
 }
 
-uint32_t segwit_checksum_update(uint32_t chk, uint8_t dgt)
+uint32_t segwit_checksum_update(const uint32_t chk, const uint8_t dgt)
 {
     uint8_t top = (chk >> 25); // top = top 5 bits of current chk, formatted as uint8_t
     uint32_t btm = (chk & 33554431) << 5; // btm = bottom 25 bits of current chk (from bitwise AND with 0x1ffffff) padded with 5 zeros at lsb end, formatted as uint32_t
@@ -2382,45 +2382,45 @@ uint32_t segwit_checksum_update(uint32_t chk, uint8_t dgt)
     return btm; // return btm, the new value of chk, formatted as uint32_t
 }
 
-void print_segwit_address(bnz_t *segwit_address, const uint8_t *str)
+void print_segwit_address(const bnz_t *segwit_address, const uint8_t *str)
 {
     uint8_t *full_string = NULL, *segwit_address_str = NULL;
     uint32_t len;
 
     /*
     
-    segwit addresses have a prefix "bc1q" which contains non-bech32 characters
-    and is added to the numercial part of the address.
+    Segwit P2WPKH addresses have a prefix "bc1q" which contains non-Bech32 characters
+    and is concatenate with the numercial part of the address.
     
-    the numerical part is a concatenation of the ripemd160 sha256 double hash
-    of the compressed public key encoded in bech32, and a 6 character checksum,
-    also in bech32.
+    The numerical part is itself a concatenation of the RIPEMD160-SHA256 double
+    hash of the compressed public key encoded in Bech32, and a 6 character checksum,
+    also formatted in Bech32.
 
-    in bitcoin_math, the numerical part is treated as a number and is stored in
-    a standard bnz_t, and the prefix is only added when the segwit address is
+    In bitcoin_math, the numerical part is treated as a number and is stored in
+    a standard bnz_t, and the prefix is only added when the Segwit P2WPKH address is
     printed to the screen.
 
-    however, ripemd160 digests (and their bech32 representations) can have
-    zeroes at the msb end, causing issues when the numerical part is  treated
-    as a number.
+    However, RIPEMD160 digests (and their Bech32 encodings) can have zeroes at the
+    msb end, causing issues with printing when the numerical part is treated as a
+    number because leading zeroes are not printed.
 
-    bitcoin_math therefore incorporates this dedicated print function for segwit
-    addresses which ensures that, where the numerical part of a segwit addresses
+    bitcoin_math therefore incorporates this dedicated print function for Segwit
+    P2WPKH addresses which ensures that, where the numerical part of the address
     has one or more zeroes at the msb end, it is padded with 'q' characters
-    (representing zeroes) before the prefix is appended. 
+    (representing zeroes in Bech32) before the prefix is appended. 
     
     */
 
     bnz_t tmp;
     bnz_init(&tmp);
-    bnz_set_bnz(&tmp, segwit_address); // tmp = local mutable copy of segwit_address bnz_t in standard little endian order 
+    bnz_set_bnz(&tmp, segwit_address); // tmp = local mutable copy of segwit_address bnz_t with tmp.digits in standard little endian order 
     bnz_reverse_digits(&tmp); // convert tmp.digits to big endian order
 
-    if (!(full_string = init_uint8_array(strlen(str) + 43))) return; // prepare full_string = str + "bc1q" + 'q' padding (to 42 digits) + null terminus
-    if (!(segwit_address_str = get_base_n_str(&tmp, 32, "qpzry9x8gf2tvdw0s3jn54khce6mua7l", &len))) return; // get bech32 string
+    if (!(full_string = init_uint8_array(strlen(str) + 43))) return; // prepare full_string to receive str + 42 characters + null terminator
+    if (!(segwit_address_str = get_base_n_str(&tmp, 32, "qpzry9x8gf2tvdw0s3jn54khce6mua7l", &len))) return; // get bech32 string encoding of segwit_address_str in big endian order
 
-    sprintf(full_string, "%sbc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq", str); // full_string = str + "bc1q" + 38 x 'q'
-    sprintf(full_string + strlen(str) + 42 - len, segwit_address_str); // add bech32 string with appropriate offset to ensure 'q' padding at msb end
+    sprintf(full_string, "%sbc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq", str); // full_string = str + "bc1q" + 38 x 'q' + null terminator
+    sprintf(full_string + strlen(str) + 42 - len, segwit_address_str); // concatenate Bech32 string with appropriate offset to ensure 'q' padding at msb end if required
 
     printf("%s\n", full_string); // print final string
 
@@ -3294,7 +3294,7 @@ void menu_4_functions(const char *version)
 
 void menu_4_1_p2pkh(const char *version)
 {
-    uint8_t public_key_compressed_str[69]; // optional "0x" + 33 bytes + null terminator
+    uint8_t public_key_compressed_str[69]; // optional "0x" + 33 bytes + null terminus
     bnz_t public_key_compressed, p2pkh;
 
     bnz_init(&public_key_compressed);
@@ -3381,7 +3381,7 @@ void menu_4_2_validate_mnemonic_phrase_checksum(const char *version) // check va
 
 void menu_4_3_private_key_to_WIF(const char *version)
 {
-    uint8_t private_key_str[67]; // optional "0x" + 32 bytes + null terminator
+    uint8_t private_key_str[67]; // optional "0x" + 32 bytes + null terminus
     bnz_t private_key_wif, private_key, entropy, chain_code, public_key_compressed, p2pkh, fingerprint;
     PT public_key;
     
@@ -3488,7 +3488,7 @@ void menu_4_3_private_key_to_WIF(const char *version)
 
 void menu_4_4_WIF_to_private_key(const char *version)
 {
-    uint8_t wif_str[53]; // 51 or 52 Bitcoin base 58 characters + null terminator
+    uint8_t wif_str[53]; // 51 or 52 Bitcoin base 58 characters + null terminus
     bnz_t private_key_wif, private_key, public_key_compressed, p2pkh;
 
     PT public_key;
@@ -3728,7 +3728,7 @@ void menu_4_7_secp256k1_scalar_multiplication(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.11, 2025-05-22";
+    static char *version = "bitcoin_math\nv0.11, 2025-05-26";
     int menu, running = 1;
     while (running) {
         system("cls");
