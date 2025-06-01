@@ -684,12 +684,6 @@ void bnz_print(const bnz_t *, int32_t, const char *);
 void bnz_free(bnz_t *);
 
 int8_t get_digit(const uint8_t *, size_t, uint8_t);
-int8_t get_val_from_char_d(uint8_t);
-int8_t get_val_from_char_16(uint8_t);
-int8_t get_val_from_char_32(uint8_t);
-int8_t get_val_from_char_58(uint8_t);
-int8_t get_val_from_char_64(uint8_t);
-
 uint8_t *get_base_n_str(const bnz_t *, uint32_t, const char *, uint32_t *);
 
 void bnz_set_i32(bnz_t *, int32_t);
@@ -721,7 +715,7 @@ void bnz_mod_bnz(bnz_t *, const bnz_t *, const bnz_t *);
 void bnz_mod_pow(bnz_t *, const bnz_t *, const bnz_t *, const bnz_t *);
 void bnz_modular_multiplicative_inverse(bnz_t *, const bnz_t *, const bnz_t *);
 
-int8_t char_16[256] = {
+int8_t char_16[256] = { // ascii - hex
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
@@ -740,7 +734,7 @@ int8_t char_16[256] = {
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1
 };
 
-int8_t char_32[256] = {
+int8_t char_32[256] = { // ascii - Bech32
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
@@ -759,7 +753,7 @@ int8_t char_32[256] = {
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1
 };
 
-int8_t char_58[256] = {
+int8_t char_58[256] = { // ascii - Bitcoin base 58
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
@@ -778,7 +772,7 @@ int8_t char_58[256] = {
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1
 };
 
-int8_t char_64[256] = {
+int8_t char_64[256] = { // ascii - base 64
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  62,  -1,  -1,  -1,  63,
@@ -797,7 +791,7 @@ int8_t char_64[256] = {
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1
 };
 
-int8_t char_d[256] = {
+int8_t char_d[256] = {  // ascii - general
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
     -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
@@ -1933,8 +1927,8 @@ void print_segwit_p2wpkh_address(const bnz_t *, const uint8_t *);
 uint8_t *get_salt(const char *passphrase) // generate salt string from passphrase
 {
     uint8_t *salt = NULL;
-    if (!(salt = init_uint8_array(strlen(passphrase) + 12))) return NULL; // strlen("mnemonic") + sizeof(uint32_t)
-    sprintf(salt, "mnemonic%s", passphrase); // concatenate "mnemonic" with passphrase string
+    if (!(salt = init_uint8_array(strlen(passphrase) + 12))) return NULL; // strlen(passphrase) + strlen("mnemonic") + sizeof(uint32_t)
+    sprintf(salt, "mnemonic%s", passphrase); // concatenate "mnemonic" with passphrase string, plus 4 zero bytes
     salt[strlen(passphrase) + 11] = 1; // last 4 bytes = 1 formatted as uint32_t
     return salt;
 }
@@ -1969,36 +1963,36 @@ void get_sha256_sha256(bnz_t *res, const bnz_t *a, size_t len) // res = first le
     bnz_free(&aa); // free aa resources
 }
 
-void bnz_256_bit_rnd(bnz_t *rnd) // generate pseudo random 256 bit entropy
+void bnz_256_bit_rnd(bnz_t *rnd) // generate pseudo random 256 bit entropy as a bnz_t
 {
     uint32_t random;
     size_t i;
     bnz_resize(rnd, 32, 0);
     for (i = 0; i < 32; i++) {
         rand_s(&random); // on non-Windows systems, change this to some other source of cryptographically secure random numbers
-        rnd->digits[i] = random & 255;
+        rnd->digits[i] = random & 255; // rnd->digits[i] = last byte of random
     }
 }
 
-void entropy_checksum(bnz_t *entropy) // append checksum byte to 256 bits of entropy
+void entropy_checksum(bnz_t *entropy) // append checksum byte to the lsb end of 256 bits of entropy as a bnz_t
 {
     uint8_t sha256_digest[32];
-    bnz_t tmp;
-    bnz_init(&tmp);
+    bnz_t tmp; // tmp = local mutable copy of entropy
+    bnz_init(&tmp); // initiate tmp
 
-    bnz_set_bnz(&tmp, entropy);
-    bnz_resize(&tmp, 32, 1);
-    bnz_reverse_digits(&tmp);
-    sha256(tmp.digits, tmp.size, sha256_digest);
+    bnz_set_bnz(&tmp, entropy); // copy entropy into tmp
+    bnz_resize(&tmp, 32, 1); // ensure that tmp is 32 bytes
+    bnz_reverse_digits(&tmp); // convert tmp.digits to big endian order
+    sha256(tmp.digits, tmp.size, sha256_digest); // sha256_digest = sha256[tmp.digits]
 
-    bnz_concatenate_ui8(&tmp, &tmp, sha256_digest[0], 0);
-    bnz_reverse_digits(&tmp);
+    bnz_concatenate_ui8(&tmp, &tmp, sha256_digest[0], 0); // concatenate first byte of sha256_digest the the lsb end of tmp
+    bnz_reverse_digits(&tmp); // convert tmp.digits to standard little endian order
     
-    bnz_set_bnz(entropy, &tmp);
-    bnz_free(&tmp);
+    bnz_set_bnz(entropy, &tmp); // copy tmp back into entropy
+    bnz_free(&tmp); // free tmp resources
 }
 
-void get_bip39_word_ids_bnz(bnz_t *entropy_chk, uint32_t *wd_ids) // convert 33 bytes into 24 numbers of 11 bits
+void get_bip39_word_ids_bnz(bnz_t *entropy_chk, uint32_t *wd_ids) // convert 33 bytes of entropy + checksum as a bnz_t into 24 numbers of 11 bits
 {
     size_t i;
     bnz_t tmp;
@@ -2125,7 +2119,7 @@ void get_public_key(PT *public_key, bnz_t *public_key_compressed, bnz_t *private
 
     secp256k1_scalar_multiplication(secp256k1, private_key, public_key); // public_key = (secp256k1.G * private_key) mod secp256k1.p
 
-    bnz_resize(&public_key->x, 32, 1); // ensure that the compressed public key is 33 bytes long after concatenation with the evey y / odd y byte
+    bnz_resize(&public_key->x, 32, 1); // ensure that the compressed public key is 32 bytes long before concatenation with the even y / odd y byte
 
     if (bnz_bit_set(&public_key->y, 0) == 0) { // even y
         bnz_concatenate_ui8(public_key_compressed, &public_key->x, 2, 0); // prepend 2
@@ -2167,11 +2161,11 @@ void get_public_key_xy(PT *public_key, bnz_t *public_key_compressed) // regenera
     bnz_set_bnz(&public_key->x, public_key_compressed); // public_key.x = compressed public key
     bnz_resize(&public_key->x, public_key->x.size - 1, 1); // public_key.x = decompressed public key, byte at msb end removed
 
-    bnz_set_bnz(&y_sq, &public_key->x); //y_sq = public_key.x
-    bnz_multiply_bnz(&y_sq, &y_sq, &public_key->x); //y_sq = public_key.x^2
-    bnz_multiply_bnz(&y_sq, &y_sq, &public_key->x); //y_sq = public_key.x^3
-    bnz_add_i32(&y_sq, &y_sq, 7); //y_sq = public_key.x^3 + 7
-    bnz_mod_bnz(&y_sq, &y_sq, &secp256k1.p); //y_sq mod secp256k1.p = (public_key.x^3 + 7) mod secp256k1.p
+    bnz_set_bnz(&y_sq, &public_key->x); // y_sq = public_key.x
+    bnz_multiply_bnz(&y_sq, &y_sq, &public_key->x); // y_sq = public_key.x^2
+    bnz_multiply_bnz(&y_sq, &y_sq, &public_key->x); // y_sq = public_key.x^3
+    bnz_add_i32(&y_sq, &y_sq, 7); // y_sq = public_key.x^3 + 7
+    bnz_mod_bnz(&y_sq, &y_sq, &secp256k1.p); // y_sq mod secp256k1.p = (public_key.x^3 + 7) mod secp256k1.p
 
     bnz_mod_pow(&public_key->y, &y_sq, &exp, &secp256k1.p); // y mod secp256k1.p = (y_sq^((secp256k1.p + 1) / 4)) mod secp256k1.p
 
@@ -3744,7 +3738,7 @@ void menu_4_7_secp256k1_scalar_multiplication(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.11, 2025-05-26";
+    static char *version = "bitcoin_math\nv0.12, 2025-06-01";
     int menu, running = 1;
     while (running) {
         system("cls");
