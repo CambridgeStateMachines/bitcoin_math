@@ -2075,18 +2075,18 @@ void get_seed_from_mnemonic_phrase(bnz_t *seed, const char *mnemonic, const char
 {
     uint8_t tmp[64], *salt = NULL;
     size_t i, j;
-    bnz_resize(seed, 64, 0);
-    if (!(salt = get_salt(passphrase))) return;
-    hmac_sha512(mnemonic, strlen(mnemonic), salt, strlen(passphrase) + 12, tmp, 64); // 12 = strlen("mnemonic") + 4 bytes of uint32_t
-    memcpy(seed->digits, tmp, 64);
+    bnz_resize(seed, 64, 0); // ensure that seed is 64 bytes
+    if (!(salt = get_salt(passphrase))) return; // salt = "mnemonic" concatenated with passphrase, strlen(salt) = strlen(passphrase) + strlen("mnemonic") + 4 bytes of uint32_t
+    hmac_sha512(mnemonic, strlen(mnemonic), salt, strlen(passphrase) + 12, tmp, 64); // tmp = first hmac(mnemonic, salt)
+    memcpy(seed->digits, tmp, 64); // set seed = result of first hmac process
     for (i = 1; i < 2048; i++) {
-        hmac_sha512(mnemonic, strlen(mnemonic), tmp, 64, tmp, 64);
+        hmac_sha512(mnemonic, strlen(mnemonic), tmp, 64, tmp, 64);  // tmp = hmac(mnemonic, tmp), 2048 times
         for (j = 0; j < 64; j++) {
-            seed->digits[j] = tmp[j] ^ seed->digits[j];
+            seed->digits[j] = tmp[j] ^ seed->digits[j]; // xor current each byte of seed.digits with corresponding byte of current tmp
         }
     }
-    bnz_reverse_digits(seed);
-    free(salt);
+    bnz_reverse_digits(seed); // convert seed.digits to standard little endian order
+    free(salt); // free resources
 }
 
 void get_master_keys(bnz_t *master_private_key, bnz_t *master_chain_code, bnz_t *seed) // generate 32 byte master private key and 32 byte master chain_code
@@ -2341,8 +2341,8 @@ void get_segwit_p2wpkh_address(bnz_t *p2wpkh, const bnz_t *public_key_compressed
 
     */
 
-    sprintf(witness_program_str, "rrqzrqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"); // witness_program_str = "rrqzrq" + 32 zeroes ('q') to allow for offset in case strlen(scriptpubkey_bech32_str) < 32
-    sprintf(witness_program_str + 38 - strlen(scriptpubkey_bech32_str), "%sqqqqqq", scriptpubkey_bech32_str); // witness_program_str = "rrqzrq" + zero ('q') padding if required + scriptpubkey_bech32_str + "qqqqqq"
+    sprintf(witness_program_str, "rrqzrq00000000000000000000000000000000"); // witness_program_str = "rrqzrq" + 32 zeroes to allow for offset in case strlen(scriptpubkey_bech32_str) < 32
+    sprintf(witness_program_str + 38 - strlen(scriptpubkey_bech32_str), "%sqqqqqq", scriptpubkey_bech32_str); // witness_program_str = "rrqzrq" + zero padding if required + scriptpubkey_bech32_str + "qqqqqq"
 
     //get checksum, occupying 30 bits of uint32_t
     for (i = 0; i < strlen(witness_program_str); i++) {
@@ -2386,7 +2386,7 @@ void print_segwit_p2wpkh_address(const bnz_t *p2wpkh, const uint8_t *str)
     /*
     
     Segwit P2WPKH addresses have a prefix "bc1q" which contains non-Bech32 characters
-    and is concatenate with the numercial part of the address.
+    and is concatenated with the numercial part of the address.
     
     The numerical part is itself a concatenation of the RIPEMD160-SHA256 double
     hash of the compressed public key encoded in Bech32, and a 6 character checksum,
@@ -2415,8 +2415,8 @@ void print_segwit_p2wpkh_address(const bnz_t *p2wpkh, const uint8_t *str)
     if (!(full_string = init_uint8_array(strlen(str) + 43))) return; // prepare full_string to receive str + 42 characters + null terminator
     if (!(segwit_address_str = get_base_n_str(&tmp, 32, "qpzry9x8gf2tvdw0s3jn54khce6mua7l", &len))) return; // get bech32 string encoding of segwit_address_str in big endian order
 
-    sprintf(full_string, "%sbc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq", str); // full_string = str + "bc1q" + 38 x 'q' + null terminator
-    sprintf(full_string + strlen(str) + 42 - len, segwit_address_str); // concatenate Bech32 string with appropriate offset to ensure 'q' padding at msb end if required
+    sprintf(full_string, "%sbc1q00000000000000000000000000000000000000", str); // full_string = str + "bc1q" + 38 x '0' + null terminator
+    sprintf(full_string + strlen(str) + 42 - len, segwit_address_str); // concatenate Bech32 string with appropriate offset to ensure '0' padding at msb end if required
 
     printf("%s\n", full_string); // print final string
 
