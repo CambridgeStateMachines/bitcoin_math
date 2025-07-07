@@ -1914,6 +1914,7 @@ void get_seed_from_mnemonic_phrase(bnz_t *, const char *, const char *);
 void get_master_keys(bnz_t *, bnz_t *, const bnz_t *);
 void get_child_normal(bnz_t *, bnz_t *, const bnz_t *, const bnz_t *, const bnz_t *, uint32_t);
 void get_child_hardened(bnz_t *, bnz_t *, const bnz_t *, const bnz_t *, uint32_t);
+void get_hdk_intermediate_values(const bnz_t *, const bnz_t *, char *);
 void get_public_key_compressed(bnz_t *, bnz_t *);
 void get_public_key(PT *, bnz_t *, bnz_t *);
 void get_public_key_xy(PT *, bnz_t *);
@@ -2209,6 +2210,72 @@ void get_child_hardened(bnz_t *child_private_key, bnz_t *child_chain_code, const
     bnz_free(&tmp2);
 
     secp256k1_free(secp256k1);
+}
+
+void get_hdk_intermediate_values(const bnz_t *master_private_key, const bnz_t *master_chain_code, char *hdk_str)
+{
+    char *tok = strtok(hdk_str, "/"), display_str[32]; // split str into an array of indicies
+    uint32_t index, depth = 0;
+    bnz_t parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, child_public_key_compressed, child_xpub;
+
+    bnz_init(&parent_private_key);
+    bnz_init(&parent_chain_code);
+    bnz_init(&parent_public_key_compressed);
+    bnz_init(&child_private_key);
+    bnz_init(&child_chain_code);
+    bnz_init(&child_public_key_compressed);
+    bnz_init(&child_xpub);
+
+    bnz_set_bnz(&parent_private_key, master_private_key);
+    bnz_set_bnz(&parent_chain_code, master_chain_code);
+
+    sprintf(display_str, "m");
+
+    if (strcmp(tok, "m") == 0) {
+        tok = strtok(NULL, "/"); // get first array member
+        while (tok != NULL) { // traverse array
+
+            sprintf(display_str + strlen(display_str), "/"); // update display
+            sprintf(display_str + strlen(display_str), tok); // string
+
+            depth++; // increment depth
+            index = atoi(tok); // extract index from tok, ignoring any "'" indicating hardened child 
+
+            get_public_key_compressed(&parent_public_key_compressed, &parent_private_key); // get parent compressed public key for calculating normal child / xpub 
+
+            if (tok[strlen(tok) - 1] == '\'') { // check for presence of "'" indicating hardened child
+                get_child_hardened(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, index); // if last char of tok is "'", get hardened child
+            } else {
+                get_child_normal(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, index); // if last char of tok is not "'", get normal child
+            }
+
+            get_public_key_compressed(&child_public_key_compressed, &child_private_key); // get compressed public key from child private key
+            get_xpub_child(&child_xpub, depth, index, &parent_public_key_compressed, &child_public_key_compressed, &child_chain_code); // calculate child xpub
+
+            // print results
+            printf("%s\n", display_str);
+            bnz_print(&parent_private_key, 16, "PARENT PRIVATE KEY: ");
+            bnz_print(&parent_chain_code, 16, "PARENT CHAIN CODE: ");
+            bnz_print(&child_private_key, 16, "CHILD PRIVATE KEY: ");
+            bnz_print(&child_chain_code, 16, "CHILD CHAIN CODE: ");
+            bnz_print(&child_xpub, 58, "CHILD XPUB: ");
+            printf("\n");
+
+            // prepare next iteration by setting parent private key and parent chain code to current child private key and child chain code
+            bnz_set_bnz(&parent_private_key, &child_private_key);
+            bnz_set_bnz(&parent_chain_code, &child_chain_code);
+
+            tok = strtok(NULL, "/"); // next array member
+        }
+    }
+
+    bnz_free(&parent_private_key);
+    bnz_free(&parent_chain_code);
+    bnz_free(&parent_public_key_compressed);
+    bnz_free(&child_private_key);
+    bnz_free(&child_chain_code);
+    bnz_free(&child_public_key_compressed);
+    bnz_free(&child_xpub);
 }
 
 void get_public_key_compressed(bnz_t *public_key_compressed, bnz_t *private_key)
@@ -2668,6 +2735,7 @@ void menu_2_child_keys(const char *);
 void menu_2_1_normal_child(const char *);
 void menu_2_2_hardened_child(const char *);
 void menu_2_3_public_child(const char *);
+void menu_2_4_hdk_intermediate_values(const char *);
 void menu_3_base_converter(const char *);
 void menu_4_functions(const char *);
 void menu_4_1_public_key_to_address(const char *);
@@ -2697,7 +2765,7 @@ void get_str_input(char str[], int max_len) // get string from stdin with strlen
     int i = 0, ch;
     while ((ch = getchar()) != '\n' && ch != EOF) {
         // confine ch to the characters up to base 64 or space
-        if (((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '+' || ch == '/' || ch == ' ') && i < max_len) {
+        if (((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '+' || ch == '/' || ch == ' ' || ch == 39 /* apostrophe */ ) && i < max_len) {
             str[i++] = ch;
         }
     }
@@ -2796,22 +2864,23 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
     if (bnz_cmp_bnz(&master_private_key, &secp256k1.n) != -1) { // ensure that master_private_key < Secp256k1.n
         system("cls");
         printf("%s\n\n", version);
-        bnz_print(&entropy, 16, "Entropy: ");
-        printf("\n");
         bnz_print(&master_private_key, 16, "Master private key: ");
         printf("\n");
         printf("This private key is not less than the order of Secp256k1.\n\n");
         printf("It is not possible to generate a public key from this private key.\n\n");
-        printf("Press any key to rerun the command with a different entropy value.\n");
+        printf("Press any key to rerun the command with a different private key value.\n");
         getchar();
 
         bnz_free(&entropy);
         bnz_free(&master_private_key);
         bnz_free(&master_chain_code);
+        bnz_free(&xprv);
         bnz_free(&master_public_key);
         bnz_free(&master_public_key_compressed);
+        bnz_free(&xpub);
         bnz_free(&seed);
         bnz_free(&p2pkh);
+        bnz_free(&p2wpkh);
         bnz_free(&public_key.x);
         bnz_free(&public_key.y);
 
@@ -2828,8 +2897,6 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
 
     printf("\nHDK ADDRESSES:\n");
     
-    //get_wallet_p2pkh_addresses(&seed);
-    //get_wallet_p2wpkh_addresses(&seed);
     get_wallet_p2pkh_addresses(&master_private_key, &master_chain_code);
     get_wallet_p2wpkh_addresses(&master_private_key, &master_chain_code);
 
@@ -2861,8 +2928,9 @@ void menu_2_child_keys(const char *version)
     printf("1. Normal child\n");
     printf("2. Hardened child\n");
     printf("3. Child public key\n");
+    printf("4. HDK intermediate values\n");
     printf("\n");
-    menu = get_num_input(1, 0, 3);
+    menu = get_num_input(1, 0, 4);
     switch (menu) {
         case 1:
             menu_2_1_normal_child(version);
@@ -2872,6 +2940,9 @@ void menu_2_child_keys(const char *version)
             break;
         case 3:
             menu_2_3_public_child(version);
+            break;
+        case 4:
+            menu_2_4_hdk_intermediate_values(version);
             break;
         default:
             break;
@@ -2933,6 +3004,40 @@ void menu_2_1_normal_child(const char *version)
         bnz_print(&entropy, 16, "Entropy: ");
         bnz_print(&parent_private_key, 16, "Parent private key: ");
         bnz_print(&parent_chain_code, 16, "Parent chain code: ");
+    }
+
+    if (bnz_cmp_bnz(&parent_private_key, &secp256k1.n) != -1) { // ensure that parent_private_key < Secp256k1.n
+        system("cls");
+        printf("%s\n\n", version);
+        bnz_print(&parent_private_key, 16, "Parent private key: ");
+        printf("\n");
+        printf("This private key is not less than the order of Secp256k1.\n\n");
+        printf("It is not possible to generate a public key from this private key.\n\n");
+        printf("Press any key to rerun the command with a different private key value.\n");
+        getchar();
+
+        bnz_free(&tmp);
+        bnz_free(&index);
+        bnz_free(&entropy);
+        bnz_free(&parent_private_key);
+        bnz_free(&parent_chain_code);
+        bnz_free(&parent_public_key_compressed);
+        bnz_free(&child_private_key);
+        bnz_free(&child_chain_code);
+        bnz_free(&xprv);
+        bnz_free(&child_public_key_compressed);
+        bnz_free(&xpub);
+        bnz_free(&p2pkh);
+        bnz_free(&p2wpkh);
+
+        bnz_free(&parent_public_key_pt.x);
+        bnz_free(&parent_public_key_pt.y);
+        bnz_free(&child_public_key_pt.x);
+        bnz_free(&child_public_key_pt.y);
+
+        secp256k1_free(secp256k1);
+
+        menu_2_1_normal_child(version);
     }
 
     printf("\n");
@@ -3066,6 +3171,36 @@ void menu_2_2_hardened_child(const char *version)
         bnz_print(&entropy, 16, "Entropy: ");
         bnz_print(&parent_private_key, 16, "Parent private key: ");
         bnz_print(&parent_chain_code, 16, "Parent chain code: ");
+    }
+
+    if (bnz_cmp_bnz(&parent_private_key, &secp256k1.n) != -1) { // ensure that parent_private_key < Secp256k1.n
+        system("cls");
+        printf("%s\n\n", version);
+        bnz_print(&parent_private_key, 16, "Parent private key: ");
+        printf("\n");
+        printf("This private key is not less than the order of Secp256k1.\n\n");
+        printf("It is not possible to generate a public key from this private key.\n\n");
+        printf("Press any key to rerun the command with a different private key value.\n");
+
+        getchar();
+
+        bnz_free(&tmp);
+        bnz_free(&index);
+        bnz_free(&entropy);
+        bnz_free(&parent_private_key);
+        bnz_free(&parent_chain_code);
+        bnz_free(&parent_public_key_compressed);
+        bnz_free(&child_private_key);
+        bnz_free(&child_chain_code);
+        bnz_free(&xprv);
+        bnz_free(&child_public_key_compressed);
+        bnz_free(&xpub);
+        bnz_free(&p2pkh);
+        bnz_free(&p2wpkh);
+    
+        secp256k1_free(secp256k1);
+
+        menu_2_2_hardened_child(version);
     }
 
     printf("\n");
@@ -3279,6 +3414,93 @@ void menu_2_3_public_child(const char *version)
     bnz_free(&parent_public_key_pt.y);
     bnz_free(&child_public_key_pt.x);
     bnz_free(&child_public_key_pt.y);
+
+    secp256k1_free(secp256k1);
+
+    printf("press any key to continue...");
+
+    getchar();
+}
+
+void menu_2_4_hdk_intermediate_values(const char *version)
+{
+    char hdk_str[32], master_private_key_str[67], master_chain_code_str[67];
+
+    bnz_t entropy, master_private_key, master_chain_code;
+
+    SECP256K1 secp256k1;
+
+    bnz_init(&entropy);
+    bnz_init(&master_private_key);
+    bnz_init(&master_chain_code);
+
+    secp256k1 = secp256k1_init();
+
+    system("cls");
+    printf("%s\n\n", version);
+
+    printf("Master private key (press 'Enter' for random): ");
+    get_str_input(master_private_key_str, 66);
+
+    if (isalnum(master_private_key_str[0])) {
+        printf("%s\n", master_private_key_str);
+        bnz_set_str(&master_private_key, master_private_key_str, 16);
+        system("cls");
+        printf("%s\n\n", version);
+        bnz_print(&master_private_key, 16, "Master private key: ");
+        printf("Master chain code: ");
+        get_str_input(master_chain_code_str, 66);
+        bnz_set_str(&master_chain_code, master_chain_code_str, 16);
+        system("cls");
+        printf("%s\n\n", version);
+        bnz_print(&master_private_key, 16, "Master private key: ");
+        bnz_print(&master_chain_code, 16, "Master chain code: ");
+    } else {
+        get_random_master_keys(&entropy, &master_private_key, &master_chain_code);
+        system("cls");
+        printf("%s\n\n", version);
+        bnz_print(&entropy, 16, "Entropy: ");
+        bnz_print(&master_private_key, 16, "Master private key: ");
+        bnz_print(&master_chain_code, 16, "Master chain code: ");
+    }
+
+    if (bnz_cmp_bnz(&master_private_key, &secp256k1.n) != -1) { // ensure that master_private_key < Secp256k1.n
+        system("cls");
+        printf("%s\n\n", version);
+        bnz_print(&master_private_key, 16, "Master private key: ");
+        printf("\n");
+        printf("This private key is not less than the order of Secp256k1.\n\n");
+        printf("It is not possible to generate a public key from this private key.\n\n");
+        printf("Press any key to rerun the command with a different private key value.\n");
+
+        getchar();
+
+        bnz_free(&entropy);
+        bnz_free(&master_private_key);
+        bnz_free(&master_chain_code);
+    
+        secp256k1_free(secp256k1);
+
+        menu_2_4_hdk_intermediate_values(version);
+    }
+
+    printf("\n");
+    printf("HDK string (e.g. m/44'/0'/0'/0/0): ");
+    get_str_input(hdk_str, 31);
+
+    system("cls");
+    printf("%s\n\n", version);
+    if (!bnz_is_zero(&entropy)) bnz_print(&entropy, 16, "ENTROPY: ");
+    bnz_print(&master_private_key, 16, "MASTER PRIVATE KEY: ");
+    bnz_print(&master_chain_code, 16, "MASTER CHAIN CODE: ");
+    printf("HDK STRING: %s\n", hdk_str);
+    printf("\n");
+
+    get_hdk_intermediate_values(&master_private_key, &master_chain_code, hdk_str);
+
+    bnz_free(&entropy);
+    bnz_free(&master_private_key);
+    bnz_free(&master_chain_code);
 
     secp256k1_free(secp256k1);
 
@@ -3610,13 +3832,11 @@ void menu_4_3_private_key_to_WIF(const char *version)
     if (bnz_cmp_bnz(&private_key, &secp256k1.n) != -1) { // ensure that private_key < Secp256k1.n
         system("cls");
         printf("%s\n\n", version);
-        bnz_print(&entropy, 16, "Entropy: ");
-        printf("\n");
         bnz_print(&private_key, 16, "Private key: ");
         printf("\n");
         printf("This private key is not less than the order of Secp256k1.\n\n");
         printf("It is not possible to generate a public key from this private key.\n\n");
-        printf("Press any key to rerun the command with a different entropy value.\n");
+        printf("Press any key to rerun the command with a different private key value.\n");
 
         getchar();
 
@@ -3624,6 +3844,11 @@ void menu_4_3_private_key_to_WIF(const char *version)
         bnz_free(&private_key);
         bnz_free(&entropy);
         bnz_free(&chain_code);
+        bnz_free(&public_key_compressed);
+        bnz_free(&p2pkh);
+        bnz_free(&public_key.x);
+        bnz_free(&public_key.y);
+        bnz_free(&fingerprint);
     
         secp256k1_free(secp256k1);
 
@@ -3920,7 +4145,7 @@ void menu_4_7_secp256k1_scalar_multiplication(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.14, 2025-06-23";
+    static char *version = "bitcoin_math\nv0.15, 2025-07-07";
     int menu, running = 1;
     while (running) {
         system("cls");
