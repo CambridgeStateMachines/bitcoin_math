@@ -2244,6 +2244,7 @@ void get_hdk_intermediate_values(const bnz_t *master_private_key, const bnz_t *m
             get_public_key_compressed(&parent_public_key_compressed, &parent_private_key); // get parent compressed public key for calculating normal child / xpub 
 
             if (tok[strlen(tok) - 1] == '\'') { // check for presence of "'" indicating hardened child
+                if (index < 2147483648) index += 2147483648;
                 get_child_hardened(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, index); // if last char of tok is "'", get hardened child
             } else {
                 get_child_normal(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, index); // if last char of tok is not "'", get normal child
