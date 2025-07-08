@@ -2571,7 +2571,7 @@ void get_xprv_child(bnz_t *xprv, uint8_t depth_num, uint32_t index_num, bnz_t *p
     bnz_free(&parent_public_key_hash_fingerprint);
 }
 
-void get_xpub_child(bnz_t *xprv, uint8_t depth_num, uint32_t index_num, bnz_t *parent_public_key_compressed, bnz_t *child_public_key_compressed, bnz_t *child_chain_code)
+void get_xpub_child(bnz_t *xpub, uint8_t depth_num, uint32_t index_num, bnz_t *parent_public_key_compressed, bnz_t *child_public_key_compressed, bnz_t *child_chain_code)
 {
     bnz_t chk, index, parent_public_key_hash_fingerprint;
     bnz_init(&chk);
@@ -2586,14 +2586,14 @@ void get_xpub_child(bnz_t *xprv, uint8_t depth_num, uint32_t index_num, bnz_t *p
     bnz_resize(child_public_key_compressed, 33, 1); // ensure child_public_key_compressed is 33 bytes
     bnz_resize(child_chain_code, 32, 1); // ensure child_chain_code is 32 bytes
 
-    bnz_set_str(xprv, "0488b21e", 16); // 0x0488b21e
-    bnz_concatenate_ui8(xprv, xprv, depth_num, 1); // append depth byte at lsb end
-    bnz_concatenate_bnz(xprv, xprv, &parent_public_key_hash_fingerprint, 1); // append four byte parent_public_key_hash_fingerprint at lsb end
-    bnz_concatenate_bnz(xprv, xprv, &index, 1); // append four byte index at lsb end
-    bnz_concatenate_bnz(xprv, xprv, child_chain_code, 1); // append 32 byte child_chain_code at lsb end
-    bnz_concatenate_bnz(xprv, xprv, child_public_key_compressed, 1); // append 33 byte child_public_key_compressed at lsb end
-    get_sha256_sha256(&chk, xprv, 4); // get 4 byte checksum
-    bnz_concatenate_bnz(xprv, xprv, &chk, 1); // append checksum at lsb end
+    bnz_set_str(xpub, "0488b21e", 16); // 0x0488b21e
+    bnz_concatenate_ui8(xpub, xpub, depth_num, 1); // append depth byte at lsb end
+    bnz_concatenate_bnz(xpub, xpub, &parent_public_key_hash_fingerprint, 1); // append four byte parent_public_key_hash_fingerprint at lsb end
+    bnz_concatenate_bnz(xpub, xpub, &index, 1); // append four byte index at lsb end
+    bnz_concatenate_bnz(xpub, xpub, child_chain_code, 1); // append 32 byte child_chain_code at lsb end
+    bnz_concatenate_bnz(xpub, xpub, child_public_key_compressed, 1); // append 33 byte child_public_key_compressed at lsb end
+    get_sha256_sha256(&chk, xpub, 4); // get 4 byte checksum
+    bnz_concatenate_bnz(xpub, xpub, &chk, 1); // append checksum at lsb end
 
     bnz_free(&chk);
     bnz_free(&index);
@@ -2645,7 +2645,7 @@ void get_segwit_p2wpkh_address(bnz_t *p2wpkh, const bnz_t *public_key_compressed
 
     */
 
-    sprintf(witness_program_str, "rrqzrq00000000000000000000000000000000"); // witness_program_str = "rrqzrq" + 32 zeroes to allow for offset in case strlen(scriptpubkey_bech32_str) < 32
+    sprintf(witness_program_str, "rrqzrqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"); // witness_program_str = "rrqzrq" + 32 zeroes to allow for offset in case strlen(scriptpubkey_bech32_str) < 32
     sprintf(witness_program_str + 38 - strlen(scriptpubkey_bech32_str), "%sqqqqqq", scriptpubkey_bech32_str); // witness_program_str = "rrqzrq" + zero padding if required + scriptpubkey_bech32_str + "qqqqqq"
 
     //get checksum, occupying 30 bits of uint32_t
@@ -2719,8 +2719,8 @@ void print_segwit_p2wpkh_address(const bnz_t *p2wpkh, const uint8_t *str)
     if (!(full_string = init_uint8_array(strlen(str) + 43))) return; // prepare full_string to receive str + 42 characters + null terminator
     if (!(segwit_address_str = get_base_n_str(&tmp, 32, "qpzry9x8gf2tvdw0s3jn54khce6mua7l", &len))) return; // get bech32 string encoding of segwit_address_str in big endian order
 
-    sprintf(full_string, "%sbc1q00000000000000000000000000000000000000", str); // full_string = str + "bc1q" + 38 x '0' + null terminator
-    sprintf(full_string + strlen(str) + 42 - len, segwit_address_str); // concatenate Bech32 string with appropriate offset to ensure '0' padding at msb end if required
+    sprintf(full_string, "%sbc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq", str); // full_string = str + "bc1q" + 38 x 'q' + null terminator
+    sprintf(full_string + strlen(str) + 42 - len, segwit_address_str); // concatenate Bech32 string with appropriate offset to ensure 'q' padding at msb end if required
 
     printf("%s\n", full_string); // print final string
 
