@@ -3742,10 +3742,10 @@ void menu_4_functions(const char *version)
     int menu;
     system("cls");
     printf("%s\n\n", version);
-    printf("1. Public key to P2PKH and P2WPKH\n");
+    printf("1. Public key to P2PKH, P2SH-P2WPKH and P2WPKH\n");
     printf("2. Validate mnemonic phrase checksum\n");
-    printf("3. Private key to WIF / public key / P2PKH / P2WPKH address\n");
-    printf("4. WIF to private key / public key / P2PKH / P2WPKH address\n");
+    printf("3. Private key to WIF / public key / P2PKH / P2SH-P2WPKH / P2WPKH address\n");
+    printf("4. WIF to private key / public key / P2PKH / P2SH-P2WPKH / P2WPKH address\n");
     printf("5. Secp256k1 point addition\n");
     printf("6. Secp256k1 point doubling\n");
     printf("7. Secp256k1 scalar multiplication\n");
