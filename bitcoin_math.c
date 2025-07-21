@@ -1919,7 +1919,8 @@ void get_public_key_compressed(bnz_t *, bnz_t *);
 void get_public_key(PT *, bnz_t *, bnz_t *);
 void get_public_key_xy(PT *, bnz_t *);
 void get_random_master_keys(bnz_t *, bnz_t *, bnz_t *);
-void get_p2pkh_address(bnz_t *, bnz_t *);
+void get_p2pkh_address(bnz_t *, bnz_t *, uint32_t *);
+void print_p2pkh_address(const bnz_t *, const uint8_t *, uint32_t);
 void get_p2sh_p2wpkh_address(bnz_t *, bnz_t *);
 void get_p2wpkh_address(bnz_t *, const bnz_t *);
 uint32_t p2wpkh_checksum_update(uint32_t, uint8_t);
@@ -2395,16 +2396,41 @@ void get_random_master_keys(bnz_t *entropy, bnz_t *master_private_key, bnz_t *ma
     bnz_free(&seed);
 }
 
-void get_p2pkh_address(bnz_t *p2pkh, bnz_t *public_key_compressed) // get p2pkh address from compressed public key
+void get_p2pkh_address(bnz_t *p2pkh, bnz_t *public_key_compressed, uint32_t *p2pkh_leading_zeros) // get p2pkh address from compressed public key
 {
+    uint32_t original_len;
     bnz_t fingerprint;
     bnz_init(&fingerprint);
-    get_ripemd160_sha256(p2pkh, public_key_compressed, 20); // set p2pkh to ripemd160(sha256(public_key_compressed.digits))
-    bnz_concatenate_ui8(p2pkh, p2pkh, 0, 0); // concatenate 0 byte to msb end of p2pkh.digits
+    get_ripemd160_sha256(p2pkh, public_key_compressed, 20); // set p2pkh to ripemd160(sha256(public_key_compressed.digits)), p2pkh->size = 20
+    bnz_concatenate_ui8(p2pkh, p2pkh, 0, 0); // concatenate 0 byte to msb end of p2pkh.digits, p2pkh->size = 21
     get_sha256_sha256(&fingerprint, p2pkh, 4); // set fingerprint to first four bytes of sha256(sha256(p2pkh.digits))
-    bnz_concatenate_bnz(p2pkh, p2pkh, &fingerprint, 1); // concatenate fingerprint to lsb end of p2pkh
-    bnz_trim(p2pkh); // remove zero value bytes from msb end of p2pkh
+    bnz_concatenate_bnz(p2pkh, p2pkh, &fingerprint, 1); // concatenate fingerprint to lsb end of p2pkh, p2pkh->size = 25
+    bnz_trim(p2pkh); // remove zero value bytes from msb end of p2pkh, p2pkh->size reduces by at least 1
+    (*p2pkh_leading_zeros) = 25 - p2pkh->size; // number of leading zeros = 25 - p2pkh->size after trimming leading zeros
     bnz_free(&fingerprint); // free fingerprint
+}
+
+void print_p2pkh_address(const bnz_t *p2pkh, const uint8_t *str, uint32_t p2pkh_leading_zeros)
+{
+    uint8_t *full_string = NULL, *p2pkh_address_str = NULL;
+    uint32_t i, len;
+    bnz_t tmp;
+    bnz_init(&tmp);
+    bnz_set_bnz(&tmp, p2pkh); // tmp = local mutable copy of p2pkh bnz_t with tmp.digits in standard little endian order 
+    bnz_reverse_digits(&tmp); // convert tmp.digits to big endian order
+
+    if (!(p2pkh_address_str = get_base_n_str(&tmp, 58, "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz", &len))) return; // get base58 format string of non-zero integer part of p2pkh
+    if (!(full_string = init_uint8_array(strlen(str) + strlen(p2pkh_address_str) + p2pkh_leading_zeros + 1))) return; // prepare full string to receive str, leading zeros, and base58 format non-zero integer part of p2pkh
+
+    sprintf(full_string, "%s", str); // add str
+    for (i = 0; i  < p2pkh_leading_zeros; i++) {
+        sprintf(full_string + strlen(full_string), "1"); // add leading zeros in base58 as "1" characters
+    }
+    sprintf(full_string + strlen(full_string), "%s", p2pkh_address_str); // add non-zero integer part of p2pkh
+
+    printf("%s\n", full_string); // print final string
+
+    bnz_free(&tmp);
 }
 
 void get_p2sh_p2wpkh_address(bnz_t *p2sh_p2wpkh, bnz_t *public_key_compressed)
@@ -2541,7 +2567,7 @@ void print_p2wpkh_address(const bnz_t *p2wpkh, const uint8_t *str)
 
 void get_wallet_p2pkh_addresses(bnz_t *master_private_key, bnz_t *master_chain_code)
 {
-    uint32_t i;
+    uint32_t i, p2pkh_leading_zeros;
     
     bnz_t parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, child_public_key_compressed, p2pkh;
 
@@ -2581,9 +2607,10 @@ void get_wallet_p2pkh_addresses(bnz_t *master_private_key, bnz_t *master_chain_c
     for (i = 0; i < 20; i++) {
         get_child_normal(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, i);
         get_public_key_compressed(&child_public_key_compressed, &child_private_key);
-        get_p2pkh_address(&p2pkh, &child_public_key_compressed);
+        get_p2pkh_address(&p2pkh, &child_public_key_compressed, &p2pkh_leading_zeros);
         printf("m/44'/0'/0'/0/%d: ", i);
-        bnz_print(&p2pkh, 58, "1");
+        print_p2pkh_address(&p2pkh, "", p2pkh_leading_zeros);
+        //bnz_print(&p2pkh, 58, "");
     }
 
     printf("\n");
@@ -3023,7 +3050,7 @@ void menu_2_child_keys(const char *version)
 void menu_2_1_normal_child(const char *version)
 {
     uint8_t parent_private_key_str[67], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
-    uint32_t index_num;
+    uint32_t index_num, p2pkh_leading_zeros;
     bnz_t tmp, index, entropy, parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, xprv, child_public_key_compressed, xpub, p2pkh, p2sh_p2wpkh, p2wpkh;
     PT parent_public_key_pt, child_public_key_pt;
     SECP256K1 secp256k1;
@@ -3152,7 +3179,7 @@ void menu_2_1_normal_child(const char *version)
 
     get_public_key(&child_public_key_pt, &child_public_key_compressed, &child_private_key); // generate compressed public key from private key
     get_xpub_child(&xpub, depth_num, index_num, &parent_public_key_compressed, &child_public_key_compressed, &child_chain_code); // serialise xpub
-    get_p2pkh_address(&p2pkh, &child_public_key_compressed); // serialise p2pkh address
+    get_p2pkh_address(&p2pkh, &child_public_key_compressed, &p2pkh_leading_zeros); // serialise p2pkh address
     get_p2sh_p2wpkh_address(&p2sh_p2wpkh, &child_public_key_compressed); // serialise p2sh_p2wpkh address
     get_p2wpkh_address(&p2wpkh, &parent_public_key_compressed); // serialise p2wpkh address
 
@@ -3160,7 +3187,7 @@ void menu_2_1_normal_child(const char *version)
     bnz_print(&child_public_key_pt.x, 16, " x: ");
     bnz_print(&child_public_key_pt.y, 16, " y: ");
     bnz_print(&xpub, 58, "CHILD XPUB: ");
-    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: 1"); // need to print 1 before the p2pkh address because it corresponds to a leading zero at the msb end when treated as a number
+    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: "); // need to print 1 before the p2pkh address because it corresponds to a leading zero at the msb end when treated as a number
     bnz_print(&p2sh_p2wpkh, 58, "CHILD P2SH-P2WPKH ADDRESS: ");
     print_p2wpkh_address(&p2wpkh, "CHILD P2WPKH ADDRESS: ");
     printf("\n");
@@ -3195,7 +3222,7 @@ void menu_2_1_normal_child(const char *version)
 void menu_2_2_hardened_child(const char *version)
 {
     uint8_t parent_private_key_str[67], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
-    uint32_t index_num;
+    uint32_t index_num, p2pkh_leading_zeros;
     bnz_t tmp, index, entropy, parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, xprv, child_public_key_compressed, xpub, p2pkh, p2sh_p2wpkh, p2wpkh;
     PT parent_public_key_pt, child_public_key_pt;
     SECP256K1 secp256k1;
@@ -3321,15 +3348,15 @@ void menu_2_2_hardened_child(const char *version)
 
     get_public_key(&child_public_key_pt, &child_public_key_compressed, &child_private_key); // generate compressed public key from private key
     get_xpub_child(&xpub, depth_num, index_num, &parent_public_key_compressed, &child_public_key_compressed, &child_chain_code); // serialise xpub
-    get_p2pkh_address(&p2pkh, &child_public_key_compressed); // serialise p2pkh address
-    get_p2pkh_address(&p2sh_p2wpkh, &child_public_key_compressed); // serialise p2sh_p2wpkh address
+    get_p2pkh_address(&p2pkh, &child_public_key_compressed, &p2pkh_leading_zeros); // serialise p2pkh address
+    get_p2sh_p2wpkh_address(&p2sh_p2wpkh, &child_public_key_compressed); // serialise p2sh_p2wpkh address
     get_p2wpkh_address(&p2wpkh, &child_public_key_compressed);
 
     bnz_print(&child_public_key_compressed, 16, "CHILD PUBLIC KEY COMPRESSED: ");
     bnz_print(&child_public_key_pt.x, 16, " x: ");
     bnz_print(&child_public_key_pt.y, 16, " y: ");
     bnz_print(&xpub, 58, "CHILD XPUB: ");
-    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: 1"); // need to print 1 before the p2pkh address because it corresponds to a leading zero at the msb end when treated as a number
+    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: "); // need to print 1 before the p2pkh address because it corresponds to a leading zero at the msb end when treated as a number
     bnz_print(&p2sh_p2wpkh, 58, "CHILD P2SH-P2WPKH ADDRESS: ");
     print_p2wpkh_address(&p2wpkh, "CHILD P2WPKH ADDRESS: ");
     printf("\n");
@@ -3362,7 +3389,7 @@ void menu_2_2_hardened_child(const char *version)
 void menu_2_3_public_child(const char *version)
 {
     uint8_t parent_public_key_compressed_str[69], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
-    uint32_t index_num;
+    uint32_t index_num, p2pkh_leading_zeros;
     bnz_t tmp, index, parent_public_key_compressed, parent_chain_code, child_public_key_compressed, child_chain_code, xpub, p2pkh, p2sh_p2wpkh, p2wpkh;
     PT tmp_key, parent_public_key_pt, child_public_key_pt;
 
@@ -3468,7 +3495,7 @@ void menu_2_3_public_child(const char *version)
     bnz_reverse_digits(&child_chain_code); // convert child_chain_code.digits back to default little endian
 
     get_xpub_child(&xpub, depth_num, index_num, &parent_public_key_compressed, &child_public_key_compressed, &child_chain_code); // serialise xpub
-    get_p2pkh_address(&p2pkh, &child_public_key_compressed); // serialise p2pkh address
+    get_p2pkh_address(&p2pkh, &child_public_key_compressed, &p2pkh_leading_zeros); // serialise p2pkh address
     get_p2sh_p2wpkh_address(&p2sh_p2wpkh, &child_public_key_compressed); // serialise p2sh_p2wpkh address
     get_p2wpkh_address(&p2wpkh, &child_public_key_compressed);
 
@@ -3477,7 +3504,7 @@ void menu_2_3_public_child(const char *version)
     bnz_print(&child_public_key_pt.x, 16, " x: ");
     bnz_print(&child_public_key_pt.y, 16, " y: ");
     bnz_print(&xpub, 58, "CHILD XPUB: ");
-    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the msb end when treated as a number
+    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: "); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the msb end when treated as a number
     bnz_print(&p2sh_p2wpkh, 58, "CHILD P2SH-P2WPKH ADDRESS: ");
     print_p2wpkh_address(&p2wpkh, "CHILD P2WPKH ADDRESS: ");
     printf("\n");
@@ -3781,6 +3808,7 @@ void menu_4_functions(const char *version)
 void menu_4_1_public_key_to_address(const char *version)
 {
     uint8_t public_key_compressed_str[69]; // optional "0x" + 33 bytes + null terminus
+    uint32_t p2pkh_leading_zeros;
     bnz_t public_key_compressed, p2pkh, p2sh_p2wpkh, p2wpkh;
 
     bnz_init(&public_key_compressed);
@@ -3801,11 +3829,11 @@ void menu_4_1_public_key_to_address(const char *version)
     bnz_print(&public_key_compressed, 16, "PUBLIC KEY (COMPRESSED): ");
     printf("\n");
 
-    get_p2pkh_address(&p2pkh, &public_key_compressed);
+    get_p2pkh_address(&p2pkh, &public_key_compressed, &p2pkh_leading_zeros);
     get_p2sh_p2wpkh_address(&p2sh_p2wpkh, &public_key_compressed);
     get_p2wpkh_address(&p2wpkh, &public_key_compressed);
 
-    bnz_print(&p2pkh, 58, "P2PKH ADDRESS: 1"); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the msb end when treated as a number
+    bnz_print(&p2pkh, 58, "P2PKH ADDRESS: "); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the msb end when treated as a number
     bnz_print(&p2sh_p2wpkh, 58, "P2SH-P2WPKH ADDRESS: ");
     print_p2wpkh_address(&p2wpkh, "P2WPKH ADDRESS: ");
 
@@ -3877,6 +3905,7 @@ void menu_4_2_validate_mnemonic_phrase_checksum(const char *version) // check va
 void menu_4_3_private_key_to_WIF(const char *version)
 {
     uint8_t private_key_str[67]; // optional "0x" + 32 bytes + null terminus
+    uint32_t p2pkh_leading_zeros;
     bnz_t private_key_wif, private_key, entropy, chain_code, public_key_compressed, p2pkh, p2sh_p2wpkh, p2wpkh, fingerprint;
     PT public_key;
     
@@ -3961,14 +3990,14 @@ void menu_4_3_private_key_to_WIF(const char *version)
     bnz_print(&private_key_wif, 58, "PRIVATE KEY WIF (BITCOIN BASE 58): "); // Bitcoin Base 58 version of WIF (standard)
 
     get_public_key(&public_key, &public_key_compressed, &private_key);
-    get_p2pkh_address(&p2pkh, &public_key_compressed);
+    get_p2pkh_address(&p2pkh, &public_key_compressed, &p2pkh_leading_zeros);
     get_p2sh_p2wpkh_address(&p2sh_p2wpkh, &public_key_compressed);
     get_p2wpkh_address(&p2wpkh, &public_key_compressed);
 
     printf("\n");
 
     bnz_print(&public_key_compressed, 16, "PUBLIC KEY (COMPRESSED): ");
-    bnz_print(&p2pkh, 58, "P2PKH ADDRESS: 1"); // need to print 1 before the p2pkh address because it corresponds to a leading zero at the msb end when treated as a number
+    bnz_print(&p2pkh, 58, "P2PKH ADDRESS: "); // need to print 1 before the p2pkh address because it corresponds to a leading zero at the msb end when treated as a number
     bnz_print(&p2sh_p2wpkh, 58, "P2SH-P2WPKH ADDRESS: ");
     print_p2wpkh_address(&p2wpkh, "P2WPKH ADDRESS: ");
 
@@ -3996,6 +4025,7 @@ void menu_4_3_private_key_to_WIF(const char *version)
 void menu_4_4_WIF_to_private_key(const char *version)
 {
     uint8_t wif_str[53]; // 51 or 52 Bitcoin base 58 characters + null terminus
+    uint32_t p2pkh_leading_zeros;
     bnz_t private_key_wif, private_key, public_key_compressed, p2pkh, p2sh_p2wpkh, p2wpkh;
 
     PT public_key;
@@ -4042,14 +4072,14 @@ void menu_4_4_WIF_to_private_key(const char *version)
     bnz_print(&private_key, 16, "PRIVATE KEY: "); // hex version of private key
 
     get_public_key(&public_key, &public_key_compressed, &private_key);
-    get_p2pkh_address(&p2pkh, &public_key_compressed);
+    get_p2pkh_address(&p2pkh, &public_key_compressed, &p2pkh_leading_zeros);
     get_p2sh_p2wpkh_address(&p2sh_p2wpkh, &public_key_compressed);
     get_p2wpkh_address(&p2wpkh, &public_key_compressed);
 
     printf("\n");
 
     bnz_print(&public_key_compressed, 16, "PUBLIC KEY (COMPRESSED): ");
-    bnz_print(&p2pkh, 58, "P2PKH ADDRESS: 1"); // need to print 1 before the p2pkh address because it corresponds to a leading zero at the msb end when treated as a number
+    bnz_print(&p2pkh, 58, "P2PKH ADDRESS: "); // need to print 1 before the p2pkh address because it corresponds to a leading zero at the msb end when treated as a number
     bnz_print(&p2sh_p2wpkh, 58, "P2SH-P2WPKH ADDRESS: ");
     print_p2wpkh_address(&p2wpkh, "P2WPKH ADDRESS: ");
 
