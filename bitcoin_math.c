@@ -2412,24 +2412,26 @@ void get_p2pkh_address(bnz_t *p2pkh, bnz_t *public_key_compressed, uint32_t *p2p
 
 void print_p2pkh_address(const bnz_t *p2pkh, const uint8_t *str, uint32_t p2pkh_leading_zeros)
 {
-    uint8_t *full_string = NULL, *p2pkh_address_str = NULL;
+    uint8_t *full_string = NULL, *p2pkh_base58_str = NULL;
     uint32_t i, len;
     bnz_t tmp;
     bnz_init(&tmp);
     bnz_set_bnz(&tmp, p2pkh); // tmp = local mutable copy of p2pkh bnz_t with tmp.digits in standard little endian order 
     bnz_reverse_digits(&tmp); // convert tmp.digits to big endian order
 
-    if (!(p2pkh_address_str = get_base_n_str(&tmp, 58, "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz", &len))) return; // get base58 format string of non-zero integer part of p2pkh
-    if (!(full_string = init_uint8_array(strlen(str) + strlen(p2pkh_address_str) + p2pkh_leading_zeros + 1))) return; // prepare full string to receive str, leading zeros, and base58 format non-zero integer part of p2pkh
+    if (!(p2pkh_base58_str = get_base_n_str(&tmp, 58, "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz", &len))) return; // get base58 format string of non-zero integer part of p2pkh
+    if (!(full_string = init_uint8_array(strlen(str) + strlen(p2pkh_base58_str) + p2pkh_leading_zeros + 1))) return; // prepare full string to receive str, leading zeros, and base58 format non-zero integer part of p2pkh
 
     sprintf(full_string, "%s", str); // add str
     for (i = 0; i  < p2pkh_leading_zeros; i++) {
         sprintf(full_string + strlen(full_string), "1"); // add leading zeros in base58 as "1" characters
     }
-    sprintf(full_string + strlen(full_string), "%s", p2pkh_address_str); // add non-zero integer part of p2pkh
+    sprintf(full_string + strlen(full_string), "%s", p2pkh_base58_str); // add non-zero integer part of p2pkh
 
     printf("%s\n", full_string); // print final string
 
+    free(full_string);
+    free(p2pkh_base58_str);
     bnz_free(&tmp);
 }
 
@@ -2522,7 +2524,7 @@ uint32_t p2wpkh_checksum_update(uint32_t chk, uint8_t dgt)
 
 void print_p2wpkh_address(const bnz_t *p2wpkh, const uint8_t *str)
 {
-    uint8_t *full_string = NULL, *p2wpkh_address_str = NULL;
+    uint8_t *full_string = NULL, *p2wpkh_bech32_str = NULL;
     uint32_t len;
 
     /*
@@ -2555,13 +2557,15 @@ void print_p2wpkh_address(const bnz_t *p2wpkh, const uint8_t *str)
     bnz_reverse_digits(&tmp); // convert tmp.digits to big endian order
 
     if (!(full_string = init_uint8_array(strlen(str) + 43))) return; // prepare full_string to receive str + 42 characters + null terminator
-    if (!(p2wpkh_address_str = get_base_n_str(&tmp, 32, "qpzry9x8gf2tvdw0s3jn54khce6mua7l", &len))) return; // get bech32 string encoding of p2wpkh_address_str in big endian order
+    if (!(p2wpkh_bech32_str = get_base_n_str(&tmp, 32, "qpzry9x8gf2tvdw0s3jn54khce6mua7l", &len))) return; // get bech32 string encoding of p2wpkh_bech32_str in big endian order
 
     sprintf(full_string, "%sbc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq", str); // full_string = str + "bc1q" + 38 x 'q' + null terminator
-    sprintf(full_string + strlen(str) + 42 - len, p2wpkh_address_str); // concatenate Bech32 string with appropriate offset to ensure 'q' padding at msb end if required
+    sprintf(full_string + strlen(str) + 42 - len, p2wpkh_bech32_str); // concatenate Bech32 string with appropriate offset to ensure 'q' padding at msb end if required
 
     printf("%s\n", full_string); // print final string
 
+    free(full_string);
+    free(p2wpkh_bech32_str);
     bnz_free(&tmp);
 }
 
