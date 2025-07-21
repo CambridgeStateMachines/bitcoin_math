@@ -2610,7 +2610,6 @@ void get_wallet_p2pkh_addresses(bnz_t *master_private_key, bnz_t *master_chain_c
         get_p2pkh_address(&p2pkh, &child_public_key_compressed, &p2pkh_leading_zeros);
         printf("m/44'/0'/0'/0/%d: ", i);
         print_p2pkh_address(&p2pkh, "", p2pkh_leading_zeros);
-        //bnz_print(&p2pkh, 58, "");
     }
 
     printf("\n");
@@ -3187,7 +3186,7 @@ void menu_2_1_normal_child(const char *version)
     bnz_print(&child_public_key_pt.x, 16, " x: ");
     bnz_print(&child_public_key_pt.y, 16, " y: ");
     bnz_print(&xpub, 58, "CHILD XPUB: ");
-    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: "); // need to print 1 before the p2pkh address because it corresponds to a leading zero at the msb end when treated as a number
+    print_p2pkh_address(&p2pkh, "CHILD P2PKH ADDRESS: ", p2pkh_leading_zeros);
     bnz_print(&p2sh_p2wpkh, 58, "CHILD P2SH-P2WPKH ADDRESS: ");
     print_p2wpkh_address(&p2wpkh, "CHILD P2WPKH ADDRESS: ");
     printf("\n");
@@ -3356,7 +3355,7 @@ void menu_2_2_hardened_child(const char *version)
     bnz_print(&child_public_key_pt.x, 16, " x: ");
     bnz_print(&child_public_key_pt.y, 16, " y: ");
     bnz_print(&xpub, 58, "CHILD XPUB: ");
-    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: "); // need to print 1 before the p2pkh address because it corresponds to a leading zero at the msb end when treated as a number
+    print_p2pkh_address(&p2pkh, "CHILD P2PKH ADDRESS: ", p2pkh_leading_zeros);
     bnz_print(&p2sh_p2wpkh, 58, "CHILD P2SH-P2WPKH ADDRESS: ");
     print_p2wpkh_address(&p2wpkh, "CHILD P2WPKH ADDRESS: ");
     printf("\n");
@@ -3504,7 +3503,7 @@ void menu_2_3_public_child(const char *version)
     bnz_print(&child_public_key_pt.x, 16, " x: ");
     bnz_print(&child_public_key_pt.y, 16, " y: ");
     bnz_print(&xpub, 58, "CHILD XPUB: ");
-    bnz_print(&p2pkh, 58, "CHILD P2PKH ADDRESS: "); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the msb end when treated as a number
+    print_p2pkh_address(&p2pkh, "CHILD P2PKH ADDRESS: ", p2pkh_leading_zeros);
     bnz_print(&p2sh_p2wpkh, 58, "CHILD P2SH-P2WPKH ADDRESS: ");
     print_p2wpkh_address(&p2wpkh, "CHILD P2WPKH ADDRESS: ");
     printf("\n");
@@ -3833,7 +3832,7 @@ void menu_4_1_public_key_to_address(const char *version)
     get_p2sh_p2wpkh_address(&p2sh_p2wpkh, &public_key_compressed);
     get_p2wpkh_address(&p2wpkh, &public_key_compressed);
 
-    bnz_print(&p2pkh, 58, "P2PKH ADDRESS: "); // need to print 1 before the P2PKH address because it corresponds to a leading zero at the msb end when treated as a number
+    print_p2pkh_address(&p2pkh, "P2PKH ADDRESS: ", p2pkh_leading_zeros);
     bnz_print(&p2sh_p2wpkh, 58, "P2SH-P2WPKH ADDRESS: ");
     print_p2wpkh_address(&p2wpkh, "P2WPKH ADDRESS: ");
 
@@ -3997,7 +3996,7 @@ void menu_4_3_private_key_to_WIF(const char *version)
     printf("\n");
 
     bnz_print(&public_key_compressed, 16, "PUBLIC KEY (COMPRESSED): ");
-    bnz_print(&p2pkh, 58, "P2PKH ADDRESS: "); // need to print 1 before the p2pkh address because it corresponds to a leading zero at the msb end when treated as a number
+    print_p2pkh_address(&p2pkh, "P2PKH ADDRESS: ", p2pkh_leading_zeros);
     bnz_print(&p2sh_p2wpkh, 58, "P2SH-P2WPKH ADDRESS: ");
     print_p2wpkh_address(&p2wpkh, "P2WPKH ADDRESS: ");
 
@@ -4079,7 +4078,7 @@ void menu_4_4_WIF_to_private_key(const char *version)
     printf("\n");
 
     bnz_print(&public_key_compressed, 16, "PUBLIC KEY (COMPRESSED): ");
-    bnz_print(&p2pkh, 58, "P2PKH ADDRESS: "); // need to print 1 before the p2pkh address because it corresponds to a leading zero at the msb end when treated as a number
+    print_p2pkh_address(&p2pkh, "P2PKH ADDRESS: ", p2pkh_leading_zeros);
     bnz_print(&p2sh_p2wpkh, 58, "P2SH-P2WPKH ADDRESS: ");
     print_p2wpkh_address(&p2wpkh, "P2WPKH ADDRESS: ");
 
@@ -4273,7 +4272,7 @@ void menu_4_7_secp256k1_scalar_multiplication(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.16, 2025-07-16";
+    static char *version = "bitcoin_math\nv0.17, 2025-07-21";
     int menu, running = 1;
     while (running) {
         system("cls");
