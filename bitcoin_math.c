@@ -2870,10 +2870,7 @@ void get_str_input(char str[], int max_len) // get string from stdin with strlen
 {
     int i = 0, ch;
     while ((ch = getchar()) != '\n' && ch != EOF) {
-        // confine ch to the characters up to base 64 or space
-        if (((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '+' || ch == '/' || ch == ' ' || ch == 39 /* apostrophe */ ) && i < max_len) {
-            str[i++] = ch;
-        }
+        if (ch >= 32 && ch <= 126 && i < max_len) str[i++] = ch;
     }
     str[i] = 0;
 }
