@@ -32,9 +32,9 @@
 
 const char bip39_wds[2048][9] = {"abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse", "access", "accident", "account", "accuse", "achieve", "acid", "acoustic", "acquire", "across", "act", "action", "actor", "actress", "actual", "adapt", "add", "addict", "address", "adjust", "admit", "adult", "advance", "advice", "aerobic", "affair", "afford", "afraid", "again", "age", "agent", "agree", "ahead", "aim", "air", "airport", "aisle", "alarm", "album", "alcohol", "alert", "alien", "all", "alley", "allow", "almost", "alone", "alpha", "already", "also", "alter", "always", "amateur", "amazing", "among", "amount", "amused", "analyst", "anchor", "ancient", "anger", "angle", "angry", "animal", "ankle", "announce", "annual", "another", "answer", "antenna", "antique", "anxiety", "any", "apart", "apology", "appear", "apple", "approve", "april", "arch", "arctic", "area", "arena", "argue", "arm", "armed", "armor", "army", "around", "arrange", "arrest", "arrive", "arrow", "art", "artefact", "artist", "artwork", "ask", "aspect", "assault", "asset", "assist", "assume", "asthma", "athlete", "atom", "attack", "attend", "attitude", "attract", "auction", "audit", "august", "aunt", "author", "auto", "autumn", "average", "avocado", "avoid", "awake", "aware", "away", "awesome", "awful", "awkward", "axis", "baby", "bachelor", "bacon", "badge", "bag", "balance", "balcony", "ball", "bamboo", "banana", "banner", "bar", "barely", "bargain", "barrel", "base", "basic", "basket", "battle", "beach", "bean", "beauty", "because", "become", "beef", "before", "begin", "behave", "behind", "believe", "below", "belt", "bench", "benefit", "best", "betray", "better", "between", "beyond", "bicycle", "bid", "bike", "bind", "biology", "bird", "birth", "bitter", "black", "blade", "blame", "blanket", "blast", "bleak", "bless", "blind", "blood", "blossom", "blouse", "blue", "blur", "blush", "board", "boat", "body", "boil", "bomb", "bone", "bonus", "book", "boost", "border", "boring", "borrow", "boss", "bottom", "bounce", "box", "boy", "bracket", "brain", "brand", "brass", "brave", "bread", "breeze", "brick", "bridge", "brief", "bright", "bring", "brisk", "broccoli", "broken", "bronze", "broom", "brother", "brown", "brush", "bubble", "buddy", "budget", "buffalo", "build", "bulb", "bulk", "bullet", "bundle", "bunker", "burden", "burger", "burst", "bus", "business", "busy", "butter", "buyer", "buzz", "cabbage", "cabin", "cable", "cactus", "cage", "cake", "call", "calm", "camera", "camp", "can", "canal", "cancel", "candy", "cannon", "canoe", "canvas", "canyon", "capable", "capital", "captain", "car", "carbon", "card", "cargo", "carpet", "carry", "cart", "case", "cash", "casino", "castle", "casual", "cat", "catalog", "catch", "category", "cattle", "caught", "cause", "caution", "cave", "ceiling", "celery", "cement", "census", "century", "cereal", "certain", "chair", "chalk", "champion", "change", "chaos", "chapter", "charge", "chase", "chat", "cheap", "check", "cheese", "chef", "cherry", "chest", "chicken", "chief", "child", "chimney", "choice", "choose", "chronic", "chuckle", "chunk", "churn", "cigar", "cinnamon", "circle", "citizen", "city", "civil", "claim", "clap", "clarify", "claw", "clay", "clean", "clerk", "clever", "click", "client", "cliff", "climb", "clinic", "clip", "clock", "clog", "close", "cloth", "cloud", "clown", "club", "clump", "cluster", "clutch", "coach", "coast", "coconut", "code", "coffee", "coil", "coin", "collect", "color", "column", "combine", "come", "comfort", "comic", "common", "company", "concert", "conduct", "confirm", "congress", "connect", "consider", "control", "convince", "cook", "cool", "copper", "copy", "coral", "core", "corn", "correct", "cost", "cotton", "couch", "country", "couple", "course", "cousin", "cover", "coyote", "crack", "cradle", "craft", "cram", "crane", "crash", "crater", "crawl", "crazy", "cream", "credit", "creek", "crew", "cricket", "crime", "crisp", "critic", "crop", "cross", "crouch", "crowd", "crucial", "cruel", "cruise", "crumble", "crunch", "crush", "cry", "crystal", "cube", "culture", "cup", "cupboard", "curious", "current", "curtain", "curve", "cushion", "custom", "cute", "cycle", "dad", "damage", "damp", "dance", "danger", "daring", "dash", "daughter", "dawn", "day", "deal", "debate", "debris", "decade", "december", "decide", "decline", "decorate", "decrease", "deer", "defense", "define", "defy", "degree", "delay", "deliver", "demand", "demise", "denial", "dentist", "deny", "depart", "depend", "deposit", "depth", "deputy", "derive", "describe", "desert", "design", "desk", "despair", "destroy", "detail", "detect", "develop", "device", "devote", "diagram", "dial", "diamond", "diary", "dice", "diesel", "diet", "differ", "digital", "dignity", "dilemma", "dinner", "dinosaur", "direct", "dirt", "disagree", "discover", "disease", "dish", "dismiss", "disorder", "display", "distance", "divert", "divide", "divorce", "dizzy", "doctor", "document", "dog", "doll", "dolphin", "domain", "donate", "donkey", "donor", "door", "dose", "double", "dove", "draft", "dragon", "drama", "drastic", "draw", "dream", "dress", "drift", "drill", "drink", "drip", "drive", "drop", "drum", "dry", "duck", "dumb", "dune", "during", "dust", "dutch", "duty", "dwarf", "dynamic", "eager", "eagle", "early", "earn", "earth", "easily", "east", "easy", "echo", "ecology", "economy", "edge", "edit", "educate", "effort", "egg", "eight", "either", "elbow", "elder", "electric", "elegant", "element", "elephant", "elevator", "elite", "else", "embark", "embody", "embrace", "emerge", "emotion", "employ", "empower", "empty", "enable", "enact", "end", "endless", "endorse", "enemy", "energy", "enforce", "engage", "engine", "enhance", "enjoy", "enlist", "enough", "enrich", "enroll", "ensure", "enter", "entire", "entry", "envelope", "episode", "equal", "equip", "era", "erase", "erode", "erosion", "error", "erupt", "escape", "essay", "essence", "estate", "eternal", "ethics", "evidence", "evil", "evoke", "evolve", "exact", "example", "excess", "exchange", "excite", "exclude", "excuse", "execute", "exercise", "exhaust", "exhibit", "exile", "exist", "exit", "exotic", "expand", "expect", "expire", "explain", "expose", "express", "extend", "extra", "eye", "eyebrow", "fabric", "face", "faculty", "fade", "faint", "faith", "fall", "false", "fame", "family", "famous", "fan", "fancy", "fantasy", "farm", "fashion", "fat", "fatal", "father", "fatigue", "fault", "favorite", "feature", "february", "federal", "fee", "feed", "feel", "female", "fence", "festival", "fetch", "fever", "few", "fiber", "fiction", "field", "figure", "file", "film", "filter", "final", "find", "fine", "finger", "finish", "fire", "firm", "first", "fiscal", "fish", "fit", "fitness", "fix", "flag", "flame", "flash", "flat", "flavor", "flee", "flight", "flip", "float", "flock", "floor", "flower", "fluid", "flush", "fly", "foam", "focus", "fog", "foil", "fold", "follow", "food", "foot", "force", "forest", "forget", "fork", "fortune", "forum", "forward", "fossil", "foster", "found", "fox", "fragile", "frame", "frequent", "fresh", "friend", "fringe", "frog", "front", "frost", "frown", "frozen", "fruit", "fuel", "fun", "funny", "furnace", "fury", "future", "gadget", "gain", "galaxy", "gallery", "game", "gap", "garage", "garbage", "garden", "garlic", "garment", "gas", "gasp", "gate", "gather", "gauge", "gaze", "general", "genius", "genre", "gentle", "genuine", "gesture", "ghost", "giant", "gift", "giggle", "ginger", "giraffe", "girl", "give", "glad", "glance", "glare", "glass", "glide", "glimpse", "globe", "gloom", "glory", "glove", "glow", "glue", "goat", "goddess", "gold", "good", "goose", "gorilla", "gospel", "gossip", "govern", "gown", "grab", "grace", "grain", "grant", "grape", "grass", "gravity", "great", "green", "grid", "grief", "grit", "grocery", "group", "grow", "grunt", "guard", "guess", "guide", "guilt", "guitar", "gun", "gym", "habit", "hair", "half", "hammer", "hamster", "hand", "happy", "harbor", "hard", "harsh", "harvest", "hat", "have", "hawk", "hazard", "head", "health", "heart", "heavy", "hedgehog", "height", "hello", "helmet", "help", "hen", "hero", "hidden", "high", "hill", "hint", "hip", "hire", "history", "hobby", "hockey", "hold", "hole", "holiday", "hollow", "home", "honey", "hood", "hope", "horn", "horror", "horse", "hospital", "host", "hotel", "hour", "hover", "hub", "huge", "human", "humble", "humor", "hundred", "hungry", "hunt", "hurdle", "hurry", "hurt", "husband", "hybrid", "ice", "icon", "idea", "identify", "idle", "ignore", "ill", "illegal", "illness", "image", "imitate", "immense", "immune", "impact", "impose", "improve", "impulse", "inch", "include", "income", "increase", "index", "indicate", "indoor", "industry", "infant", "inflict", "inform", "inhale", "inherit", "initial", "inject", "injury", "inmate", "inner", "innocent", "input", "inquiry", "insane", "insect", "inside", "inspire", "install", "intact", "interest", "into", "invest", "invite", "involve", "iron", "island", "isolate", "issue", "item", "ivory", "jacket", "jaguar", "jar", "jazz", "jealous", "jeans", "jelly", "jewel", "job", "join", "joke", "journey", "joy", "judge", "juice", "jump", "jungle", "junior", "junk", "just", "kangaroo", "keen", "keep", "ketchup", "key", "kick", "kid", "kidney", "kind", "kingdom", "kiss", "kit", "kitchen", "kite", "kitten", "kiwi", "knee", "knife", "knock", "know", "lab", "label", "labor", "ladder", "lady", "lake", "lamp", "language", "laptop", "large", "later", "latin", "laugh", "laundry", "lava", "law", "lawn", "lawsuit", "layer", "lazy", "leader", "leaf", "learn", "leave", "lecture", "left", "leg", "legal", "legend", "leisure", "lemon", "lend", "length", "lens", "leopard", "lesson", "letter", "level", "liar", "liberty", "library", "license", "life", "lift", "light", "like", "limb", "limit", "link", "lion", "liquid", "list", "little", "live", "lizard", "load", "loan", "lobster", "local", "lock", "logic", "lonely", "long", "loop", "lottery", "loud", "lounge", "love", "loyal", "lucky", "luggage", "lumber", "lunar", "lunch", "luxury", "lyrics", "machine", "mad", "magic", "magnet", "maid", "mail", "main", "major", "make", "mammal", "man", "manage", "mandate", "mango", "mansion", "manual", "maple", "marble", "march", "margin", "marine", "market", "marriage", "mask", "mass", "master", "match", "material", "math", "matrix", "matter", "maximum", "maze", "meadow", "mean", "measure", "meat", "mechanic", "medal", "media", "melody", "melt", "member", "memory", "mention", "menu", "mercy", "merge", "merit", "merry", "mesh", "message", "metal", "method", "middle", "midnight", "milk", "million", "mimic", "mind", "minimum", "minor", "minute", "miracle", "mirror", "misery", "miss", "mistake", "mix", "mixed", "mixture", "mobile", "model", "modify", "mom", "moment", "monitor", "monkey", "monster", "month", "moon", "moral", "more", "morning", "mosquito", "mother", "motion", "motor", "mountain", "mouse", "move", "movie", "much", "muffin", "mule", "multiply", "muscle", "museum", "mushroom", "music", "must", "mutual", "myself", "mystery", "myth", "naive", "name", "napkin", "narrow", "nasty", "nation", "nature", "near", "neck", "need", "negative", "neglect", "neither", "nephew", "nerve", "nest", "net", "network", "neutral", "never", "news", "next", "nice", "night", "noble", "noise", "nominee", "noodle", "normal", "north", "nose", "notable", "note", "nothing", "notice", "novel", "now", "nuclear", "number", "nurse", "nut", "oak", "obey", "object", "oblige", "obscure", "observe", "obtain", "obvious", "occur", "ocean", "october", "odor", "off", "offer", "office", "often", "oil", "okay", "old", "olive", "olympic", "omit", "once", "one", "onion", "online", "only", "open", "opera", "opinion", "oppose", "option", "orange", "orbit", "orchard", "order", "ordinary", "organ", "orient", "original", "orphan", "ostrich", "other", "outdoor", "outer", "output", "outside", "oval", "oven", "over", "own", "owner", "oxygen", "oyster", "ozone", "pact", "paddle", "page", "pair", "palace", "palm", "panda", "panel", "panic", "panther", "paper", "parade", "parent", "park", "parrot", "party", "pass", "patch", "path", "patient", "patrol", "pattern", "pause", "pave", "payment", "peace", "peanut", "pear", "peasant", "pelican", "pen", "penalty", "pencil", "people", "pepper", "perfect", "permit", "person", "pet", "phone", "photo", "phrase", "physical", "piano", "picnic", "picture", "piece", "pig", "pigeon", "pill", "pilot", "pink", "pioneer", "pipe", "pistol", "pitch", "pizza", "place", "planet", "plastic", "plate", "play", "please", "pledge", "pluck", "plug", "plunge", "poem", "poet", "point", "polar", "pole", "police", "pond", "pony", "pool", "popular", "portion", "position", "possible", "post", "potato", "pottery", "poverty", "powder", "power", "practice", "praise", "predict", "prefer", "prepare", "present", "pretty", "prevent", "price", "pride", "primary", "print", "priority", "prison", "private", "prize", "problem", "process", "produce", "profit", "program", "project", "promote", "proof", "property", "prosper", "protect", "proud", "provide", "public", "pudding", "pull", "pulp", "pulse", "pumpkin", "punch", "pupil", "puppy", "purchase", "purity", "purpose", "purse", "push", "put", "puzzle", "pyramid", "quality", "quantum", "quarter", "question", "quick", "quit", "quiz", "quote", "rabbit", "raccoon", "race", "rack", "radar", "radio", "rail", "rain", "raise", "rally", "ramp", "ranch", "random", "range", "rapid", "rare", "rate", "rather", "raven", "raw", "razor", "ready", "real", "reason", "rebel", "rebuild", "recall", "receive", "recipe", "record", "recycle", "reduce", "reflect", "reform", "refuse", "region", "regret", "regular", "reject", "relax", "release", "relief", "rely", "remain", "remember", "remind", "remove", "render", "renew", "rent", "reopen", "repair", "repeat", "replace", "report", "require", "rescue", "resemble", "resist", "resource", "response", "result", "retire", "retreat", "return", "reunion", "reveal", "review", "reward", "rhythm", "rib", "ribbon", "rice", "rich", "ride", "ridge", "rifle", "right", "rigid", "ring", "riot", "ripple", "risk", "ritual", "rival", "river", "road", "roast", "robot", "robust", "rocket", "romance", "roof", "rookie", "room", "rose", "rotate", "rough", "round", "route", "royal", "rubber", "rude", "rug", "rule", "run", "runway", "rural", "sad", "saddle", "sadness", "safe", "sail", "salad", "salmon", "salon", "salt", "salute", "same", "sample", "sand", "satisfy", "satoshi", "sauce", "sausage", "save", "say", "scale", "scan", "scare", "scatter", "scene", "scheme", "school", "science", "scissors", "scorpion", "scout", "scrap", "screen", "script", "scrub", "sea", "search", "season", "seat", "second", "secret", "section", "security", "seed", "seek", "segment", "select", "sell", "seminar", "senior", "sense", "sentence", "series", "service", "session", "settle", "setup", "seven", "shadow", "shaft", "shallow", "share", "shed", "shell", "sheriff", "shield", "shift", "shine", "ship", "shiver", "shock", "shoe", "shoot", "shop", "short", "shoulder", "shove", "shrimp", "shrug", "shuffle", "shy", "sibling", "sick", "side", "siege", "sight", "sign", "silent", "silk", "silly", "silver", "similar", "simple", "since", "sing", "siren", "sister", "situate", "six", "size", "skate", "sketch", "ski", "skill", "skin", "skirt", "skull", "slab", "slam", "sleep", "slender", "slice", "slide", "slight", "slim", "slogan", "slot", "slow", "slush", "small", "smart", "smile", "smoke", "smooth", "snack", "snake", "snap", "sniff", "snow", "soap", "soccer", "social", "sock", "soda", "soft", "solar", "soldier", "solid", "solution", "solve", "someone", "song", "soon", "sorry", "sort", "soul", "sound", "soup", "source", "south", "space", "spare", "spatial", "spawn", "speak", "special", "speed", "spell", "spend", "sphere", "spice", "spider", "spike", "spin", "spirit", "split", "spoil", "sponsor", "spoon", "sport", "spot", "spray", "spread", "spring", "spy", "square", "squeeze", "squirrel", "stable", "stadium", "staff", "stage", "stairs", "stamp", "stand", "start", "state", "stay", "steak", "steel", "stem", "step", "stereo", "stick", "still", "sting", "stock", "stomach", "stone", "stool", "story", "stove", "strategy", "street", "strike", "strong", "struggle", "student", "stuff", "stumble", "style", "subject", "submit", "subway", "success", "such", "sudden", "suffer", "sugar", "suggest", "suit", "summer", "sun", "sunny", "sunset", "super", "supply", "supreme", "sure", "surface", "surge", "surprise", "surround", "survey", "suspect", "sustain", "swallow", "swamp", "swap", "swarm", "swear", "sweet", "swift", "swim", "swing", "switch", "sword", "symbol", "symptom", "syrup", "system", "table", "tackle", "tag", "tail", "talent", "talk", "tank", "tape", "target", "task", "taste", "tattoo", "taxi", "teach", "team", "tell", "ten", "tenant", "tennis", "tent", "term", "test", "text", "thank", "that", "theme", "then", "theory", "there", "they", "thing", "this", "thought", "three", "thrive", "throw", "thumb", "thunder", "ticket", "tide", "tiger", "tilt", "timber", "time", "tiny", "tip", "tired", "tissue", "title", "toast", "tobacco", "today", "toddler", "toe", "together", "toilet", "token", "tomato", "tomorrow", "tone", "tongue", "tonight", "tool", "tooth", "top", "topic", "topple", "torch", "tornado", "tortoise", "toss", "total", "tourist", "toward", "tower", "town", "toy", "track", "trade", "traffic", "tragic", "train", "transfer", "trap", "trash", "travel", "tray", "treat", "tree", "trend", "trial", "tribe", "trick", "trigger", "trim", "trip", "trophy", "trouble", "truck", "true", "truly", "trumpet", "trust", "truth", "try", "tube", "tuition", "tumble", "tuna", "tunnel", "turkey", "turn", "turtle", "twelve", "twenty", "twice", "twin", "twist", "two", "type", "typical", "ugly", "umbrella", "unable", "unaware", "uncle", "uncover", "under", "undo", "unfair", "unfold", "unhappy", "uniform", "unique", "unit", "universe", "unknown", "unlock", "until", "unusual", "unveil", "update", "upgrade", "uphold", "upon", "upper", "upset", "urban", "urge", "usage", "use", "used", "useful", "useless", "usual", "utility", "vacant", "vacuum", "vague", "valid", "valley", "valve", "van", "vanish", "vapor", "various", "vast", "vault", "vehicle", "velvet", "vendor", "venture", "venue", "verb", "verify", "version", "very", "vessel", "veteran", "viable", "vibrant", "vicious", "victory", "video", "view", "village", "vintage", "violin", "virtual", "virus", "visa", "visit", "visual", "vital", "vivid", "vocal", "voice", "void", "volcano", "volume", "vote", "voyage", "wage", "wagon", "wait", "walk", "wall", "walnut", "want", "warfare", "warm", "warrior", "wash", "wasp", "waste", "water", "wave", "way", "wealth", "weapon", "wear", "weasel", "weather", "web", "wedding", "weekend", "weird", "welcome", "west", "wet", "whale", "what", "wheat", "wheel", "when", "where", "whip", "whisper", "wide", "width", "wife", "wild", "will", "win", "window", "wine", "wing", "wink", "winner", "winter", "wire", "wisdom", "wise", "wish", "witness", "wolf", "woman", "wonder", "wood", "wool", "word", "work", "world", "worry", "worth", "wrap", "wreck", "wrestle", "wrist", "write", "wrong", "yard", "year", "yellow", "you", "young", "youth", "zebra", "zero", "zone", "zoo"};
 
-uint8_t *init_uint8_array(int32_t);
+uint8_t *init_uint8_array(uint32_t);
 
-uint8_t *init_uint8_array(int32_t len)
+uint8_t *init_uint8_array(uint32_t len)
 {
     uint8_t *uint8_array = NULL;
     if (!(uint8_array = malloc(len))) return NULL;
@@ -820,7 +820,7 @@ void bnz_init(bnz_t *a) // initiate bnz_t components
 void bnz_resize(bnz_t *a, size_t new_size, int32_t preserve) // increase or decrease number of bytes in a->digits, zeroing added bytes, and preserving or zeroing existing bytes
 {
     uint8_t *tmp = NULL;
-    size_t prev_size = a->size;
+    uint32_t prev_size = a->size;
     if (new_size < 1) new_size = 1;
     tmp = realloc(a->digits, new_size);
     if (tmp) {
@@ -1620,7 +1620,7 @@ void bnz_mod_bnz(bnz_t *res, const bnz_t *a, const bnz_t *b) // res = a % b, inv
     bnz_trim(&r);
     if (r.sign) bnz_add_bnz(&r, &r, b);
     bnz_set_bnz(res, &r);
-    
+
     bnz_free(&q);
     bnz_free(&r);
 }
@@ -1702,22 +1702,48 @@ void bnz_modular_multiplicative_inverse(bnz_t *res, const bnz_t *a, const bnz_t 
 typedef struct {
     bnz_t x;
     bnz_t y;
-} PT;
+} APT; // standard affine xy point
 
 typedef struct {
-    bnz_t p;
-    bnz_t a;
-    bnz_t b;
-    PT G;
-    bnz_t n;
-    bnz_t h;
+    bnz_t x;
+    bnz_t y;
+    bnz_t z;
+} JPT; // extended jacobian xyz point
+
+typedef struct {
+    bnz_t p; // prime
+    bnz_t a; // 0
+    bnz_t b; // 7
+    APT G; // generator point
+    APT G_doublings_mod_p[256]; // xy coordinates of 256 consecutive doublings of the secp256k1 generator point mod secp256k1.p i.e. secp256k1.G * 2^n mod secp256k1.p for n = 0 to 255
+    bnz_t n; // order
+    bnz_t h; // 1
 } SECP256K1;
 
+void secp256k1_populate_G_doublings_mod_p(APT *);
 SECP256K1 secp256k1_init(void);
 void secp256k1_free(SECP256K1);
-void secp256k1_point_doubling(const SECP256K1, const PT *, PT *);
-void secp256k1_point_addition(const SECP256K1, PT *, PT *, PT *);
-void secp256k1_scalar_multiplication(const SECP256K1, const bnz_t *, PT *);
+void secp256k1_scalar_multiplication(const SECP256K1, const bnz_t *, APT *); // r = (secp256k1.G * m) mod secp256k1.p
+void secp256k1_point_addition(const SECP256K1, APT *, APT *, APT *); // r = (p + q) mod secp256k1.p
+void secp256k1_point_doubling(const SECP256K1, const APT *, APT *); // r = 2p mod secp256k1.p
+void get_affine_from_jacobian(const SECP256K1, APT *, JPT *);
+void secp256k1_jacobian_point_addition(const SECP256K1, const JPT *, const APT *, JPT *);
+void secp256k1_jacobian_scalar_multiplication(const SECP256K1, const bnz_t *, APT *);
+
+void secp256k1_populate_G_doublings_mod_p(APT *G_doublings_mod_p)
+{
+    int i;
+    FILE *dat = fopen("dat.bin", "rb"); // open binary data file containing the 32 byte xy coordinates (little endian order) of 256 sequential doublings of the secp256k1 generator point i.e. secp256k1.G * 2^n mod secp256k1.p for n = 0 to 255
+    for (i = 0; i < 256; i++) {
+        bnz_init(&G_doublings_mod_p[i].x); // initiate x
+        bnz_init(&G_doublings_mod_p[i].y); // initiate y
+        bnz_resize(&G_doublings_mod_p[i].x, 32, 0); // resize x.digits to 32 bytes
+        bnz_resize(&G_doublings_mod_p[i].y, 32, 0); // resize y.digits to 32 bytes
+        fread(G_doublings_mod_p[i].x.digits, 1, 32, dat); // populate x.digits from binary file, repositioning file pointer
+        fread(G_doublings_mod_p[i].y.digits, 1, 32, dat); // populate y.digits from binary file, repositioning file pointer
+    }
+    fclose(dat); // close binary data file
+}
 
 SECP256K1 secp256k1_init() // initiate secp256k1 curve, y^2 = (x^3 + 7) mod secp256k1.p
 {
@@ -1736,6 +1762,9 @@ SECP256K1 secp256k1_init() // initiate secp256k1 curve, y^2 = (x^3 + 7) mod secp
     bnz_set_i32(&secp256k1.b, 7);
     bnz_set_str(&secp256k1.G.x, "55066263022277343669578718895168534326250603453777594175500187360389116729240", 10); // generator x
     bnz_set_str(&secp256k1.G.y, "32670510020758816978083085130507043184471273380659243275938904335757337482424", 10); // generator y
+
+    secp256k1_populate_G_doublings_mod_p(secp256k1.G_doublings_mod_p);
+
     bnz_set_str(&secp256k1.n, "115792089237316195423570985008687907852837564279074904382605163141518161494337", 10); // order
     bnz_set_i32(&secp256k1.h, 1);
 
@@ -1744,160 +1773,341 @@ SECP256K1 secp256k1_init() // initiate secp256k1 curve, y^2 = (x^3 + 7) mod secp
 
 void secp256k1_free(SECP256K1 secp256k1) // free secp256k1 curve
 {
+    int i;
     bnz_free(&secp256k1.p);
     bnz_free(&secp256k1.a);
     bnz_free(&secp256k1.b);
     bnz_free(&secp256k1.G.x);
     bnz_free(&secp256k1.G.y);
+
+    for (i = 0; i < 256;i++) {
+        bnz_free(&secp256k1.G_doublings_mod_p[i].x);
+        bnz_free(&secp256k1.G_doublings_mod_p[i].y);
+    }
+
     bnz_free(&secp256k1.n);
     bnz_free(&secp256k1.h);
 }
 
-void secp256k1_point_doubling(const SECP256K1 secp256k1, const PT *p, PT *r) // r = 2p mod secp256k1.p
+void secp256k1_point_doubling(const SECP256K1 secp256k1, const APT *p, APT *r) // r = 2p mod secp256k1.p
 {
     bnz_t slope, tmp;
+
+    APT pp, rr;
 
     bnz_init(&tmp);
     bnz_init(&slope);
 
-    if (!bnz_is_zero(&p->y)) {
-        bnz_multiply_i32(&tmp, &p->y, 2);
+    bnz_init(&pp.x);
+    bnz_init(&pp.y);
+    bnz_init(&rr.x);
+    bnz_init(&rr.y);
+
+    bnz_set_bnz(&pp.x, &p->x);
+    bnz_set_bnz(&pp.y, &p->y);
+    bnz_set_bnz(&rr.x, &p->x);
+    bnz_set_bnz(&rr.y, &p->y);
+
+    if (!bnz_is_zero(&pp.y)) {
+        bnz_multiply_i32(&tmp, &pp.y, 2);
         bnz_modular_multiplicative_inverse(&tmp, &tmp, &secp256k1.p);
-        bnz_multiply_bnz(&slope, &p->x, &p->x);
+        bnz_multiply_bnz(&slope, &pp.x, &pp.x);
         bnz_multiply_i32(&slope, &slope, 3);
         bnz_add_bnz(&slope, &slope, &secp256k1.a);
         bnz_multiply_bnz(&slope, &slope, &tmp);
         bnz_mod_bnz(&slope, &slope, &secp256k1.p);
-        bnz_multiply_bnz(&r->x, &slope, &slope);
-        bnz_subtract_bnz(&r->x, &r->x, &p->x);
-        bnz_subtract_bnz(&r->x, &r->x, &p->x);
-        bnz_mod_bnz(&r->x, &r->x, &secp256k1.p);
-        bnz_subtract_bnz(&tmp, &p->x, &r->x);
-        bnz_multiply_bnz(&r->y, &slope, &tmp);
-        bnz_subtract_bnz(&r->y, &r->y, &p->y);
-        bnz_mod_bnz(&r->y, &r->y, &secp256k1.p);
+        bnz_multiply_bnz(&rr.x, &slope, &slope);
+        bnz_subtract_bnz(&rr.x, &rr.x, &pp.x);
+        bnz_subtract_bnz(&rr.x, &rr.x, &pp.x);
+        bnz_mod_bnz(&rr.x, &rr.x, &secp256k1.p);
+        bnz_subtract_bnz(&tmp, &pp.x, &rr.x);
+        bnz_multiply_bnz(&rr.y, &slope, &tmp);
+        bnz_subtract_bnz(&rr.y, &rr.y, &pp.y);
+        bnz_mod_bnz(&rr.y, &rr.y, &secp256k1.p);
     } else {
-        bnz_set_i32(&r->x, 0);
-        bnz_set_i32(&r->y, 0);
+        bnz_set_i32(&rr.x, 0);
+        bnz_set_i32(&rr.y, 0);
     }
+
+    bnz_set_bnz(&r->x, &rr.x);
+    bnz_set_bnz(&r->y, &rr.y);
 
     bnz_free(&tmp);
     bnz_free(&slope);
+    bnz_free(&pp.x);
+    bnz_free(&pp.y);
+    bnz_free(&rr.x);
+    bnz_free(&rr.y);
 }
 
-void secp256k1_point_addition(const SECP256K1 secp256k1, PT *p, PT *q, PT *r) // r = (p + q) mod secp256k1.p
+void secp256k1_point_addition(const SECP256K1 secp256k1, APT *p, APT *q, APT *r) // r = (p + q) mod secp256k1.p
 {
     bnz_t tmp, slope;
+
+    APT pp, qq, rr;
 
     bnz_init(&tmp);
     bnz_init(&slope);
 
+    bnz_init(&pp.x);
+    bnz_init(&pp.y);
+    bnz_init(&qq.x);
+    bnz_init(&qq.y);
+    bnz_init(&rr.x);
+    bnz_init(&rr.y);
+
+    bnz_set_bnz(&qq.x, &q->x);
+    bnz_set_bnz(&qq.y, &q->y);
+    bnz_set_bnz(&pp.x, &p->x);
+    bnz_set_bnz(&pp.y, &p->y);
+    bnz_set_bnz(&rr.x, &r->x);
+    bnz_set_bnz(&rr.y, &r->y);
+
     bnz_set_i32(&slope, 0);
 
-    bnz_mod_bnz(&p->x, &p->x, &secp256k1.p);
-    bnz_mod_bnz(&p->y, &p->y, &secp256k1.p);
-    bnz_mod_bnz(&q->x, &q->x, &secp256k1.p);
-    bnz_mod_bnz(&q->y, &q->y, &secp256k1.p);
+    bnz_mod_bnz(&pp.x, &pp.x, &secp256k1.p);
+    bnz_mod_bnz(&pp.y, &pp.y, &secp256k1.p);
+    bnz_mod_bnz(&qq.x, &qq.x, &secp256k1.p);
+    bnz_mod_bnz(&qq.y, &qq.y, &secp256k1.p);
 
-    if (bnz_is_zero(&p->x) && bnz_is_zero(&p->y)) {
-        bnz_set_bnz(&r->x, &q->x);
-        bnz_set_bnz(&r->y, &q->y);
+    if (bnz_is_zero(&pp.x) && bnz_is_zero(&pp.y)) {
+        bnz_set_bnz(&r->x, &qq.x);
+        bnz_set_bnz(&r->y, &qq.y);
         bnz_free(&tmp);
         bnz_free(&slope);
+        bnz_free(&pp.x);
+        bnz_free(&pp.y);
+        bnz_free(&qq.x);
+        bnz_free(&qq.y);
+        bnz_free(&rr.x);
+        bnz_free(&rr.y);
         return;
     }
 
-    if (bnz_is_zero(&q->x) && bnz_is_zero(&q->y)) {
-        bnz_set_bnz(&r->x, &p->x);
-        bnz_set_bnz(&r->y, &p->y);
+    if (bnz_is_zero(&qq.x) && bnz_is_zero(&qq.y)) {
+        bnz_set_bnz(&r->x, &pp.x);
+        bnz_set_bnz(&r->y, &pp.y);
         bnz_free(&tmp);
         bnz_free(&slope);
+        bnz_free(&pp.x);
+        bnz_free(&pp.y);
+        bnz_free(&qq.x);
+        bnz_free(&qq.y);
+        bnz_free(&rr.x);
+        bnz_free(&rr.y);
         return;
     }
 
-    if (!bnz_is_zero(&q->y)) {
-        bnz_subtract_bnz(&tmp, &secp256k1.p, &q->y);
+    if (!bnz_is_zero(&qq.y)) {
+        bnz_subtract_bnz(&tmp, &secp256k1.p, &qq.y);
         bnz_mod_bnz(&tmp, &tmp, &secp256k1.p);
     } else {
         bnz_set_i32(&tmp, 0);
     }
 
-    if (bnz_cmp_bnz(&p->y, &tmp) == 0 && bnz_cmp_bnz(&p->x, &q->x) == 0) {
+    if (bnz_cmp_bnz(&pp.y, &tmp) == 0 && bnz_cmp_bnz(&pp.x, &qq.x) == 0) {
         bnz_set_i32(&r->x, 0);
         bnz_set_i32(&r->y, 0);
         bnz_free(&tmp);
         bnz_free(&slope);
+        bnz_free(&pp.x);
+        bnz_free(&pp.y);
+        bnz_free(&qq.x);
+        bnz_free(&qq.y);
+        bnz_free(&rr.x);
+        bnz_free(&rr.y);
         return;
     }
 
-    if (bnz_cmp_bnz(&p->x, &q->x) == 0 && bnz_cmp_bnz(&p->y, &q->y) == 0) {
-        secp256k1_point_doubling(secp256k1, p, r);
+    if (bnz_cmp_bnz(&pp.x, &qq.x) == 0 && bnz_cmp_bnz(&pp.y, &qq.y) == 0) {
+        secp256k1_point_doubling(secp256k1, &pp, &rr);
     } else {
-        bnz_subtract_bnz(&tmp, &p->x, &q->x);
+        bnz_subtract_bnz(&tmp, &pp.x, &qq.x);
         bnz_mod_bnz(&tmp, &tmp, &secp256k1.p);
         bnz_modular_multiplicative_inverse(&tmp, &tmp, &secp256k1.p);
-        bnz_subtract_bnz(&slope, &p->y, &q->y);
+        bnz_subtract_bnz(&slope, &pp.y, &qq.y);
         bnz_multiply_bnz(&slope, &slope, &tmp);
         bnz_mod_bnz(&slope, &slope, &secp256k1.p);
-        bnz_multiply_bnz(&r->x, &slope, &slope);
-        bnz_subtract_bnz(&r->x, &r->x, &p->x);
-        bnz_subtract_bnz(&r->x, &r->x, &q->x);
-        bnz_mod_bnz(&r->x, &r->x, &secp256k1.p);
-        bnz_subtract_bnz(&tmp, &p->x, &r->x);
-        bnz_multiply_bnz(&r->y, &slope, &tmp);
-        bnz_subtract_bnz(&r->y, &r->y, &p->y);
-        bnz_mod_bnz(&r->y, &r->y, &secp256k1.p);
+        bnz_multiply_bnz(&rr.x, &slope, &slope);
+        bnz_subtract_bnz(&rr.x, &rr.x, &pp.x);
+        bnz_subtract_bnz(&rr.x, &rr.x, &qq.x);
+        bnz_mod_bnz(&rr.x, &rr.x, &secp256k1.p);
+        bnz_subtract_bnz(&tmp, &pp.x, &rr.x);
+        bnz_multiply_bnz(&rr.y, &slope, &tmp);
+        bnz_subtract_bnz(&rr.y, &rr.y, &pp.y);
+        bnz_mod_bnz(&rr.y, &rr.y, &secp256k1.p);
     }
+
+    bnz_set_bnz(&r->x, &rr.x);
+    bnz_set_bnz(&r->y, &rr.y);
 
     bnz_free(&tmp);
     bnz_free(&slope);
+    bnz_free(&pp.x);
+    bnz_free(&pp.y);
+    bnz_free(&qq.x);
+    bnz_free(&qq.y);
+    bnz_free(&rr.x);
+    bnz_free(&rr.y);
 }
 
-void secp256k1_scalar_multiplication(const SECP256K1 secp256k1, const bnz_t *m, PT *r) // r = (secp256k1.G * m) mod secp256k1.p
+void secp256k1_scalar_multiplication(const SECP256K1 secp256k1, const bnz_t *m, APT *r) // r = (secp256k1.G * m) mod secp256k1.p
 {
     size_t i, bits = 8 * m->size;
 
-    PT q, tmp;
+    APT q;
 
     bnz_init(&q.x);
     bnz_init(&q.y);
-    bnz_init(&tmp.x);
-    bnz_init(&tmp.y);
 
     bnz_set_i32(&r->x, 0);
     bnz_set_i32(&r->y, 0);
 
-    if (bnz_is_zero(m)) {
-        bnz_free(&q.x);
-        bnz_free(&q.y);
-        bnz_free(&tmp.x);
-        bnz_free(&tmp.y);
-        return;
-    }
-
     bnz_set_bnz(&q.x, &secp256k1.G.x);
     bnz_set_bnz(&q.y, &secp256k1.G.y);
 
-    if (bnz_bit_set(m, 0) == 1) {
-        bnz_set_bnz(&r->x, &secp256k1.G.x);
-        bnz_set_bnz(&r->y, &secp256k1.G.y);
-    }
-
-    for (i = 1; i < bits; i++) {
-        bnz_set_i32(&tmp.x, 0);
-        bnz_set_i32(&tmp.y, 0);
-        secp256k1_point_doubling(secp256k1, &q, &tmp);
-        bnz_set_bnz(&q.x, &tmp.x);
-        bnz_set_bnz(&q.y, &tmp.y);
-        bnz_set_bnz(&tmp.x, &r->x);
-        bnz_set_bnz(&tmp.y, &r->y);
-        if (bnz_bit_set(m, i)) secp256k1_point_addition(secp256k1, &tmp, &q, r);
+    for (i = 0; i < bits; i++) {
+        if (bnz_bit_set(m, i)) {
+            secp256k1_point_addition(secp256k1, &q, r, r);
+        }
+        secp256k1_point_doubling(secp256k1, &q, &q);
     }
 
     bnz_free(&q.x);
     bnz_free(&q.y);
+}
+
+void get_affine_from_jacobian(const SECP256K1 secp256k1, APT *apt, JPT *jpt)
+{
+    bnz_t z_inv, z_inv_2, z_inv_3;
+
+    bnz_init(&z_inv);
+    bnz_init(&z_inv_2);
+    bnz_init(&z_inv_3);
+
+    bnz_modular_multiplicative_inverse(&z_inv, &jpt->z, &secp256k1.p); // z_inv = mod_mul_inv(z)
+    bnz_mod_bnz(&z_inv, &z_inv, &secp256k1.p);
+    bnz_multiply_bnz(&z_inv_2, &z_inv, &z_inv); // z_inv_2 = z_inv^2
+    bnz_mod_bnz(&z_inv_2, &z_inv_2, &secp256k1.p);
+    bnz_multiply_bnz(&z_inv_3, &z_inv_2, &z_inv); // z_inv_3 = z_inv^3
+    bnz_mod_bnz(&z_inv_3, &z_inv_3, &secp256k1.p);
+
+    bnz_multiply_bnz(&apt->x, &jpt->x, &z_inv_2); // x_aff = x * z_inv_2
+    bnz_mod_bnz(&apt->x, &apt->x, &secp256k1.p);
+
+    bnz_multiply_bnz(&apt->y, &jpt->y, &z_inv_3); // y_aff = y * z_inv_3
+    bnz_mod_bnz(&apt->y, &apt->y, &secp256k1.p);
+
+    bnz_free(&z_inv);
+    bnz_free(&z_inv_2);
+    bnz_free(&z_inv_3);
+}
+
+void secp256k1_jacobian_point_addition(const SECP256K1 secp256k1, const JPT *p, const APT *q, JPT *r) // r = (p + q) mod secp256k1.p
+{
+    /*
+    The "madd-2004-hmv" addition formulas:
+    Assumptions: Z2=1.
+    Cost: 8M + 3S + 6add + 1*2.
+    Source: 2004 Hankerson Menezes Vanstone, page 91.
+    Explicit formulas:
+        T1 = Z1^2
+        T2 = T1*Z1
+        T1 = T1*X2
+        T2 = T2*Y2
+        T1 = T1-X1
+        T2 = T2-Y1
+        Z3 = Z1*T1
+        T3 = T1^2
+        T4 = T3*T1
+        T3 = T3*X1
+        T1 = 2*T3
+        X3 = T2^2
+        X3 = X3-T1
+        X3 = X3-T4
+        T3 = T3-X3
+        T3 = T3*T2
+        T4 = T4*Y1
+        Y3 = T3-T4
+    */
+
+    bnz_t t1, t2, t3, t4;
+
+    bnz_init(&t1);
+    bnz_init(&t2);
+    bnz_init(&t3);
+    bnz_init(&t4);
+
+    bnz_multiply_bnz(&t1, &p->z, &p->z); // T1 = Z1^2
+    bnz_mod_bnz(&t1, &t1, &secp256k1.p);
+    bnz_multiply_bnz(&t2, &t1, &p->z); // T2 = T1*Z1
+    bnz_mod_bnz(&t2, &t2, &secp256k1.p);
+    bnz_multiply_bnz(&t1, &t1, &q->x); // T1 = T1*X2
+    bnz_mod_bnz(&t1, &t1, &secp256k1.p);
+    bnz_multiply_bnz(&t2, &t2, &q->y); // T2 = T2*Y2
+    bnz_mod_bnz(&t2, &t2, &secp256k1.p);
+    bnz_subtract_bnz(&t1, &t1, &p->x); // T1 = T1-X1
+    bnz_mod_bnz(&t1, &t1, &secp256k1.p);
+    bnz_subtract_bnz(&t2, &t2, &p->y); // T2 = T2-Y1
+    bnz_mod_bnz(&t2, &t2, &secp256k1.p);
+    bnz_multiply_bnz(&r->z, &p->z, &t1); // Z3 = Z1*T1
+    bnz_mod_bnz(&r->z, &r->z, &secp256k1.p);
+    bnz_multiply_bnz(&t3, &t1, &t1); // T3 = T1^2
+    bnz_mod_bnz(&t3, &t3, &secp256k1.p);
+    bnz_multiply_bnz(&t4, &t3, &t1); // T4 = T3*T1
+    bnz_mod_bnz(&t4, &t4, &secp256k1.p);
+    bnz_multiply_bnz(&t3, &t3, &p->x); // T3 = T3*X1
+    bnz_mod_bnz(&t3, &t3, &secp256k1.p);
+    bnz_multiply_i32(&t1, &t3, 2); // T1 = 2*T3
+    bnz_mod_bnz(&t1, &t1, &secp256k1.p);
+    bnz_multiply_bnz(&r->x, &t2, &t2); // X3 = T2^2
+    bnz_mod_bnz(&r->x, &r->x, &secp256k1.p);
+    bnz_subtract_bnz(&r->x, &r->x, &t1); // X3 = X3-T1
+    bnz_mod_bnz(&r->x, &r->x, &secp256k1.p);
+    bnz_subtract_bnz(&r->x, &r->x, &t4); // X3 = X3-T4
+    bnz_mod_bnz(&r->x, &r->x, &secp256k1.p);
+    bnz_subtract_bnz(&t3, &t3, &r->x); // T3 = T3-X3
+    bnz_mod_bnz(&t3, &t3, &secp256k1.p);
+    bnz_multiply_bnz(&t3, &t3, &t2); // T3 = T3*T2
+    bnz_mod_bnz(&t3, &t3, &secp256k1.p);
+    bnz_multiply_bnz(&t4, &t4, &p->y); // T4 = T4*Y1
+    bnz_mod_bnz(&t4, &t4, &secp256k1.p);
+    bnz_subtract_bnz(&r->y, &t3, &t4); // Y3 = T3-T4
+    bnz_mod_bnz(&r->y, &r->y, &secp256k1.p);
+
+    bnz_free(&t1);
+    bnz_free(&t2);
+    bnz_free(&t3);
+    bnz_free(&t4);
+}
+
+void secp256k1_jacobian_scalar_multiplication(const SECP256K1 secp256k1, const bnz_t *m, APT *r) // r = (secp256k1.G * m) mod secp256k1.p
+{
+    size_t i, bits = 8 * m->size, flag = 0;
+
+    JPT tmp;
+
+    bnz_init(&tmp.x);
+    bnz_init(&tmp.y);
+    bnz_init(&tmp.z);
+
+    for (i = 0; i < bits; i++) {
+        if (bnz_bit_set(m, i)) {
+            if (flag) {
+                secp256k1_jacobian_point_addition(secp256k1, &tmp, &secp256k1.G_doublings_mod_p[i], &tmp);
+            } else {
+                bnz_set_bnz(&tmp.x, &secp256k1.G_doublings_mod_p[i].x);
+                bnz_set_bnz(&tmp.y, &secp256k1.G_doublings_mod_p[i].y);
+                bnz_set_i32(&tmp.z, 1);
+                flag = 1;
+            }
+        }
+    }
+    get_affine_from_jacobian(secp256k1, r, &tmp);
+
     bnz_free(&tmp.x);
     bnz_free(&tmp.y);
+    bnz_free(&tmp.z);
 }
 
 /* BITCOIN */
@@ -1912,12 +2122,12 @@ void get_bip39_word_ids_str(bnz_t *, bnz_t *, uint8_t *, char *);
 uint8_t *get_mnemonic_phrase(uint32_t *);
 void get_seed_from_mnemonic_phrase(bnz_t *, const char *, const char *);
 void get_master_keys(bnz_t *, bnz_t *, const bnz_t *);
-void get_child_normal(bnz_t *, bnz_t *, const bnz_t *, const bnz_t *, const bnz_t *, uint32_t);
-void get_child_hardened(bnz_t *, bnz_t *, const bnz_t *, const bnz_t *, uint32_t);
-void get_hdk_intermediate_values(const bnz_t *, const bnz_t *, char *);
-void get_public_key_compressed(bnz_t *, bnz_t *);
-void get_public_key(PT *, bnz_t *, bnz_t *);
-void get_public_key_xy(PT *, bnz_t *);
+void get_child_normal(const SECP256K1, bnz_t *, bnz_t *, const bnz_t *, const bnz_t *, const bnz_t *, uint32_t);
+void get_child_hardened(const SECP256K1, bnz_t *, bnz_t *, const bnz_t *, const bnz_t *, uint32_t);
+void get_hdk_intermediate_values(const SECP256K1, const bnz_t *, const bnz_t *, char *);
+void get_public_key_compressed(const SECP256K1, bnz_t *, bnz_t *);
+void get_public_key(const SECP256K1, APT *, bnz_t *, bnz_t *);
+void get_public_key_xy(const SECP256K1, APT *, bnz_t *);
 void get_random_master_keys(bnz_t *, bnz_t *, bnz_t *);
 void get_p2pkh_address(bnz_t *, bnz_t *, uint32_t *);
 void print_p2pkh_address(const bnz_t *, const uint8_t *, uint32_t);
@@ -1925,9 +2135,9 @@ void get_p2sh_p2wpkh_address(bnz_t *, bnz_t *);
 void get_p2wpkh_address(bnz_t *, const bnz_t *);
 uint32_t p2wpkh_checksum_update(uint32_t, uint8_t);
 void print_p2wpkh_address(const bnz_t *, const uint8_t *);
-void get_wallet_p2pkh_addresses(bnz_t *, bnz_t *);
-void get_wallet_p2sh_p2wpkh_addresses(bnz_t *, bnz_t *);
-void get_wallet_p2wpkh_addresses(bnz_t *, bnz_t *);
+void get_wallet_p2pkh_addresses(const SECP256K1, bnz_t *, bnz_t *);
+void get_wallet_p2sh_p2wpkh_addresses(const SECP256K1, bnz_t *, bnz_t *);
+void get_wallet_p2wpkh_addresses(const SECP256K1, bnz_t *, bnz_t *);
 void get_xprv_master(bnz_t *, bnz_t *, bnz_t *);
 void get_xpub_master(bnz_t *, bnz_t *, bnz_t *);
 void get_xprv_child(bnz_t *, uint8_t, uint32_t, bnz_t *, bnz_t *, bnz_t *);
@@ -2122,17 +2332,14 @@ void get_master_keys(bnz_t *master_private_key, bnz_t *master_chain_code, const 
     bnz_free(&tmp);
 }
 
-void get_child_normal(bnz_t *child_private_key, bnz_t *child_chain_code, const bnz_t *parent_private_key, const bnz_t *parent_chain_code, const bnz_t *parent_public_key_compressed, uint32_t index_num)
+void get_child_normal(const SECP256K1 secp256k1, bnz_t *child_private_key, bnz_t *child_chain_code, const bnz_t *parent_private_key, const bnz_t *parent_chain_code, const bnz_t *parent_public_key_compressed, uint32_t index_num)
 {
     uint8_t mac[64];
     bnz_t index, tmp1, tmp2;
-    SECP256K1 secp256k1;
 
     bnz_init(&index);
     bnz_init(&tmp1);
     bnz_init(&tmp2);
-
-    secp256k1 = secp256k1_init();
 
     bnz_set_ui32(&index, index_num);
     bnz_set_bnz(&tmp1, parent_chain_code);
@@ -2164,21 +2371,16 @@ void get_child_normal(bnz_t *child_private_key, bnz_t *child_chain_code, const b
     bnz_free(&index);
     bnz_free(&tmp1);
     bnz_free(&tmp2);
-
-    secp256k1_free(secp256k1);
 }
 
-void get_child_hardened(bnz_t *child_private_key, bnz_t *child_chain_code, const bnz_t *parent_private_key, const bnz_t *parent_chain_code, uint32_t index_num)
+void get_child_hardened(const SECP256K1 secp256k1, bnz_t *child_private_key, bnz_t *child_chain_code, const bnz_t *parent_private_key, const bnz_t *parent_chain_code, uint32_t index_num)
 {
     uint8_t mac[64];
     bnz_t index, tmp1, tmp2;
-    SECP256K1 secp256k1;
 
     bnz_init(&index);
     bnz_init(&tmp1);
     bnz_init(&tmp2);
-
-    secp256k1 = secp256k1_init();
 
     bnz_set_ui32(&index, index_num < 2147483648 ? 2147483648 + index_num : index_num);
     bnz_set_bnz(&tmp1, parent_chain_code);
@@ -2211,14 +2413,13 @@ void get_child_hardened(bnz_t *child_private_key, bnz_t *child_chain_code, const
     bnz_free(&index);
     bnz_free(&tmp1);
     bnz_free(&tmp2);
-
-    secp256k1_free(secp256k1);
 }
 
-void get_hdk_intermediate_values(const bnz_t *master_private_key, const bnz_t *master_chain_code, char *hdk_str)
+void get_hdk_intermediate_values(const SECP256K1 secp256k1, const bnz_t *master_private_key, const bnz_t *master_chain_code, char *hdk_str)
 {
     char *tok = strtok(hdk_str, "/"), display_str[32]; // split str into an array of indicies
     uint32_t index, depth = 0;
+
     bnz_t parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, child_public_key_compressed, child_xpub;
 
     bnz_init(&parent_private_key);
@@ -2244,16 +2445,16 @@ void get_hdk_intermediate_values(const bnz_t *master_private_key, const bnz_t *m
             depth++; // increment depth
             index = atoi(tok); // extract index from tok, ignoring any "'" indicating hardened child 
 
-            get_public_key_compressed(&parent_public_key_compressed, &parent_private_key); // get parent compressed public key for calculating normal child / xpub 
+            get_public_key_compressed(secp256k1, &parent_public_key_compressed, &parent_private_key); // get parent compressed public key for calculating normal child / xpub 
 
             if (tok[strlen(tok) - 1] == '\'') { // check for presence of "'" indicating hardened child
                 if (index < 2147483648) index += 2147483648;
-                get_child_hardened(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, index); // if last char of tok is "'", get hardened child
+                get_child_hardened(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, index); // if last char of tok is "'", get hardened child
             } else {
-                get_child_normal(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, index); // if last char of tok is not "'", get normal child
+                get_child_normal(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, index); // if last char of tok is not "'", get normal child
             }
 
-            get_public_key_compressed(&child_public_key_compressed, &child_private_key); // get compressed public key from child private key
+            get_public_key_compressed(secp256k1, &child_public_key_compressed, &child_private_key); // get compressed public key from child private key
             get_xpub_child(&child_xpub, depth, index, &parent_public_key_compressed, &child_public_key_compressed, &child_chain_code); // calculate child xpub
 
             // print results
@@ -2282,16 +2483,14 @@ void get_hdk_intermediate_values(const bnz_t *master_private_key, const bnz_t *m
     bnz_free(&child_xpub);
 }
 
-void get_public_key_compressed(bnz_t *public_key_compressed, bnz_t *private_key)
+void get_public_key_compressed(const SECP256K1 secp256k1, bnz_t *public_key_compressed, bnz_t *private_key)
 {
-    PT public_key;
+    APT public_key;
 
     bnz_init(&public_key.x);
     bnz_init(&public_key.y);
 
-    SECP256K1 secp256k1 = secp256k1_init();
-
-    secp256k1_scalar_multiplication(secp256k1, private_key, &public_key);
+    secp256k1_jacobian_scalar_multiplication(secp256k1, private_key, &public_key);
 
     bnz_resize(&public_key.x, 32, 1);
 
@@ -2303,15 +2502,11 @@ void get_public_key_compressed(bnz_t *public_key_compressed, bnz_t *private_key)
     
     bnz_free(&public_key.x);
     bnz_free(&public_key.y);
-
-    secp256k1_free(secp256k1);
 }
 
-void get_public_key(PT *public_key, bnz_t *public_key_compressed, bnz_t *private_key) // generate public key from private key
+void get_public_key(const SECP256K1 secp256k1, APT *public_key, bnz_t *public_key_compressed, bnz_t *private_key) // generate public key from private key
 {
-    SECP256K1 secp256k1 = secp256k1_init();
-
-    secp256k1_scalar_multiplication(secp256k1, private_key, public_key); // public_key = (secp256k1.G * private_key) mod secp256k1.p
+    secp256k1_jacobian_scalar_multiplication(secp256k1, private_key, public_key); // public_key = (secp256k1.G * private_key) mod secp256k1.p
 
     bnz_resize(&public_key->x, 32, 1); // ensure that the compressed public key is 32 bytes long before concatenation with the even y / odd y byte
 
@@ -2320,20 +2515,15 @@ void get_public_key(PT *public_key, bnz_t *public_key_compressed, bnz_t *private
     } else { // odd y
         bnz_concatenate_ui8(public_key_compressed, &public_key->x, 3, 0); // prepend 3
     }
-    
-    secp256k1_free(secp256k1);
 }
 
-void get_public_key_xy(PT *public_key, bnz_t *public_key_compressed) // regenerate public key point on secp256k1 from compressed public key
+void get_public_key_xy(const SECP256K1 secp256k1, APT *public_key, bnz_t *public_key_compressed) // regenerate public key point on secp256k1 from compressed public key
 {
     uint8_t typ = public_key_compressed->digits[public_key_compressed->size - 1]; // byte at msb encodes the parity of y: typ = 0x02 for even y, typ = 0x03 for odd y
     bnz_t exp, y_sq;
-    SECP256K1 secp256k1;
 
     bnz_init(&exp);
     bnz_init(&y_sq);
-
-    secp256k1 = secp256k1_init();
 
     /*
 
@@ -2369,8 +2559,6 @@ void get_public_key_xy(PT *public_key, bnz_t *public_key_compressed) // regenera
 
     bnz_free(&exp);
     bnz_free(&y_sq);
-
-    secp256k1_free(secp256k1);
 }
 
 void get_random_master_keys(bnz_t *entropy, bnz_t *master_private_key, bnz_t *master_chain_code) // NOT SECURE use random 256 bit entropy to generate master private key and master chain code
@@ -2569,10 +2757,10 @@ void print_p2wpkh_address(const bnz_t *p2wpkh, const uint8_t *str)
     bnz_free(&tmp);
 }
 
-void get_wallet_p2pkh_addresses(bnz_t *master_private_key, bnz_t *master_chain_code)
+void get_wallet_p2pkh_addresses(const SECP256K1 secp256k1, bnz_t *master_private_key, bnz_t *master_chain_code)
 {
     uint32_t i, p2pkh_leading_zeros;
-    
+
     bnz_t parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, child_public_key_compressed, p2pkh;
 
     bnz_init(&parent_private_key);
@@ -2586,31 +2774,31 @@ void get_wallet_p2pkh_addresses(bnz_t *master_private_key, bnz_t *master_chain_c
     // m/44'
     bnz_set_bnz(&parent_private_key, master_private_key);
     bnz_set_bnz(&parent_chain_code, master_chain_code);
-    get_child_hardened(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 44);
+    get_child_hardened(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 44);
 
     // m/44'/0'
     bnz_set_bnz(&parent_private_key, &child_private_key);
     bnz_set_bnz(&parent_chain_code, &child_chain_code);
-    get_child_hardened(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 0);
+    get_child_hardened(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 0);
 
     // m/44'/0'/0'
     bnz_set_bnz(&parent_private_key, &child_private_key);
     bnz_set_bnz(&parent_chain_code, &child_chain_code);
-    get_child_hardened(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 0);
+    get_child_hardened(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 0);
 
     // m/44'/0'/0'/0
     bnz_set_bnz(&parent_private_key, &child_private_key);
     bnz_set_bnz(&parent_chain_code, &child_chain_code);
-    get_public_key_compressed(&parent_public_key_compressed, &parent_private_key);
-    get_child_normal(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, 0);
+    get_public_key_compressed(secp256k1, &parent_public_key_compressed, &parent_private_key);
+    get_child_normal(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, 0);
 
     // m/44'/0'/0'/0/0 to m/44'/0'/0'/0/19
     bnz_set_bnz(&parent_private_key, &child_private_key);
     bnz_set_bnz(&parent_chain_code, &child_chain_code);
-    get_public_key_compressed(&parent_public_key_compressed, &parent_private_key);
+    get_public_key_compressed(secp256k1, &parent_public_key_compressed, &parent_private_key);
     for (i = 0; i < 20; i++) {
-        get_child_normal(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, i);
-        get_public_key_compressed(&child_public_key_compressed, &child_private_key);
+        get_child_normal(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, i);
+        get_public_key_compressed(secp256k1, &child_public_key_compressed, &child_private_key);
         get_p2pkh_address(&p2pkh, &child_public_key_compressed, &p2pkh_leading_zeros);
         printf("m/44'/0'/0'/0/%d: ", i);
         print_p2pkh_address(&p2pkh, "", p2pkh_leading_zeros);
@@ -2626,7 +2814,7 @@ void get_wallet_p2pkh_addresses(bnz_t *master_private_key, bnz_t *master_chain_c
     bnz_free(&p2pkh);
 }
 
-void get_wallet_p2sh_p2wpkh_addresses(bnz_t *master_private_key, bnz_t *master_chain_code)
+void get_wallet_p2sh_p2wpkh_addresses(const SECP256K1 secp256k1, bnz_t *master_private_key, bnz_t *master_chain_code)
 {
     uint32_t i;
     
@@ -2643,31 +2831,31 @@ void get_wallet_p2sh_p2wpkh_addresses(bnz_t *master_private_key, bnz_t *master_c
     // m/49'
     bnz_set_bnz(&parent_private_key, master_private_key);
     bnz_set_bnz(&parent_chain_code, master_chain_code);
-    get_child_hardened(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 49);
+    get_child_hardened(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 49);
 
     // m/49'/0'
     bnz_set_bnz(&parent_private_key, &child_private_key);
     bnz_set_bnz(&parent_chain_code, &child_chain_code);
-    get_child_hardened(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 0);
+    get_child_hardened(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 0);
 
     // m/49'/0'/0'
     bnz_set_bnz(&parent_private_key, &child_private_key);
     bnz_set_bnz(&parent_chain_code, &child_chain_code);
-    get_child_hardened(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 0);
+    get_child_hardened(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 0);
 
     // m/49'/0'/0'/0
     bnz_set_bnz(&parent_private_key, &child_private_key);
     bnz_set_bnz(&parent_chain_code, &child_chain_code);
-    get_public_key_compressed(&parent_public_key_compressed, &parent_private_key);
-    get_child_normal(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, 0);
+    get_public_key_compressed(secp256k1, &parent_public_key_compressed, &parent_private_key);
+    get_child_normal(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, 0);
 
     // m/49'/0'/0'/0/0 to m/49'/0'/0'/0/19
     bnz_set_bnz(&parent_private_key, &child_private_key);
     bnz_set_bnz(&parent_chain_code, &child_chain_code);
-    get_public_key_compressed(&parent_public_key_compressed, &parent_private_key);
+    get_public_key_compressed(secp256k1, &parent_public_key_compressed, &parent_private_key);
     for (i = 0; i < 20; i++) {
-        get_child_normal(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, i);
-        get_public_key_compressed(&child_public_key_compressed, &child_private_key);
+        get_child_normal(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, i);
+        get_public_key_compressed(secp256k1, &child_public_key_compressed, &child_private_key);
         get_p2sh_p2wpkh_address(&p2sh_p2wpkh, &child_public_key_compressed);
         printf("m/49'/0'/0'/0/%d: ", i);
         bnz_print(&p2sh_p2wpkh, 58, "");
@@ -2682,7 +2870,7 @@ void get_wallet_p2sh_p2wpkh_addresses(bnz_t *master_private_key, bnz_t *master_c
     bnz_free(&p2sh_p2wpkh);
 }
 
-void get_wallet_p2wpkh_addresses(bnz_t *master_private_key, bnz_t *master_chain_code)
+void get_wallet_p2wpkh_addresses(const SECP256K1 secp256k1, bnz_t *master_private_key, bnz_t *master_chain_code)
 {
     uint32_t i;
     
@@ -2699,31 +2887,31 @@ void get_wallet_p2wpkh_addresses(bnz_t *master_private_key, bnz_t *master_chain_
     // m/84'
     bnz_set_bnz(&parent_private_key, master_private_key);
     bnz_set_bnz(&parent_chain_code, master_chain_code);
-    get_child_hardened(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 84);
+    get_child_hardened(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 84);
 
     // m/84'/0'
     bnz_set_bnz(&parent_private_key, &child_private_key);
     bnz_set_bnz(&parent_chain_code, &child_chain_code);
-    get_child_hardened(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 0);
+    get_child_hardened(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 0);
 
     // m/84'/0'/0'
     bnz_set_bnz(&parent_private_key, &child_private_key);
     bnz_set_bnz(&parent_chain_code, &child_chain_code);
-    get_child_hardened(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 0);
+    get_child_hardened(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, 0);
 
     // m/84'/0'/0'/0
     bnz_set_bnz(&parent_private_key, &child_private_key);
     bnz_set_bnz(&parent_chain_code, &child_chain_code);
-    get_public_key_compressed(&parent_public_key_compressed, &parent_private_key);
-    get_child_normal(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, 0);
+    get_public_key_compressed(secp256k1, &parent_public_key_compressed, &parent_private_key);
+    get_child_normal(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, 0);
 
     // m/84'/0'/0'/0/0 to m/84'/0'/0'/0/19
     bnz_set_bnz(&parent_private_key, &child_private_key);
     bnz_set_bnz(&parent_chain_code, &child_chain_code);
-    get_public_key_compressed(&parent_public_key_compressed, &parent_private_key);
+    get_public_key_compressed(secp256k1, &parent_public_key_compressed, &parent_private_key);
     for (i = 0; i < 20; i++) {
-        get_child_normal(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, i);
-        get_public_key_compressed(&child_public_key_compressed, &child_private_key);
+        get_child_normal(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, i);
+        get_public_key_compressed(secp256k1, &child_public_key_compressed, &child_private_key);
         get_p2wpkh_address(&p2wpkh, &child_public_key_compressed);
         printf("m/84'/0'/0'/0/%d: ", i);
         print_p2wpkh_address(&p2wpkh, "");
@@ -2881,8 +3069,6 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
     char entropy_str[257], base = 16, passphrase_str[257], *mnemonic = NULL;
     bnz_t entropy, master_private_key, master_chain_code, xprv, master_public_key, master_public_key_compressed, xpub, seed;
 
-    PT public_key;
-
     SECP256K1 secp256k1;
 
     bnz_init(&entropy);
@@ -2893,8 +3079,6 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
     bnz_init(&master_public_key_compressed);
     bnz_init(&xpub);
     bnz_init(&seed);
-    bnz_init(&public_key.x);
-    bnz_init(&public_key.y);
 
     secp256k1 = secp256k1_init();
 
@@ -2980,8 +3164,6 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
         bnz_free(&master_public_key_compressed);
         bnz_free(&xpub);
         bnz_free(&seed);
-        bnz_free(&public_key.x);
-        bnz_free(&public_key.y);
 
         secp256k1_free(secp256k1);
 
@@ -2996,9 +3178,9 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
 
     printf("\nHDK ADDRESSES:\n");
     
-    get_wallet_p2pkh_addresses(&master_private_key, &master_chain_code);
-    get_wallet_p2sh_p2wpkh_addresses(&master_private_key, &master_chain_code);
-    get_wallet_p2wpkh_addresses(&master_private_key, &master_chain_code);
+    get_wallet_p2pkh_addresses(secp256k1, &master_private_key, &master_chain_code);
+    get_wallet_p2sh_p2wpkh_addresses(secp256k1, &master_private_key, &master_chain_code);
+    get_wallet_p2wpkh_addresses(secp256k1, &master_private_key, &master_chain_code);
 
     bnz_free(&entropy);
     bnz_free(&master_private_key);
@@ -3008,8 +3190,6 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
     bnz_free(&master_public_key_compressed);
     bnz_free(&xpub);
     bnz_free(&seed);
-    bnz_free(&public_key.x);
-    bnz_free(&public_key.y);
 
     secp256k1_free(secp256k1);
 
@@ -3052,7 +3232,7 @@ void menu_2_1_normal_child(const char *version)
     uint8_t parent_private_key_str[67], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
     uint32_t index_num, p2pkh_leading_zeros;
     bnz_t tmp, index, entropy, parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, xprv, child_public_key_compressed, xpub, p2pkh, p2sh_p2wpkh, p2wpkh;
-    PT parent_public_key_pt, child_public_key_pt;
+    APT parent_public_key_pt, child_public_key_pt;
     SECP256K1 secp256k1;
 
     secp256k1 = secp256k1_init();
@@ -3154,7 +3334,7 @@ void menu_2_1_normal_child(const char *version)
     printf("Index (0 to 2147483647): ");
     index_num = get_num_input(11, 0, 2147483647);
 
-    get_public_key(&parent_public_key_pt, &parent_public_key_compressed, &parent_private_key);
+    get_public_key(secp256k1, &parent_public_key_pt, &parent_public_key_compressed, &parent_private_key);
 
     system("cls");
     printf("%s\n\n", version);
@@ -3169,7 +3349,7 @@ void menu_2_1_normal_child(const char *version)
     printf("INDEX: %u\n", index_num);
     printf("\n");
 
-    get_child_normal(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, index_num);
+    get_child_normal(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, &parent_public_key_compressed, index_num);
     get_xprv_child(&xprv, depth_num, index_num, &parent_public_key_compressed, &child_private_key, &child_chain_code); // serialise xprv
 
     bnz_print(&child_private_key, 16, "CHILD PRIVATE KEY: ");
@@ -3177,7 +3357,7 @@ void menu_2_1_normal_child(const char *version)
     bnz_print(&xprv, 58, "CHILD XPRV: ");
     printf("\n");
 
-    get_public_key(&child_public_key_pt, &child_public_key_compressed, &child_private_key); // generate compressed public key from private key
+    get_public_key(secp256k1, &child_public_key_pt, &child_public_key_compressed, &child_private_key); // generate compressed public key from private key
     get_xpub_child(&xpub, depth_num, index_num, &parent_public_key_compressed, &child_public_key_compressed, &child_chain_code); // serialise xpub
     get_p2pkh_address(&p2pkh, &child_public_key_compressed, &p2pkh_leading_zeros); // serialise p2pkh address
     get_p2sh_p2wpkh_address(&p2sh_p2wpkh, &child_public_key_compressed); // serialise p2sh_p2wpkh address
@@ -3224,7 +3404,7 @@ void menu_2_2_hardened_child(const char *version)
     uint8_t parent_private_key_str[67], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
     uint32_t index_num, p2pkh_leading_zeros;
     bnz_t tmp, index, entropy, parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, xprv, child_public_key_compressed, xpub, p2pkh, p2sh_p2wpkh, p2wpkh;
-    PT parent_public_key_pt, child_public_key_pt;
+    APT parent_public_key_pt, child_public_key_pt;
     SECP256K1 secp256k1;
 
     secp256k1 = secp256k1_init();
@@ -3323,7 +3503,7 @@ void menu_2_2_hardened_child(const char *version)
     index_num = get_num_input(10, 0, 4294967295);
     if (index_num < 2147483648) index_num += 2147483648;
 
-    get_public_key(&parent_public_key_pt, &parent_public_key_compressed, &parent_private_key);
+    get_public_key(secp256k1, &parent_public_key_pt, &parent_public_key_compressed, &parent_private_key);
 
     system("cls");
     printf("%s\n\n", version);
@@ -3338,7 +3518,7 @@ void menu_2_2_hardened_child(const char *version)
     printf("INDEX: %u\n", index_num);
     printf("\n");
 
-    get_child_hardened(&child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, index_num);
+    get_child_hardened(secp256k1, &child_private_key, &child_chain_code, &parent_private_key, &parent_chain_code, index_num);
     get_xprv_child(&xprv, depth_num, index_num, &parent_public_key_compressed, &child_private_key, &child_chain_code); // serialise xprv
 
     bnz_print(&child_private_key, 16, "CHILD PRIVATE KEY: ");
@@ -3346,7 +3526,7 @@ void menu_2_2_hardened_child(const char *version)
     bnz_print(&xprv, 58, "CHILD XPRV: ");
     printf("\n");
 
-    get_public_key(&child_public_key_pt, &child_public_key_compressed, &child_private_key); // generate compressed public key from private key
+    get_public_key(secp256k1, &child_public_key_pt, &child_public_key_compressed, &child_private_key); // generate compressed public key from private key
     get_xpub_child(&xpub, depth_num, index_num, &parent_public_key_compressed, &child_public_key_compressed, &child_chain_code); // serialise xpub
     get_p2pkh_address(&p2pkh, &child_public_key_compressed, &p2pkh_leading_zeros); // serialise p2pkh address
     get_p2sh_p2wpkh_address(&p2sh_p2wpkh, &child_public_key_compressed); // serialise p2sh_p2wpkh address
@@ -3391,7 +3571,7 @@ void menu_2_3_public_child(const char *version)
     uint8_t parent_public_key_compressed_str[69], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
     uint32_t index_num, p2pkh_leading_zeros;
     bnz_t tmp, index, parent_public_key_compressed, parent_chain_code, child_public_key_compressed, child_chain_code, xpub, p2pkh, p2sh_p2wpkh, p2wpkh;
-    PT tmp_key, parent_public_key_pt, child_public_key_pt;
+    APT tmp_key, parent_public_key_pt, child_public_key_pt;
 
     SECP256K1 secp256k1;
 
@@ -3451,7 +3631,7 @@ void menu_2_3_public_child(const char *version)
     printf("Index (0 to 2147483647): ");
     index_num = get_num_input(10, 0, 2147483647);
 
-    get_public_key_xy(&parent_public_key_pt, &parent_public_key_compressed);
+    get_public_key_xy(secp256k1, &parent_public_key_pt, &parent_public_key_compressed);
 
     system("cls");
     printf("%s\n\n", version);
@@ -3481,7 +3661,6 @@ void menu_2_3_public_child(const char *version)
     memcpy(tmp.digits, mac, 32); // copy first 32 bytes of mac into tmp.digits
     bnz_reverse_digits(&tmp); // convert tmp.digits back to default little endian
 
-    secp256k1_scalar_multiplication(secp256k1, &tmp, &tmp_key); // tmp = (secp256k1.G * tmp) mod secp256k1.p, a point on secp256k1
     secp256k1_point_addition(secp256k1, &parent_public_key_pt, &tmp_key, &child_public_key_pt); // child_public_key_pt = (parent_public_key_pt + tmp) mod secp256k1.p
 
     if (bnz_bit_set(&child_public_key_pt.y, 0) == 0) { // even
@@ -3608,7 +3787,7 @@ void menu_2_4_hdk_intermediate_values(const char *version)
     printf("HDK STRING: %s\n", hdk_str);
     printf("\n");
 
-    get_hdk_intermediate_values(&master_private_key, &master_chain_code, hdk_str);
+    get_hdk_intermediate_values(secp256k1, &master_private_key, &master_chain_code, hdk_str);
 
     bnz_free(&entropy);
     bnz_free(&master_private_key);
@@ -3907,7 +4086,7 @@ void menu_4_3_private_key_to_WIF(const char *version)
     uint8_t private_key_str[67]; // optional "0x" + 32 bytes + null terminus
     uint32_t p2pkh_leading_zeros;
     bnz_t private_key_wif, private_key, entropy, chain_code, public_key_compressed, p2pkh, p2sh_p2wpkh, p2wpkh, fingerprint;
-    PT public_key;
+    APT public_key;
     
     SECP256K1 secp256k1;
 
@@ -3989,7 +4168,7 @@ void menu_4_3_private_key_to_WIF(const char *version)
     bnz_print(&private_key_wif, 16, "PRIVATE KEY WIF (HEX): "); // hex version of WIF
     bnz_print(&private_key_wif, 58, "PRIVATE KEY WIF (BITCOIN BASE 58): "); // Bitcoin Base 58 version of WIF (standard)
 
-    get_public_key(&public_key, &public_key_compressed, &private_key);
+    get_public_key(secp256k1, &public_key, &public_key_compressed, &private_key);
     get_p2pkh_address(&p2pkh, &public_key_compressed, &p2pkh_leading_zeros);
     get_p2sh_p2wpkh_address(&p2sh_p2wpkh, &public_key_compressed);
     get_p2wpkh_address(&p2wpkh, &public_key_compressed);
@@ -4028,7 +4207,7 @@ void menu_4_4_WIF_to_private_key(const char *version)
     uint32_t p2pkh_leading_zeros;
     bnz_t private_key_wif, private_key, public_key_compressed, p2pkh, p2sh_p2wpkh, p2wpkh;
 
-    PT public_key;
+    APT public_key;
 
     SECP256K1 secp256k1;
     
@@ -4071,7 +4250,7 @@ void menu_4_4_WIF_to_private_key(const char *version)
     bnz_print(&private_key_wif, 16, "PRIVATE KEY WIF (HEX): "); // hex version of WIF
     bnz_print(&private_key, 16, "PRIVATE KEY: "); // hex version of private key
 
-    get_public_key(&public_key, &public_key_compressed, &private_key);
+    get_public_key(secp256k1, &public_key, &public_key_compressed, &private_key);
     get_p2pkh_address(&p2pkh, &public_key_compressed, &p2pkh_leading_zeros);
     get_p2sh_p2wpkh_address(&p2sh_p2wpkh, &public_key_compressed);
     get_p2wpkh_address(&p2wpkh, &public_key_compressed);
@@ -4104,7 +4283,7 @@ void menu_4_4_WIF_to_private_key(const char *version)
 void menu_4_5_secp256k1_point_addition(const char *version)
 {
     uint8_t a_x_str[67], a_y_str[67], b_x_str[67], b_y_str[67];
-    PT a, b, c;
+    APT a, b, c;
     bnz_t private_key;
 
     SECP256K1 secp256k1;
@@ -4171,7 +4350,7 @@ void menu_4_5_secp256k1_point_addition(const char *version)
 void menu_4_6_secp256k1_point_doubling(const char *version)
 {
     uint8_t a_x_str[67], a_y_str[67];
-    PT a, b;
+    APT a, b;
     bnz_t private_key;
 
     SECP256K1 secp256k1;
@@ -4206,12 +4385,12 @@ void menu_4_6_secp256k1_point_doubling(const char *version)
     bnz_print(&b.y, 16, "y: ");
     printf("\n");
 
-    secp256k1_free(secp256k1);
-
     bnz_free(&a.x);
     bnz_free(&a.y);
     bnz_free(&b.x);
     bnz_free(&b.y);
+
+    secp256k1_free(secp256k1);
 
     printf("press any key to continue...");
 
@@ -4222,7 +4401,7 @@ void menu_4_7_secp256k1_scalar_multiplication(const char *version)
 {
     uint8_t multiplier_str[67];
     bnz_t multiplier;
-    PT p;
+    APT p;
 
     bnz_init(&multiplier);
     bnz_init(&p.x);
@@ -4251,11 +4430,13 @@ void menu_4_7_secp256k1_scalar_multiplication(const char *version)
 
     printf("\n");
 
-    secp256k1_scalar_multiplication(secp256k1, &multiplier, &p);
+    secp256k1_jacobian_scalar_multiplication(secp256k1, &multiplier, &p);
 
     printf("SECP256K1 POINT:\n");
     bnz_print(&p.x, 16, " x: ");
     bnz_print(&p.y, 16, " y: ");
+    bnz_print(&p.x, 10, " x: ");
+    bnz_print(&p.y, 10, " y: ");
     printf("\n");
 
     bnz_free(&multiplier);
@@ -4273,7 +4454,7 @@ void menu_4_7_secp256k1_scalar_multiplication(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.17, 2025-07-21";
+    static char *version = "bitcoin_math\nv0.19, 2025-08-29";
     int menu, running = 1;
     while (running) {
         system("cls");
@@ -4283,7 +4464,7 @@ int main()
         printf("3. Base converter\n");
         printf("4. Functions\n");
         printf("\n");
-        menu = get_num_input(1, 0, 4);
+        menu = get_num_input(1, 0, 5);
         switch (menu) {
             case 1:
                 menu_1_master_keys(version);
