@@ -80,7 +80,7 @@ The algorithms for the elliptic curve functions were adapted from a paper entitl
 
 The algorithms for the modular power and modular multiplicative inverse functions were adapted from the pseudocode provided in the corresponding Wikipedia pages.
 
-The improved elliptic curve point multiplication algorithm depends on the Jacobian elliptic curve addition algorthim known as "madd-2004-hmv", which is specific to curves where a = 0, see this page on the Explicit Functions Database: https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html.
+The improved elliptic curve point multiplication algorithm depends on the Jacobian elliptic curve addition algorthim known as "madd-2004-hmv", which is specific to curves where a = 0, see this page on the Explicit Functions Database: https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html.
 
 
 ## The source code
