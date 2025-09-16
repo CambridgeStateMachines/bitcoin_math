@@ -820,7 +820,7 @@ void bnz_init(bnz_t *a) // initiate bnz_t components
 void bnz_resize(bnz_t *a, size_t new_size, int32_t preserve) // increase or decrease number of bytes in a->digits, zeroing added bytes, and preserving or zeroing existing bytes
 {
     uint8_t *tmp = NULL;
-    uint32_t prev_size = a->size;
+    size_t prev_size = a->size;
     if (new_size < 1) new_size = 1;
     tmp = realloc(a->digits, new_size);
     if (tmp) {
@@ -1036,7 +1036,7 @@ void bnz_free(bnz_t *a) // free bnz_t resources
     a->digits = NULL;
 }
 
-int8_t get_digit(const uint8_t *str, size_t idx, uint8_t base) // return numerical value of char at index idx of str representing a number in the given base and in big endian order
+int8_t get_digit(const uint8_t *str, size_t idx, uint8_t base) // return numerical value of char at index idx of str which represents a number in the given base and in big endian order
 {
     int8_t dgt;
     switch (base) {
@@ -1202,8 +1202,8 @@ int32_t bnz_cmp_bnz(const bnz_t *a, const bnz_t *b) // compare two bnz_t numbers
 
 int32_t bnz_is_zero(const bnz_t *val) // return 1 if val == 0, return 0 if val != 0
 {
-    size_t i = val->size;
-    while (i--) {
+    size_t i;
+    for (i = 0; i < val->size; i++) {
         if (val->digits[i] != 0) return 0;
     }
     return 1;
@@ -1708,7 +1708,7 @@ typedef struct {
     bnz_t x;
     bnz_t y;
     bnz_t z;
-} JPT; // extended jacobian xyz point
+} JPT; // extended Jacobian xyz point
 
 typedef struct {
     bnz_t p; // prime
@@ -1720,30 +1720,16 @@ typedef struct {
     bnz_t h; // 1
 } SECP256K1;
 
-void secp256k1_populate_G_doublings_mod_p(APT *);
 SECP256K1 secp256k1_init(void);
+void secp256k1_populate_G_doublings_mod_p(APT *);
 void secp256k1_free(SECP256K1);
 void secp256k1_scalar_multiplication(const SECP256K1, const bnz_t *, APT *); // r = (secp256k1.G * m) mod secp256k1.p
 void secp256k1_point_addition(const SECP256K1, APT *, APT *, APT *); // r = (p + q) mod secp256k1.p
 void secp256k1_point_doubling(const SECP256K1, const APT *, APT *); // r = 2p mod secp256k1.p
-void get_affine_from_jacobian(const SECP256K1, APT *, JPT *);
+void get_affine_from_jacobian(const SECP256K1, const JPT *, APT *);
 void secp256k1_jacobian_point_addition(const SECP256K1, const JPT *, const APT *, JPT *);
 void secp256k1_jacobian_scalar_multiplication(const SECP256K1, const bnz_t *, APT *);
-
-void secp256k1_populate_G_doublings_mod_p(APT *G_doublings_mod_p)
-{
-    int i;
-    FILE *dat = fopen("dat.bin", "rb"); // open binary data file containing the 32 byte xy coordinates (little endian order) of 256 sequential doublings of the secp256k1 generator point i.e. secp256k1.G * 2^n mod secp256k1.p for n = 0 to 255
-    for (i = 0; i < 256; i++) {
-        bnz_init(&G_doublings_mod_p[i].x); // initiate x
-        bnz_init(&G_doublings_mod_p[i].y); // initiate y
-        bnz_resize(&G_doublings_mod_p[i].x, 32, 0); // resize x.digits to 32 bytes
-        bnz_resize(&G_doublings_mod_p[i].y, 32, 0); // resize y.digits to 32 bytes
-        fread(G_doublings_mod_p[i].x.digits, 1, 32, dat); // populate x.digits from binary file, repositioning file pointer
-        fread(G_doublings_mod_p[i].y.digits, 1, 32, dat); // populate y.digits from binary file, repositioning file pointer
-    }
-    fclose(dat); // close binary data file
-}
+int secp256k1_valid_point(const SECP256K1, const APT);
 
 SECP256K1 secp256k1_init() // initiate secp256k1 curve, y^2 = (x^3 + 7) mod secp256k1.p
 {
@@ -1762,13 +1748,35 @@ SECP256K1 secp256k1_init() // initiate secp256k1 curve, y^2 = (x^3 + 7) mod secp
     bnz_set_i32(&secp256k1.b, 7);
     bnz_set_str(&secp256k1.G.x, "55066263022277343669578718895168534326250603453777594175500187360389116729240", 10); // generator x
     bnz_set_str(&secp256k1.G.y, "32670510020758816978083085130507043184471273380659243275938904335757337482424", 10); // generator y
-
-    secp256k1_populate_G_doublings_mod_p(secp256k1.G_doublings_mod_p);
-
     bnz_set_str(&secp256k1.n, "115792089237316195423570985008687907852837564279074904382605163141518161494337", 10); // order
     bnz_set_i32(&secp256k1.h, 1);
 
+    secp256k1_populate_G_doublings_mod_p(secp256k1.G_doublings_mod_p);
+
     return secp256k1;
+}
+
+void secp256k1_populate_G_doublings_mod_p(APT *G_doublings_mod_p)
+{
+    int i;
+
+    FILE *dat = NULL;
+
+    for (i = 0; i < 256; i++) { // initiate and resize bnz_t variables within the G_doublings_mod_p array before attempting to open the dat.bin file
+        bnz_init(&G_doublings_mod_p[i].x); // initiate x
+        bnz_init(&G_doublings_mod_p[i].y); // initiate y
+        bnz_resize(&G_doublings_mod_p[i].x, 32, 0); // resize x.digits to 32 bytes
+        bnz_resize(&G_doublings_mod_p[i].y, 32, 0); // resize y.digits to 32 bytes
+    }
+
+    if (!(dat = fopen("dat.bin", "rb"))) return; // open binary data file containing the 32 byte xy coordinates (little endian order) of 256 sequential doublings of the secp256k1 generator point i.e. (secp256k1.G * 2^n) mod secp256k1.p for n = 0 to 255
+
+    for (i = 0; i < 256; i++) { // if the dat.bin file is missing, the function returns before the G_doublings_mod_p array is populated, leading to erroneous addresses
+        fread(G_doublings_mod_p[i].x.digits, 1, 32, dat); // populate x.digits from binary file, repositioning file pointer
+        fread(G_doublings_mod_p[i].y.digits, 1, 32, dat); // populate y.digits from binary file, repositioning file pointer
+    }
+
+    fclose(dat); // close binary data file
 }
 
 void secp256k1_free(SECP256K1 secp256k1) // free secp256k1 curve
@@ -1977,7 +1985,7 @@ void secp256k1_scalar_multiplication(const SECP256K1 secp256k1, const bnz_t *m, 
     bnz_free(&q.y);
 }
 
-void get_affine_from_jacobian(const SECP256K1 secp256k1, APT *apt, JPT *jpt)
+void get_affine_from_jacobian(const SECP256K1 secp256k1, const JPT *jpt, APT *apt)
 {
     bnz_t z_inv, z_inv_2, z_inv_3;
 
@@ -1985,17 +1993,17 @@ void get_affine_from_jacobian(const SECP256K1 secp256k1, APT *apt, JPT *jpt)
     bnz_init(&z_inv_2);
     bnz_init(&z_inv_3);
 
-    bnz_modular_multiplicative_inverse(&z_inv, &jpt->z, &secp256k1.p); // z_inv = mod_mul_inv(z)
+    bnz_modular_multiplicative_inverse(&z_inv, &jpt->z, &secp256k1.p); // z_inv = modular_multiplicative_inverse(jpt.z)
     bnz_mod_bnz(&z_inv, &z_inv, &secp256k1.p);
     bnz_multiply_bnz(&z_inv_2, &z_inv, &z_inv); // z_inv_2 = z_inv^2
     bnz_mod_bnz(&z_inv_2, &z_inv_2, &secp256k1.p);
     bnz_multiply_bnz(&z_inv_3, &z_inv_2, &z_inv); // z_inv_3 = z_inv^3
     bnz_mod_bnz(&z_inv_3, &z_inv_3, &secp256k1.p);
 
-    bnz_multiply_bnz(&apt->x, &jpt->x, &z_inv_2); // x_aff = x * z_inv_2
+    bnz_multiply_bnz(&apt->x, &jpt->x, &z_inv_2); // apt.x = jpt.x / jpt.z^2
     bnz_mod_bnz(&apt->x, &apt->x, &secp256k1.p);
 
-    bnz_multiply_bnz(&apt->y, &jpt->y, &z_inv_3); // y_aff = y * z_inv_3
+    bnz_multiply_bnz(&apt->y, &jpt->y, &z_inv_3); // apt.y = jpt.y / jpt.z^3
     bnz_mod_bnz(&apt->y, &apt->y, &secp256k1.p);
 
     bnz_free(&z_inv);
@@ -2037,6 +2045,17 @@ void secp256k1_jacobian_point_addition(const SECP256K1 secp256k1, const JPT *p, 
     bnz_init(&t2);
     bnz_init(&t3);
     bnz_init(&t4);
+
+    if (bnz_is_zero(&p->x) && bnz_is_zero(&p->y) && bnz_is_zero(&p->z)) { // if this is the first addition, set r.x = q.x, r.y = q.y and r.z = 1 and return
+        bnz_set_bnz(&r->x, &q->x);
+        bnz_set_bnz(&r->y, &q->y);
+        bnz_set_i32(&r->z, 1);
+        bnz_free(&t1);
+        bnz_free(&t2);
+        bnz_free(&t3);
+        bnz_free(&t4);
+        return;
+    }
 
     bnz_multiply_bnz(&t1, &p->z, &p->z); // T1 = Z1^2
     bnz_mod_bnz(&t1, &t1, &secp256k1.p);
@@ -2083,31 +2102,53 @@ void secp256k1_jacobian_point_addition(const SECP256K1 secp256k1, const JPT *p, 
 
 void secp256k1_jacobian_scalar_multiplication(const SECP256K1 secp256k1, const bnz_t *m, APT *r) // r = (secp256k1.G * m) mod secp256k1.p
 {
-    size_t i, bits = 8 * m->size, flag = 0;
+    size_t i, bits = 8 * m->size;
 
-    JPT tmp;
+    JPT tmp; // running total
 
     bnz_init(&tmp.x);
     bnz_init(&tmp.y);
     bnz_init(&tmp.z);
 
-    for (i = 0; i < bits; i++) {
+    for (i = 0; i < bits; i++) { // from LSB to MSB
         if (bnz_bit_set(m, i)) {
-            if (flag) {
-                secp256k1_jacobian_point_addition(secp256k1, &tmp, &secp256k1.G_doublings_mod_p[i], &tmp);
-            } else {
-                bnz_set_bnz(&tmp.x, &secp256k1.G_doublings_mod_p[i].x);
-                bnz_set_bnz(&tmp.y, &secp256k1.G_doublings_mod_p[i].y);
-                bnz_set_i32(&tmp.z, 1);
-                flag = 1;
-            }
+            secp256k1_jacobian_point_addition(secp256k1, &tmp, &secp256k1.G_doublings_mod_p[i], &tmp); // if the current bit is set, add the corresponding Secp256k1 doubling value to the running total
         }
     }
-    get_affine_from_jacobian(secp256k1, r, &tmp);
+    get_affine_from_jacobian(secp256k1, &tmp, r); // convert final JPT into the corresponding APT via the formulae: APT.x = JPT.x / JPT.z^2 and APT.y = JPT.y / JPT.z^3
 
-    bnz_free(&tmp.x);
+    bnz_free(&tmp.x); // free resources
     bnz_free(&tmp.y);
     bnz_free(&tmp.z);
+}
+
+int secp256k1_valid_point(const SECP256K1 secp256k1, const APT apt) // check that a given xy point is on Secp256k1 by confirming that y^2 mod Secp256k1.p = x^3 + 7 mod Secp256k1.p
+{
+    int32_t cmp;
+
+    bnz_t lhs, rhs;
+
+    bnz_init(&lhs);
+    bnz_init(&rhs);
+
+    bnz_multiply_bnz(&lhs, &apt.y, &apt.y); // lhs = y^2
+    bnz_mod_bnz(&lhs, &lhs, &secp256k1.p); // lhs = y^2 mod Secp256k1.p
+
+    bnz_multiply_bnz(&rhs, &apt.x, &apt.x); // rhs = x^2
+    bnz_multiply_bnz(&rhs, &rhs, &apt.x); // rhs = x^3
+    bnz_add_i32(&rhs, &rhs, 7); // rhs = x^3 + 7
+    bnz_mod_bnz(&rhs, &rhs, &secp256k1.p); // rhs = x^3 + 7 mod Secp256k1.p
+
+    cmp = bnz_cmp_bnz(&lhs, &rhs); // compare lhs and rhs
+
+    bnz_free(&lhs); // free resources
+    bnz_free(&rhs);
+
+    if (cmp) { // lhs != rhs
+        return 0;
+    } else { // lhs == rhs
+        return 1;
+    }
 }
 
 /* BITCOIN */
@@ -3191,8 +3232,6 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
     bnz_free(&xpub);
     bnz_free(&seed);
 
-    secp256k1_free(secp256k1);
-
     printf("press any key to continue...");
 
     getchar();
@@ -4237,9 +4276,9 @@ void menu_4_4_WIF_to_private_key(const char *version)
     printf("\n");
 
     bnz_set_bnz(&private_key, &private_key_wif); // copy wif to private key
-    bnz_resize(&private_key, private_key.size - 1, 1); // remove version byte from msb end
+    bnz_resize(&private_key, private_key_wif.size - 1, 1); // remove version byte from msb end
     bnz_reverse_digits(&private_key); // reverse private_key.digits to enable 4 checksum bytes to be removed from msb end
-    bnz_resize(&private_key, private_key.size - 4, 1); // remove 4 checksum bytes from msb end
+    bnz_resize(&private_key, private_key_wif.size - 5, 1); // remove 4 checksum bytes from msb end
     bnz_resize(&private_key, 32, 1); // resize private_key.digits to 32 bytes to ensure than the compression byte (if present) is deleted
     bnz_reverse_digits(&private_key); // reverse private_key.digits to standard little endian order
 
