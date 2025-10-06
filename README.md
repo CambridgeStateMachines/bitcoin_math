@@ -13,7 +13,7 @@ My goal was to collect together a minimal set of functions in a single C source 
 
 Given a choice between efficiency and readability, I have opted for the latter, for example by avoiding inline functions and macros.
 
-The result is `bitcoin_math.exe`, a simple menu driven console application which implements functions for the generation of mnemonic phrases, seeds, private keys, extended keys, public keys, and Bitcoin addresses (P2PKH, P2SH-P2WPKH and P2WPKH) using various cryptographic hash functions, arbitrary precision integer math, elliptic curve math, and radix conversions, all built from standard C data types and a few custom structs.
+The result is `bitcoin_math.exe`, a simple menu driven console application which implements functions for the generation of mnemonic phrases, seeds, private keys, extended keys, public keys, and Bitcoin addresses (P2PKH, P2SH-P2WPKH and P2WPKH), together with basic Secp256k1 ECDSA signing and verification, using various cryptographic hash functions, arbitrary precision integer math, elliptic curve math, and radix conversions, all built from standard C data types and a few custom structs.
 
 Wherever possible, hash digests, MACs, seeds, keys, and addresses are manipulated as arbitrary precision integers, reflecting their essentially numerical nature. These numbers are typically rendered onscreen in hex or Bitcoin base 58 format, but can be rendered in any base between 2 and 64 using the base conversion function.
 
@@ -28,7 +28,7 @@ Implementation of the improved elliptic curve scalar multiplication algorithm re
 
 Due to the computational expense of populating the array when the SECP256K1 struct is initiated, I have limited the use of the `secp256k1_init()` function to the menu functions. Within each menu function, the SECP256K1 struct is initiated (and its generator point doublings array is populated) only once and then the resultant SECP256K1 struct is passed around the dependent functions as a `const` variable.
 
-For completeness, I have retained the original elliptic curve scalar multiplication, doubling, and addition functions.
+I have retained the original elliptic curve scalar multiplication, doubling, and addition functions for use in the context of multiplication of points other than the Secp256k1 generator point e.g. in the ECDSA signing and verification functions.
 
 
 Notes on manipulating addresses as `bnz_t` numbers
@@ -131,6 +131,9 @@ Elliptic curve math, built around two custom structs: `PT`, comprising two `bnz_
 Bitcoin specific functions for processing entropy, generating mnemonic phrases, seeds, private keys (including two-way WIF format conversion), chain codes, public keys, and P2PKH addresses.
 
 If a user generates a private key that is not less than the value of the order of Secp256k1, the user will be prompted to rerun the private key generation step with a different entropy value. 
+
+### /* ECDSA */
+Secp256k1 ECDSA signing and signature verification functions. The signing function requires the user to supply a private key and the hash of the relevant message in hex format. The verification function requires the user to supply the compressed public key corresponding to the private key used to sign the message, the hash of the relevant message, and the `r` and `s` components of the signature in hex format.
 
 ### /* MENU */
 Menu functions.

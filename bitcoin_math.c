@@ -1723,13 +1723,14 @@ typedef struct {
 SECP256K1 secp256k1_init(void);
 void secp256k1_populate_G_doublings_mod_p(APT *);
 void secp256k1_free(SECP256K1);
-void secp256k1_scalar_multiplication(const SECP256K1, const bnz_t *, APT *); // r = (secp256k1.G * m) mod secp256k1.p
-void secp256k1_point_addition(const SECP256K1, APT *, APT *, APT *); // r = (p + q) mod secp256k1.p
+void secp256k1_point_addition(const SECP256K1, const APT *, const APT *, APT *); // r = (p + q) mod secp256k1.p
 void secp256k1_point_doubling(const SECP256K1, const APT *, APT *); // r = 2p mod secp256k1.p
+void secp256k1_scalar_multiplication(const SECP256K1, const APT *, const bnz_t *, APT *); // r = q * m mod secp256k1.p
 void get_affine_from_jacobian(const SECP256K1, const JPT *, APT *);
 void secp256k1_jacobian_point_addition(const SECP256K1, const JPT *, const APT *, JPT *);
 void secp256k1_jacobian_scalar_multiplication(const SECP256K1, const bnz_t *, APT *);
 int secp256k1_valid_point(const SECP256K1, const APT);
+void secp256k1_ecdsa_sign(const SECP256K1, bnz_t *, bnz_t *, bnz_t *, bnz_t *);
 
 SECP256K1 secp256k1_init() // initiate secp256k1 curve, y^2 = (x^3 + 7) mod secp256k1.p
 {
@@ -1788,7 +1789,7 @@ void secp256k1_free(SECP256K1 secp256k1) // free secp256k1 curve
     bnz_free(&secp256k1.G.x);
     bnz_free(&secp256k1.G.y);
 
-    for (i = 0; i < 256;i++) {
+    for (i = 0; i < 256; i++) {
         bnz_free(&secp256k1.G_doublings_mod_p[i].x);
         bnz_free(&secp256k1.G_doublings_mod_p[i].y);
     }
@@ -1848,7 +1849,7 @@ void secp256k1_point_doubling(const SECP256K1 secp256k1, const APT *p, APT *r) /
     bnz_free(&rr.y);
 }
 
-void secp256k1_point_addition(const SECP256K1 secp256k1, APT *p, APT *q, APT *r) // r = (p + q) mod secp256k1.p
+void secp256k1_point_addition(const SECP256K1 secp256k1, const APT *p, const APT *q, APT *r) // r = (p + q) mod secp256k1.p
 {
     bnz_t tmp, slope;
 
@@ -1959,30 +1960,30 @@ void secp256k1_point_addition(const SECP256K1 secp256k1, APT *p, APT *q, APT *r)
     bnz_free(&rr.y);
 }
 
-void secp256k1_scalar_multiplication(const SECP256K1 secp256k1, const bnz_t *m, APT *r) // r = (secp256k1.G * m) mod secp256k1.p
+void secp256k1_scalar_multiplication(const SECP256K1 secp256k1, const APT *q, const bnz_t *m, APT *r) // r = q * m mod secp256k1.p
 {
     size_t i, bits = 8 * m->size;
 
-    APT q;
+    APT qq;
+    
+    bnz_init(&qq.x);
+    bnz_init(&qq.y);
 
-    bnz_init(&q.x);
-    bnz_init(&q.y);
+    bnz_set_bnz(&qq.x, &q->x);
+    bnz_set_bnz(&qq.y, &q->y);
 
     bnz_set_i32(&r->x, 0);
     bnz_set_i32(&r->y, 0);
 
-    bnz_set_bnz(&q.x, &secp256k1.G.x);
-    bnz_set_bnz(&q.y, &secp256k1.G.y);
-
     for (i = 0; i < bits; i++) {
         if (bnz_bit_set(m, i)) {
-            secp256k1_point_addition(secp256k1, &q, r, r);
+            secp256k1_point_addition(secp256k1, &qq, r, r);
         }
-        secp256k1_point_doubling(secp256k1, &q, &q);
+        secp256k1_point_doubling(secp256k1, &qq, &qq);
     }
 
-    bnz_free(&q.x);
-    bnz_free(&q.y);
+    bnz_free(&qq.x);
+    bnz_free(&qq.y);
 }
 
 void get_affine_from_jacobian(const SECP256K1 secp256k1, const JPT *jpt, APT *apt)
@@ -3061,6 +3062,98 @@ void get_xpub_child(bnz_t *xpub, uint8_t depth_num, uint32_t index_num, bnz_t *p
     bnz_free(&parent_public_key_hash_fingerprint);
 }
 
+/* ECDSA */
+
+void secp256k1_ecdsa_sign(const SECP256K1, bnz_t *, bnz_t *, bnz_t *, bnz_t *);
+int secp256k1_ecdsa_verify(const SECP256K1, bnz_t *, bnz_t *, bnz_t *, bnz_t *);
+
+void secp256k1_ecdsa_sign(const SECP256K1 secp256k1, bnz_t *private_key, bnz_t *hash, bnz_t *r, bnz_t *s)
+{
+    bnz_t nonce, inv_nonce;
+    APT tmp; // temporary APT
+
+    bnz_init(&nonce); // random nonce ("number used once")
+    bnz_init(&inv_nonce); // modular multiplicative inverse of nonce
+
+    bnz_init(&tmp.x);
+    bnz_init(&tmp.y);
+
+    bnz_256_bit_rnd(&nonce); // set value of nonce to random 256 bit bnz_t
+    bnz_mod_bnz(&nonce, &nonce, &secp256k1.n); // nonce = nonce mod secp256k1.n (order of Secp256k1)
+    bnz_modular_multiplicative_inverse(&inv_nonce, &nonce, &secp256k1.n); // set value of inv_nonce to modular multiplicative inverse of nonce, mod secp256k1.n
+
+    secp256k1_scalar_multiplication(secp256k1, &secp256k1.G, &nonce, &tmp); // tmp = nonce * secp256k1.G (generator point)
+
+    bnz_set_bnz(r, &tmp.x); // r = x coordinate of tmp
+    bnz_multiply_bnz(s, private_key, r); // s = private_key * r
+    bnz_mod_bnz(s, s, &secp256k1.n); // s = s mod secp256k1.n
+    bnz_add_bnz(s, s, hash); // s = s + hash
+    bnz_mod_bnz(s, s, &secp256k1.n); // s = s mod secp256k1.n
+    bnz_multiply_bnz(s, s, &inv_nonce); // s = s * inv_nonce
+    bnz_mod_bnz(s, s, &secp256k1.n); // s = s mod secp256k1.n
+
+    bnz_free(&nonce); // free resources
+    bnz_free(&inv_nonce);
+    bnz_free(&tmp.x);
+    bnz_free(&tmp.y);
+}
+
+int secp256k1_ecdsa_verify(const SECP256K1 secp256k1, bnz_t *public_key_compressed, bnz_t *hash, bnz_t *r, bnz_t *s)
+{
+    int verified;
+    
+    bnz_t inv_s, m1, m2;
+    APT generator_pt, public_key_pt, tmp1, tmp2, verification_pt;
+
+    bnz_init(&inv_s);
+    bnz_init(&m1);
+    bnz_init(&m2);
+
+    bnz_init(&generator_pt.x);
+    bnz_init(&generator_pt.y);
+    bnz_init(&public_key_pt.x);
+    bnz_init(&public_key_pt.y);
+    bnz_init(&tmp1.x);
+    bnz_init(&tmp1.y);
+    bnz_init(&tmp2.x);
+    bnz_init(&tmp2.y);
+    bnz_init(&verification_pt.x);
+    bnz_init(&verification_pt.y);
+
+    bnz_set_bnz(&generator_pt.x, &secp256k1.G.x);
+    bnz_set_bnz(&generator_pt.y, &secp256k1.G.y);
+    get_public_key_xy(secp256k1, &public_key_pt, public_key_compressed);
+
+    bnz_modular_multiplicative_inverse(&inv_s, s, &secp256k1.n);
+    bnz_multiply_bnz(&m1, &inv_s, hash);
+    bnz_mod_bnz(&m1, &m1, &secp256k1.n);
+    bnz_multiply_bnz(&m2, &inv_s, r);
+    bnz_mod_bnz(&m2, &m2, &secp256k1.n);
+
+    secp256k1_scalar_multiplication(secp256k1, &generator_pt, &m1, &tmp1);
+    secp256k1_scalar_multiplication(secp256k1, &public_key_pt, &m2, &tmp2);
+    secp256k1_point_addition(secp256k1, &tmp1, &tmp2, &verification_pt);
+
+    bnz_mod_bnz(&verification_pt.x, &verification_pt.x, &secp256k1.n);
+
+    if (bnz_cmp_bnz(&verification_pt.x, r) == 0) {
+        verified = 1;
+    } else {
+        verified = 0;
+    }
+
+    bnz_free(&generator_pt.x);
+    bnz_free(&generator_pt.y);
+    bnz_free(&public_key_pt.x);
+    bnz_free(&public_key_pt.y);
+    bnz_free(&tmp1.x);
+    bnz_free(&tmp1.y);
+    bnz_free(&tmp2.x);
+    bnz_free(&tmp2.y);
+    bnz_free(&verification_pt.x);
+    bnz_free(&verification_pt.y);
+}
+
 /* MENU */
 
 uint32_t get_num_input(uint32_t, uint32_t, uint32_t);
@@ -3080,6 +3173,8 @@ void menu_4_4_WIF_to_private_key(const char *);
 void menu_4_5_secp256k1_point_addition(const char *);
 void menu_4_6_secp256k1_point_doubling(const char *);
 void menu_4_7_secp256k1_scalar_multiplication(const char *);
+void menu_4_9_ecdsa_verify(const char *);
+void menu_4_8_ecdsa_sign(const char *);
 
 uint32_t get_num_input(uint32_t max_len, uint32_t min, uint32_t max) // get base 10 number between min and max from stdin
 {
@@ -3994,8 +4089,10 @@ void menu_4_functions(const char *version)
     printf("5. Secp256k1 point addition\n");
     printf("6. Secp256k1 point doubling\n");
     printf("7. Secp256k1 scalar multiplication\n");
+    printf("8. ECDSA sign\n");
+    printf("9. ECDSA verify\n");
     printf("\n");
-    menu = get_num_input(1, 0, 7);
+    menu = get_num_input(1, 0, 9);
     switch (menu) {
         case 1:
             menu_4_1_public_key_to_address(version);
@@ -4017,6 +4114,12 @@ void menu_4_functions(const char *version)
             break;
         case 7:
             menu_4_7_secp256k1_scalar_multiplication(version);
+            break;
+        case 8:
+            menu_4_8_ecdsa_sign(version);
+            break;
+        case 9:
+            menu_4_9_ecdsa_verify(version);
             break;
         default:
             break;
@@ -4327,14 +4430,17 @@ void menu_4_5_secp256k1_point_addition(const char *version)
 
     SECP256K1 secp256k1;
 
-    secp256k1 = secp256k1_init();
-
     bnz_init(&a.x);
     bnz_init(&a.y);
     bnz_init(&b.x);
     bnz_init(&b.y);
     bnz_init(&c.x);
     bnz_init(&c.y);
+
+    secp256k1 = secp256k1_init();
+
+    system("cls");
+    printf("%s\n\n", version);
 
     printf("Point 1 x: ");
     get_str_input(a_x_str, 66);
@@ -4344,6 +4450,25 @@ void menu_4_5_secp256k1_point_addition(const char *version)
     get_str_input(a_y_str, 66);
     bnz_set_str(&a.y, a_y_str, 16);
 
+    if (!secp256k1_valid_point(secp256k1, a)) { 
+        system("cls");
+        printf("%s\n\n", version);
+        printf("This point is not on Secp256k1.\n\n");
+        printf("Press any key to rerun the command with a different point.\n");
+        getchar();
+
+        bnz_free(&a.x);
+        bnz_free(&a.y);
+        bnz_free(&b.x);
+        bnz_free(&b.y);
+        bnz_free(&c.x);
+        bnz_free(&c.y);
+
+        secp256k1_free(secp256k1);
+
+        menu_4_5_secp256k1_point_addition(version);
+    }
+
     printf("Point 2 x: ");
     get_str_input(b_x_str, 66);
     bnz_set_str(&b.x, b_x_str, 16);
@@ -4351,6 +4476,25 @@ void menu_4_5_secp256k1_point_addition(const char *version)
     printf("Point 2 y: ");
     get_str_input(b_y_str, 66);
     bnz_set_str(&b.y, b_y_str, 16);
+
+    if (!secp256k1_valid_point(secp256k1, b)) { 
+        system("cls");
+        printf("%s\n\n", version);
+        printf("This point is not on Secp256k1.\n\n");
+        printf("Press any key to rerun the command with a different point.\n");
+        getchar();
+
+        bnz_free(&a.x);
+        bnz_free(&a.y);
+        bnz_free(&b.x);
+        bnz_free(&b.y);
+        bnz_free(&c.x);
+        bnz_free(&c.y);
+
+        secp256k1_free(secp256k1);
+
+        menu_4_5_secp256k1_point_addition(version);
+    }
 
     secp256k1_point_addition(secp256k1, &a, &b, &c);
 
@@ -4394,12 +4538,15 @@ void menu_4_6_secp256k1_point_doubling(const char *version)
 
     SECP256K1 secp256k1;
 
-    secp256k1 = secp256k1_init();
-
     bnz_init(&a.x);
     bnz_init(&a.y);
     bnz_init(&b.x);
     bnz_init(&b.y);
+
+    secp256k1 = secp256k1_init();
+
+    system("cls");
+    printf("%s\n\n", version);
 
     printf("Point x: ");
     get_str_input(a_x_str, 66);
@@ -4408,6 +4555,23 @@ void menu_4_6_secp256k1_point_doubling(const char *version)
     printf("Point y: ");
     get_str_input(a_y_str, 66);
     bnz_set_str(&a.y, a_y_str, 16);
+
+    if (!secp256k1_valid_point(secp256k1, a)) { 
+        system("cls");
+        printf("%s\n\n", version);
+        printf("This point is not on Secp256k1.\n\n");
+        printf("Press any key to rerun the command with a different point.\n");
+        getchar();
+
+        bnz_free(&a.x);
+        bnz_free(&a.y);
+        bnz_free(&b.x);
+        bnz_free(&b.y);
+
+        secp256k1_free(secp256k1);
+
+        menu_4_6_secp256k1_point_doubling(version);
+    }
 
     secp256k1_point_doubling(secp256k1, &a, &b);
 
@@ -4438,13 +4602,15 @@ void menu_4_6_secp256k1_point_doubling(const char *version)
 
 void menu_4_7_secp256k1_scalar_multiplication(const char *version)
 {
-    uint8_t multiplier_str[67];
+    uint8_t q_x_str[67], q_y_str[67], multiplier_str[67];
     bnz_t multiplier;
-    APT p;
+    APT q, r;
 
     bnz_init(&multiplier);
-    bnz_init(&p.x);
-    bnz_init(&p.y);
+    bnz_init(&q.x);
+    bnz_init(&q.y);
+    bnz_init(&r.x);
+    bnz_init(&r.y);
 
     SECP256K1 secp256k1;
 
@@ -4453,6 +4619,53 @@ void menu_4_7_secp256k1_scalar_multiplication(const char *version)
     system("cls");
     printf("%s\n\n", version);
 
+    printf("q.x (press 'Enter' for Secp256k1.G.x): ");
+    get_str_input(q_x_str, 66);
+
+    if (isalnum(q_x_str[0])) {
+        bnz_set_str(&q.x, q_x_str, 16);
+    } else {
+        bnz_set_bnz(&q.x, &secp256k1.G.x);
+    }
+
+    system("cls");
+    printf("%s\n\n", version);
+    bnz_print(&q.x, 16, "q.x: ");
+
+    printf("q.y (press 'Enter' for Secp256k1.G.y): ");
+    get_str_input(q_y_str, 66);
+
+    if (isalnum(q_y_str[0])) {
+        bnz_set_str(&q.y, q_y_str, 16);
+    } else {
+        bnz_set_bnz(&q.y, &secp256k1.G.y);
+    }
+
+    if (!secp256k1_valid_point(secp256k1, q)) { 
+        system("cls");
+        printf("%s\n\n", version);
+        printf("This point is not on Secp256k1.\n\n");
+        printf("Press any key to rerun the command with a different point.\n");
+        getchar();
+
+        bnz_free(&multiplier);
+        bnz_free(&q.x);
+        bnz_free(&q.y);
+        bnz_free(&r.x);
+        bnz_free(&r.y);
+
+        secp256k1_free(secp256k1);
+
+        menu_4_7_secp256k1_scalar_multiplication(version);
+    }
+
+    system("cls");
+    printf("%s\n\n", version);
+    bnz_print(&q.x, 16, "q.x: ");
+    bnz_print(&q.y, 16, "q.y: ");
+
+    printf("\n");
+
     printf("Multiplier: ");
     get_str_input(multiplier_str, 66);
     bnz_set_str(&multiplier, multiplier_str, 16);
@@ -4460,29 +4673,184 @@ void menu_4_7_secp256k1_scalar_multiplication(const char *version)
     system("cls");
     printf("%s\n\n", version);
 
-    if (bnz_cmp_bnz(&multiplier, &secp256k1.n) != -1) {
-        bnz_mod_bnz(&multiplier, &multiplier, &secp256k1.n);
-        bnz_print(&multiplier, 16, "MULTIPLIER (MOD SECP256K1 MODULUS): ");
-    } else {
-        bnz_print(&multiplier, 16, "MULTIPLIER: ");
-    }
+    bnz_print(&q.x, 16, "q.x: ");
+    bnz_print(&q.y, 16, "q.y: ");
 
     printf("\n");
 
-    secp256k1_jacobian_scalar_multiplication(secp256k1, &multiplier, &p);
+    if (bnz_cmp_bnz(&multiplier, &secp256k1.n) != -1) {
+        bnz_mod_bnz(&multiplier, &multiplier, &secp256k1.n);
+        bnz_print(&multiplier, 16, "Multiplier (mod Secp256k1.n): ");
+    } else {
+        bnz_print(&multiplier, 16, "Multiplier: ");
+    }
 
-    printf("SECP256K1 POINT:\n");
-    bnz_print(&p.x, 16, " x: ");
-    bnz_print(&p.y, 16, " y: ");
-    bnz_print(&p.x, 10, " x: ");
-    bnz_print(&p.y, 10, " y: ");
+    system("cls");
+    printf("%s\n\n", version);
+
+    bnz_print(&q.x, 16, "q.x: ");
+    bnz_print(&q.y, 16, "q.y: ");
+    bnz_print(&multiplier, 16, "Multiplier: ");
+
+    printf("\n");
+
+    secp256k1_scalar_multiplication(secp256k1, &q, &multiplier, &r);
+
+    system("cls");
+    printf("%s\n\n", version);
+
+    bnz_print(&q.x, 16, "Q.X: ");
+    bnz_print(&q.y, 16, "Q.Y: ");
+    bnz_print(&multiplier, 16, "MULTIPLIER: ");
+
+    printf("\n");
+
+    bnz_print(&r.x, 16, "R.X: ");
+    bnz_print(&r.y, 16, "R.Y: ");
+
     printf("\n");
 
     bnz_free(&multiplier);
-    bnz_free(&p.x);
-    bnz_free(&p.y);
+    bnz_free(&q.x);
+    bnz_free(&q.y);
+    bnz_free(&r.x);
+    bnz_free(&r.y);
 
     secp256k1_free(secp256k1);
+
+    printf("press any key to continue...");
+
+    getchar();
+}
+
+void menu_4_8_ecdsa_sign(const char *version)
+{
+    char private_key_str[67], message_hash_str[67];
+    bnz_t private_key, message_hash, signature_r, signature_s;
+    SECP256K1 secp256k1;
+
+    bnz_init(&private_key);
+    bnz_init(&message_hash);
+    bnz_init(&signature_r);
+    bnz_init(&signature_s);
+
+    secp256k1 = secp256k1_init();
+
+    system("cls");
+    printf("%s\n\n", version);
+
+    printf("Private key: ");
+    get_str_input(private_key_str, 66);
+    bnz_set_str(&private_key, private_key_str, 16);
+
+    system("cls");
+    printf("%s\n\n", version);
+    bnz_print(&private_key, 16, "Private key: ");
+
+    printf("Message hash: ");
+    get_str_input(message_hash_str, 66);
+    bnz_set_str(&message_hash, message_hash_str, 16);
+
+    system("cls");
+    printf("%s\n\n", version);
+    bnz_print(&private_key, 16, "Private key: ");
+    bnz_print(&message_hash, 16, "Message hash: ");
+
+    secp256k1_ecdsa_sign(secp256k1, &private_key, &message_hash, &signature_r, &signature_s);
+
+    system("cls");
+    printf("%s\n\n", version);
+    bnz_print(&private_key, 16, "PRIVATE KEY: ");
+    bnz_print(&message_hash, 16, "MESSAGE HASH: ");
+    printf("\n");
+
+    bnz_print(&signature_r, 16, "ECDSA SIGNATURE R: ");
+    bnz_print(&signature_s, 16, "ECDSA SIGNATURE S: ");
+    printf("\n");
+
+    bnz_free(&private_key);
+    bnz_free(&message_hash);
+    bnz_free(&signature_r);
+    bnz_free(&signature_s);
+
+    secp256k1_free(secp256k1);
+
+    printf("press any key to continue...");
+
+    getchar();
+}
+
+void menu_4_9_ecdsa_verify(const char *version)
+{
+    char public_key_compressed_str[67], message_hash_str[67], signature_r_str[67], signature_s_str[67];
+    int verified;
+    bnz_t public_key_compressed, message_hash, signature_r, signature_s;
+    SECP256K1 secp256k1;
+
+    bnz_init(&public_key_compressed);
+    bnz_init(&message_hash);
+    bnz_init(&signature_r);
+    bnz_init(&signature_s);
+
+    secp256k1 = secp256k1_init();
+
+    system("cls");
+    printf("%s\n\n", version);
+
+    printf("Public key (compressed): ");
+    get_str_input(public_key_compressed_str, 66);
+    bnz_set_str(&public_key_compressed, public_key_compressed_str, 16);
+
+    system("cls");
+    printf("%s\n\n", version);
+    bnz_print(&public_key_compressed, 16, "Public key (compressed): ");
+
+    printf("Message hash: ");
+    get_str_input(message_hash_str, 66);
+    bnz_set_str(&message_hash, message_hash_str, 16);
+
+    system("cls");
+    printf("%s\n\n", version);
+    bnz_print(&public_key_compressed, 16, "Public key (compressed): ");
+    bnz_print(&message_hash, 16, "Message hash: ");
+
+    printf("ECDSA signature r: ");
+    get_str_input(signature_r_str, 66);
+    bnz_set_str(&signature_r, signature_r_str, 16);
+
+    system("cls");
+    printf("%s\n\n", version);
+    bnz_print(&public_key_compressed, 16, "Public key (compressed): ");
+    bnz_print(&message_hash, 16, "Message hash: ");
+    bnz_print(&signature_r, 16, "ECDSA signature r: ");
+
+    printf("ECDSA signature s: ");
+    get_str_input(signature_s_str, 66);
+    bnz_set_str(&signature_s, signature_s_str, 16);
+
+    system("cls");
+    printf("%s\n\n", version);
+    bnz_print(&public_key_compressed, 16, "Public key (compressed): ");
+    bnz_print(&message_hash, 16, "Message hash: ");
+    bnz_print(&signature_r, 16, "ECDSA signature r: ");
+    bnz_print(&signature_s, 16, "ECDSA signature s: ");
+    printf("\n");
+
+    verified = secp256k1_ecdsa_verify(secp256k1, &public_key_compressed, &message_hash, &signature_r, &signature_s);
+
+    bnz_free(&public_key_compressed);
+    bnz_free(&message_hash);
+    bnz_free(&signature_r);
+    bnz_free(&signature_s);
+
+    secp256k1_free(secp256k1);
+
+    if (verified) {
+        printf("VERIFICATION SUCCEEDED\n");
+    } else {
+        printf("VERIFICATION FAILED\n");
+    }
+    printf("\n");
 
     printf("press any key to continue...");
 
@@ -4493,7 +4861,7 @@ void menu_4_7_secp256k1_scalar_multiplication(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.19, 2025-08-29";
+    static char *version = "bitcoin_math\nv0.20, 2025-10-06";
     int menu, running = 1;
     while (running) {
         system("cls");
