@@ -1038,7 +1038,7 @@ void bnz_free(bnz_t *a) // free bnz_t resources
 
 int8_t get_digit(const uint8_t *str, size_t idx, uint8_t base) // return numerical value of char at index idx of str which represents a number in the given base and in big endian order
 {
-    int8_t dgt;
+    int8_t dgt = -1;
     switch (base) {
         case 16:
             dgt = char_16[str[idx]];
@@ -1388,7 +1388,7 @@ void bnz_subtraction(bnz_t *res, const bnz_t *a, const bnz_t *b) // res = |a| - 
     bnz_free(&tmp);
 }
 
-void bnz_multiply_i32(bnz_t *res, const const bnz_t *a, int32_t b) // convert int32_t to bnz_t and invoke bnz_multiply_bnz
+void bnz_multiply_i32(bnz_t *res, const bnz_t *a, int32_t b) // convert int32_t to bnz_t and invoke bnz_multiply_bnz
 {
     bnz_t bb;
     bnz_init(&bb);
@@ -1532,7 +1532,7 @@ void bnz_division(bnz_t *q, bnz_t *r, const bnz_t *a, const bnz_t *b) // get q a
 {
     uint8_t *an = NULL, *bn = NULL, tmp = b->digits[b->size - 1];
     uint16_t q_hat, r_hat, p, base = 256;
-    int32_t sh = 0, i, j, t, k, cmp;
+    int32_t sh = 0, i, j, t, k;
 
     bnz_resize(q, a->size - b->size + 1, 0);
     bnz_resize(r, b->size, 0);
@@ -1544,16 +1544,16 @@ void bnz_division(bnz_t *q, bnz_t *r, const bnz_t *a, const bnz_t *b) // get q a
 
     // an
     if (!(an = init_uint8_array(2 * (a->size + 1)))) return;
-    an[a->size] = a->digits[a->size - 1] >> 8 - sh;
+    an[a->size] = a->digits[a->size - 1] >> (8 - sh);
     for (i = a->size - 1; i > 0; i--) {
-        an[i] = (a->digits[i] << sh) | (a->digits[i-1] >> 8 - sh);
+        an[i] = (a->digits[i] << sh) | (a->digits[i-1] >> (8 - sh));
     }
     an[0] = a->digits[0] << sh;
 
     // bn
     if (!(bn = init_uint8_array(2 * b->size))) return;
     for (i = b->size - 1; i > 0; i--) {
-        bn[i] = (b->digits[i] << sh) | (b->digits[i - 1] >> 8 - sh);
+        bn[i] = (b->digits[i] << sh) | (b->digits[i - 1] >> (8 - sh));
     }
     bn[0] = b->digits[0] << sh;
 
@@ -1599,7 +1599,7 @@ void bnz_division(bnz_t *q, bnz_t *r, const bnz_t *a, const bnz_t *b) // get q a
     }
 
     for (i = 0; i < b->size; i++) {
-        r->digits[i] = (an[i] >> sh) | (an[i + 1] << 8 - sh);
+        r->digits[i] = (an[i] >> sh) | (an[i + 1] << (8 - sh));
     }
 
     bnz_trim(q);
@@ -2297,15 +2297,15 @@ void get_bip39_word_ids_str(bnz_t *entropy_chk, bnz_t *entropy, uint8_t *chk, ch
 
     for (i = 0; i < 3; i++) {
         entropy_chk->digits[(i * 11) + 0] = (wd_ids[(i * 8) + 0] >> 3) & 255;
-        entropy_chk->digits[(i * 11) + 1] = ((wd_ids[(i * 8) + 0] & 7) << 5) + (wd_ids[(i * 8) + 1] >> 6) & 255;
-        entropy_chk->digits[(i * 11) + 2] = ((wd_ids[(i * 8) + 1] & 63) << 2) + (wd_ids[(i * 8) + 2] >> 9) & 255;
+        entropy_chk->digits[(i * 11) + 1] = (((wd_ids[(i * 8) + 0] & 7) << 5) + (wd_ids[(i * 8) + 1] >> 6)) & 255;
+        entropy_chk->digits[(i * 11) + 2] = (((wd_ids[(i * 8) + 1] & 63) << 2) + (wd_ids[(i * 8) + 2] >> 9)) & 255;
         entropy_chk->digits[(i * 11) + 3] = (wd_ids[(i * 8) + 2] >> 1) & 255;
-        entropy_chk->digits[(i * 11) + 4] = ((wd_ids[(i * 8) + 2] & 1) << 7) + (wd_ids[(i * 8) + 3] >> 4) & 255;
-        entropy_chk->digits[(i * 11) + 5] = ((wd_ids[(i * 8) + 3] & 15) << 4) + (wd_ids[(i * 8) + 4] >> 7) & 255;
-        entropy_chk->digits[(i * 11) + 6] = ((wd_ids[(i * 8) + 4] & 127) << 1) + (wd_ids[(i * 8) + 5] >> 10) & 255;
+        entropy_chk->digits[(i * 11) + 4] = (((wd_ids[(i * 8) + 2] & 1) << 7) + (wd_ids[(i * 8) + 3] >> 4)) & 255;
+        entropy_chk->digits[(i * 11) + 5] = (((wd_ids[(i * 8) + 3] & 15) << 4) + (wd_ids[(i * 8) + 4] >> 7)) & 255;
+        entropy_chk->digits[(i * 11) + 6] = (((wd_ids[(i * 8) + 4] & 127) << 1) + (wd_ids[(i * 8) + 5] >> 10)) & 255;
         entropy_chk->digits[(i * 11) + 7] = (wd_ids[(i * 8) + 5] >> 2) & 255;
-        entropy_chk->digits[(i * 11) + 8] = ((wd_ids[(i * 8) + 5] & 3) << 6) + (wd_ids[(i * 8) + 6] >> 5) & 255;
-        entropy_chk->digits[(i * 11) + 9] = ((wd_ids[(i * 8) + 6] & 31) << 3) + (wd_ids[(i * 8) + 7] >> 8) & 255;
+        entropy_chk->digits[(i * 11) + 8] = (((wd_ids[(i * 8) + 5] & 3) << 6) + (wd_ids[(i * 8) + 6] >> 5)) & 255;
+        entropy_chk->digits[(i * 11) + 9] = (((wd_ids[(i * 8) + 6] & 31) << 3) + (wd_ids[(i * 8) + 7] >> 8)) & 255;
         entropy_chk->digits[(i * 11) + 10] = wd_ids[(i * 8) + 7] & 255;
     }
 
@@ -2628,7 +2628,6 @@ void get_random_master_keys(bnz_t *entropy, bnz_t *master_private_key, bnz_t *ma
 
 void get_p2pkh_address(bnz_t *p2pkh, bnz_t *public_key_compressed, uint32_t *p2pkh_leading_zeros) // get p2pkh address from compressed public key
 {
-    uint32_t original_len;
     bnz_t fingerprint;
     bnz_init(&fingerprint);
     get_ripemd160_sha256(p2pkh, public_key_compressed, 20); // set p2pkh to ripemd160(sha256(public_key_compressed.digits)), p2pkh->size = 20
@@ -3359,7 +3358,7 @@ void menu_2_child_keys(const char *version)
 
 void menu_2_1_normal_child(const char *version)
 {
-    uint8_t parent_private_key_str[67], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
+    uint8_t parent_private_key_str[67], parent_chain_code_str[67], depth_num;
     uint32_t index_num, p2pkh_leading_zeros;
     bnz_t tmp, index, entropy, parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, xprv, child_public_key_compressed, xpub, p2pkh, p2sh_p2wpkh, p2wpkh;
     APT parent_public_key_pt, child_public_key_pt;
@@ -3531,7 +3530,7 @@ void menu_2_1_normal_child(const char *version)
 
 void menu_2_2_hardened_child(const char *version)
 {
-    uint8_t parent_private_key_str[67], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
+    uint8_t parent_private_key_str[67], parent_chain_code_str[67], depth_num;
     uint32_t index_num, p2pkh_leading_zeros;
     bnz_t tmp, index, entropy, parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, xprv, child_public_key_compressed, xpub, p2pkh, p2sh_p2wpkh, p2wpkh;
     APT parent_public_key_pt, child_public_key_pt;
@@ -3698,7 +3697,7 @@ void menu_2_2_hardened_child(const char *version)
 
 void menu_2_3_public_child(const char *version)
 {
-    uint8_t parent_public_key_compressed_str[69], parent_chain_code_str[67], index_str[11], mac[65], depth_num;
+    uint8_t parent_public_key_compressed_str[69], parent_chain_code_str[67], mac[65], depth_num;
     uint32_t index_num, p2pkh_leading_zeros;
     bnz_t tmp, index, parent_public_key_compressed, parent_chain_code, child_public_key_compressed, child_chain_code, xpub, p2pkh, p2sh_p2wpkh, p2wpkh;
     APT tmp_key, parent_public_key_pt, child_public_key_pt;
@@ -4169,9 +4168,7 @@ void menu_4_1_public_key_to_address(const char *version)
 void menu_4_2_validate_mnemonic_phrase_checksum(const char *version) // check validity of entropy checksum from mnemonic phrase comprising 24 BIP39 words
 {
     uint8_t chk;
-    int i;
-    uint32_t wd_ids[24];
-    char mnemonic_str[257], base = 16, passphrase_str[257];
+    char mnemonic_str[257];
     bnz_t entropy, entropy_chk;
 
     bnz_init(&entropy);
@@ -4422,7 +4419,6 @@ void menu_4_5_secp256k1_point_addition(const char *version)
 {
     uint8_t a_x_str[67], a_y_str[67], b_x_str[67], b_y_str[67];
     APT a, b, c;
-    bnz_t private_key;
 
     SECP256K1 secp256k1;
 
@@ -4530,7 +4526,6 @@ void menu_4_6_secp256k1_point_doubling(const char *version)
 {
     uint8_t a_x_str[67], a_y_str[67];
     APT a, b;
-    bnz_t private_key;
 
     SECP256K1 secp256k1;
 
@@ -4857,7 +4852,7 @@ void menu_4_9_ecdsa_verify(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.20, 2025-10-06";
+    static char *version = "bitcoin_math\nv0.21, 2025-10-09";
     int menu, running = 1;
     while (running) {
         system("cls");
