@@ -3079,8 +3079,8 @@ void secp256k1_ecdsa_sign(const SECP256K1 secp256k1, bnz_t *private_key, bnz_t *
     bnz_init(&tmp.y);
 
     bnz_256_bit_rnd(&nonce); // set value of nonce to random 256 bit bnz_t
-    bnz_mod_bnz(&nonce, &nonce, &secp256k1.n); // nonce = nonce mod secp256k1.n (order of Secp256k1)
-    bnz_modular_multiplicative_inverse(&inv_nonce, &nonce, &secp256k1.n); // set value of inv_nonce to modular multiplicative inverse of nonce, mod secp256k1.n
+    bnz_mod_bnz(&nonce, &nonce, &secp256k1.n); // nonce = nonce mod secp256k1.n, ensure that the value of nonce is less than the order of Secp256k1
+    bnz_modular_multiplicative_inverse(&inv_nonce, &nonce, &secp256k1.n); // set value of inv_nonce to the modular multiplicative inverse of nonce mod secp256k1.n
 
     secp256k1_scalar_multiplication(secp256k1, &secp256k1.G, &nonce, &tmp); // tmp = nonce * secp256k1.G (generator point)
 
@@ -3103,14 +3103,12 @@ int secp256k1_ecdsa_verify(const SECP256K1 secp256k1, bnz_t *public_key_compress
     int verified;
     
     bnz_t inv_s, m1, m2;
-    APT generator_pt, public_key_pt, tmp1, tmp2, verification_pt;
+    APT public_key_pt, tmp1, tmp2, verification_pt;
 
-    bnz_init(&inv_s);
+    bnz_init(&inv_s); // 
     bnz_init(&m1);
     bnz_init(&m2);
 
-    bnz_init(&generator_pt.x);
-    bnz_init(&generator_pt.y);
     bnz_init(&public_key_pt.x);
     bnz_init(&public_key_pt.y);
     bnz_init(&tmp1.x);
@@ -3120,8 +3118,6 @@ int secp256k1_ecdsa_verify(const SECP256K1 secp256k1, bnz_t *public_key_compress
     bnz_init(&verification_pt.x);
     bnz_init(&verification_pt.y);
 
-    bnz_set_bnz(&generator_pt.x, &secp256k1.G.x);
-    bnz_set_bnz(&generator_pt.y, &secp256k1.G.y);
     get_public_key_xy(secp256k1, &public_key_pt, public_key_compressed);
 
     bnz_modular_multiplicative_inverse(&inv_s, s, &secp256k1.n);
@@ -3130,7 +3126,7 @@ int secp256k1_ecdsa_verify(const SECP256K1 secp256k1, bnz_t *public_key_compress
     bnz_multiply_bnz(&m2, &inv_s, r);
     bnz_mod_bnz(&m2, &m2, &secp256k1.n);
 
-    secp256k1_scalar_multiplication(secp256k1, &generator_pt, &m1, &tmp1);
+    secp256k1_scalar_multiplication(secp256k1, &secp256k1.G, &m1, &tmp1);
     secp256k1_scalar_multiplication(secp256k1, &public_key_pt, &m2, &tmp2);
     secp256k1_point_addition(secp256k1, &tmp1, &tmp2, &verification_pt);
 
@@ -3142,8 +3138,6 @@ int secp256k1_ecdsa_verify(const SECP256K1 secp256k1, bnz_t *public_key_compress
         verified = 0;
     }
 
-    bnz_free(&generator_pt.x);
-    bnz_free(&generator_pt.y);
     bnz_free(&public_key_pt.x);
     bnz_free(&public_key_pt.y);
     bnz_free(&tmp1.x);
@@ -3152,6 +3146,8 @@ int secp256k1_ecdsa_verify(const SECP256K1 secp256k1, bnz_t *public_key_compress
     bnz_free(&tmp2.y);
     bnz_free(&verification_pt.x);
     bnz_free(&verification_pt.y);
+
+    return verified;
 }
 
 /* MENU */
@@ -4782,7 +4778,7 @@ void menu_4_8_ecdsa_sign(const char *version)
 
 void menu_4_9_ecdsa_verify(const char *version)
 {
-    char public_key_compressed_str[67], message_hash_str[67], signature_r_str[67], signature_s_str[67];
+    char public_key_compressed_str[69], message_hash_str[67], signature_r_str[67], signature_s_str[67];
     int verified;
     bnz_t public_key_compressed, message_hash, signature_r, signature_s;
     SECP256K1 secp256k1;
@@ -4798,7 +4794,7 @@ void menu_4_9_ecdsa_verify(const char *version)
     printf("%s\n\n", version);
 
     printf("Public key (compressed): ");
-    get_str_input(public_key_compressed_str, 66);
+    get_str_input(public_key_compressed_str, 68);
     bnz_set_str(&public_key_compressed, public_key_compressed_str, 16);
 
     system("cls");
