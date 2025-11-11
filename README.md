@@ -132,8 +132,8 @@ Bitcoin specific functions for processing entropy, generating mnemonic phrases, 
 
 If a user generates a private key that is not less than the value of the order of Secp256k1, the user will be prompted to rerun the private key generation step with a different entropy value. 
 
-### /* ECDSA */
-Secp256k1 ECDSA signing and signature verification functions. The signing function requires the user to supply a private key and the hash of the relevant message in hex format. The verification function requires the user to supply the compressed public key corresponding to the private key used to sign the message, the hash of the relevant message, and the `r` and `s` components of the signature in hex format.
+### /* BITCOIN ECDSA */
+Secp256k1 ECDSA signing and signature verification functions. The signing function requires the user to supply a private key and the hash of the relevant message in hex format. The function outputs the signature in DER format, together with the corresponding `r` and `s` components of the signature. If the most significant bit of `r` and/or `s` is set (which would ordinarily cause a DER formatted integer to be treated as a negative number), a 0x0 byte is prepended before the most significant byte. In addition, where the initially calculated value of `s` is greater than the floor value of Secp256k1.n / 2 (known as "high s"), the value of `s` is negated by subtracting it from Secp256k1.n to give the corresponding "low s" value and the signature is recalculated to ensure that the user is presented with a signature incorporating the "low s" value. The verification functions require the user to supply the compressed public key corresponding to the private key used to sign the message, the hash of the relevant message, and either a signature in DER format, or the `r` and `s` components of the signature, in each case in hex format.
 
 ### /* MENU */
 Menu functions.

@@ -882,7 +882,7 @@ void bnz_trim(bnz_t *a) // trim 0 value bytes from msb end of a->digits
     bnz_resize(a, new_size, 1);
 }
 
-void bnz_print(const bnz_t *a, int32_t base, const char *txt) // print a in a given base, preceded by optional string 
+void bnz_print(const bnz_t *a, int32_t base, const char *txt) // print a in a given base, preceded by optional string txt
 {
     uint8_t *str = NULL;
     uint32_t i, j, len;
@@ -2111,7 +2111,7 @@ void secp256k1_jacobian_scalar_multiplication(const SECP256K1 secp256k1, const b
     bnz_init(&tmp.y);
     bnz_init(&tmp.z);
 
-    for (i = 0; i < bits; i++) { // from LSB to MSB
+    for (i = 0; i < bits; i++) { // from lsb to msb
         if (bnz_bit_set(m, i)) {
             secp256k1_jacobian_point_addition(secp256k1, &tmp, &secp256k1.G_doublings_mod_p[i], &tmp); // if the current bit is set, add the corresponding Secp256k1 doubling value to the running total
         }
@@ -2470,7 +2470,6 @@ void get_hdk_intermediate_values(const SECP256K1 secp256k1, const bnz_t *master_
     bnz_init(&child_private_key);
     bnz_init(&child_chain_code);
     bnz_init(&child_public_key_compressed);
-    bnz_init(&child_xpub);
 
     bnz_set_bnz(&parent_private_key, master_private_key);
     bnz_set_bnz(&parent_chain_code, master_chain_code);
@@ -2487,7 +2486,7 @@ void get_hdk_intermediate_values(const SECP256K1 secp256k1, const bnz_t *master_
             depth++; // increment depth
             index = atoi(tok); // extract index from tok, ignoring any "'" indicating hardened child 
 
-            get_public_key_compressed(secp256k1, &parent_public_key_compressed, &parent_private_key); // get parent compressed public key for calculating normal child / xpub 
+            get_public_key_compressed(secp256k1, &parent_public_key_compressed, &parent_private_key); // get parent compressed public key for calculating normal child 
 
             if (tok[strlen(tok) - 1] == '\'') { // check for presence of "'" indicating hardened child
                 if (index < 2147483648) index += 2147483648;
@@ -2497,7 +2496,6 @@ void get_hdk_intermediate_values(const SECP256K1 secp256k1, const bnz_t *master_
             }
 
             get_public_key_compressed(secp256k1, &child_public_key_compressed, &child_private_key); // get compressed public key from child private key
-            get_xpub_child(&child_xpub, depth, index, &parent_public_key_compressed, &child_public_key_compressed, &child_chain_code); // calculate child xpub
 
             // print results
             printf("%s\n", display_str);
@@ -2505,7 +2503,6 @@ void get_hdk_intermediate_values(const SECP256K1 secp256k1, const bnz_t *master_
             bnz_print(&parent_chain_code, 16, "PARENT CHAIN CODE: ");
             bnz_print(&child_private_key, 16, "CHILD PRIVATE KEY: ");
             bnz_print(&child_chain_code, 16, "CHILD CHAIN CODE: ");
-            bnz_print(&child_xpub, 58, "CHILD XPUB: ");
             printf("\n");
 
             // prepare next iteration by setting parent private key and parent chain code to current child private key and child chain code
@@ -2522,7 +2519,6 @@ void get_hdk_intermediate_values(const SECP256K1 secp256k1, const bnz_t *master_
     bnz_free(&child_private_key);
     bnz_free(&child_chain_code);
     bnz_free(&child_public_key_compressed);
-    bnz_free(&child_xpub);
 }
 
 void get_public_key_compressed(const SECP256K1 secp256k1, bnz_t *public_key_compressed, bnz_t *private_key)
@@ -3061,10 +3057,66 @@ void get_xpub_child(bnz_t *xpub, uint8_t depth_num, uint32_t index_num, bnz_t *p
     bnz_free(&parent_public_key_hash_fingerprint);
 }
 
-/* ECDSA */
+/* BITCOIN ECDSA */
 
+void secp256k1_ecdsa_get_signature_from_r_s(const bnz_t *, const bnz_t *, bnz_t *);
+void secp256k1_ecdsa_get_r_s_from_signature(const bnz_t *, bnz_t *, bnz_t *);
 void secp256k1_ecdsa_sign(const SECP256K1, bnz_t *, bnz_t *, bnz_t *, bnz_t *);
-int secp256k1_ecdsa_verify(const SECP256K1, bnz_t *, bnz_t *, bnz_t *, bnz_t *);
+int secp256k1_ecdsa_verify_from_signature(const SECP256K1, const bnz_t *, const bnz_t *, const bnz_t *);
+int secp256k1_ecdsa_verify_from_r_s(const SECP256K1, bnz_t *, bnz_t *, bnz_t *, bnz_t *);
+
+void secp256k1_ecdsa_get_signature_from_r_s(const bnz_t *r, const bnz_t *s, bnz_t *signature) // 0x30 [len(signature)] 0x02 [len(r)] [r] 0x02 [len(s)] [s]
+{
+    uint8_t len;
+    bnz_t rr, ss;
+
+    bnz_init(&rr);
+    bnz_init(&ss);
+
+    bnz_set_bnz(&rr, r); //mutable copies of r and s
+    bnz_set_bnz(&ss, s);
+
+    if (rr.digits[rr.size - 1] > 128) bnz_concatenate_ui8(&rr, &rr, 0, 0); // if msb of r > 128, concatenate 0x0
+    if (ss.digits[ss.size - 1] > 128) bnz_concatenate_ui8(&ss, &ss, 0, 0); // if msb of s > 128, concatenate 0x0
+
+    len = rr.size + ss.size + 6; // len = total length of signature
+
+    bnz_set_ui32(signature, 48); // signature = 0x30
+    bnz_concatenate_ui8(signature, signature, len, 1); // signature = 0x30, len
+
+    bnz_concatenate_ui8(signature, signature, 2, 1); // signature = 0x30, len, 0x02
+    bnz_concatenate_ui8(signature, signature, rr.size, 1); // signature = 0x30, len, 0x02, len(rr)
+    bnz_concatenate_bnz(signature, signature, &rr, 1); // signature = 0x30, len, 0x02, len(rr), rr
+
+    bnz_concatenate_ui8(signature, signature, 2, 1); // signature = 0x30, len, 0x02, len(rr), 0x02
+    bnz_concatenate_ui8(signature, signature, ss.size, 1); // signature = 0x30, len, 0x02, len(rr), 0x02, len(ss)
+    bnz_concatenate_bnz(signature, signature, &ss, 1); // signature = 0x30, len, 0x02, len(rr), rr, 0x02, len(ss), ss
+
+    bnz_free(&rr); // free resources
+    bnz_free(&ss);
+}
+
+void secp256k1_ecdsa_get_r_s_from_signature(const bnz_t *signature, bnz_t *r, bnz_t *s)
+{
+    bnz_t tmp;
+    bnz_init(&tmp);
+
+    bnz_set_bnz(&tmp, signature); // tmp = local mutable copy of signature, little endian order
+
+    bnz_reverse_digits(&tmp); // reverse tmp, big endian order
+
+    bnz_resize(r, tmp.digits[3], 0); // tmp.digits[3] = len(r) 
+    memcpy(r->digits, tmp.digits + 4, tmp.digits[3]); // copy len(r) bytes into r, offset 4
+    bnz_reverse_digits(r);
+    bnz_trim(r); // delete any leading zeros from the msb end
+
+    bnz_resize(s, tmp.digits[tmp.digits[3] + 5], 0); // tmp.digits[len(r) + 5] = len(s)
+    memcpy(s->digits, tmp.digits + tmp.digits[3] + 6, tmp.digits[tmp.digits[3] + 5]); // copy len(s) bytes into s, offset len(r) + 6
+    bnz_reverse_digits(s);
+    bnz_trim(s); // delete any leading zeros from the msb end
+
+    bnz_free(&tmp); // free resources
+}
 
 void secp256k1_ecdsa_sign(const SECP256K1 secp256k1, bnz_t *private_key, bnz_t *hash, bnz_t *r, bnz_t *s)
 {
@@ -3079,7 +3131,7 @@ void secp256k1_ecdsa_sign(const SECP256K1 secp256k1, bnz_t *private_key, bnz_t *
 
     bnz_256_bit_rnd(&nonce); // set value of nonce to random 256 bit bnz_t
     bnz_mod_bnz(&nonce, &nonce, &secp256k1.n); // nonce = nonce mod secp256k1.n, ensure that the value of nonce is less than the order of Secp256k1
-    bnz_modular_multiplicative_inverse(&inv_nonce, &nonce, &secp256k1.n); // set value of inv_nonce to the modular multiplicative inverse of nonce mod secp256k1.n
+    bnz_modular_multiplicative_inverse(&inv_nonce, &nonce, &secp256k1.n); // set value of inv_nonce to the modular multiplicative inverse of nonce, modulo secp256k1.n the curve order
 
     secp256k1_scalar_multiplication(secp256k1, &secp256k1.G, &nonce, &tmp); // tmp = nonce * secp256k1.G (generator point)
 
@@ -3097,14 +3149,39 @@ void secp256k1_ecdsa_sign(const SECP256K1 secp256k1, bnz_t *private_key, bnz_t *
     bnz_free(&tmp.y);
 }
 
-int secp256k1_ecdsa_verify(const SECP256K1 secp256k1, bnz_t *public_key_compressed, bnz_t *hash, bnz_t *r, bnz_t *s)
+int secp256k1_ecdsa_verify_from_signature(const SECP256K1 secp256k1, const bnz_t *public_key_compressed, const bnz_t *hash, const bnz_t *signature)
+{
+    int verified;
+
+    bnz_t r, s, public_key_compressed_tmp, hash_tmp;
+
+    bnz_init(&r);
+    bnz_init(&s);
+    bnz_init(&public_key_compressed_tmp);
+    bnz_init(&hash_tmp);
+
+    bnz_set_bnz(&public_key_compressed_tmp, public_key_compressed);
+    bnz_set_bnz(&hash_tmp, hash);
+
+    secp256k1_ecdsa_get_r_s_from_signature(signature, &r, &s);
+    verified = secp256k1_ecdsa_verify_from_r_s(secp256k1, &public_key_compressed_tmp, &hash_tmp, &r, &s);
+
+    bnz_free(&r);
+    bnz_free(&s);
+    bnz_free(&public_key_compressed_tmp);
+    bnz_free(&hash_tmp);
+
+    return verified;
+}
+
+int secp256k1_ecdsa_verify_from_r_s(const SECP256K1 secp256k1, bnz_t *public_key_compressed, bnz_t *hash, bnz_t *r, bnz_t *s)
 {
     int verified;
     
     bnz_t inv_s, m1, m2;
     APT public_key_pt, tmp1, tmp2, verification_pt;
 
-    bnz_init(&inv_s); // 
+    bnz_init(&inv_s);
     bnz_init(&m1);
     bnz_init(&m2);
 
@@ -3117,27 +3194,27 @@ int secp256k1_ecdsa_verify(const SECP256K1 secp256k1, bnz_t *public_key_compress
     bnz_init(&verification_pt.x);
     bnz_init(&verification_pt.y);
 
-    get_public_key_xy(secp256k1, &public_key_pt, public_key_compressed);
+    get_public_key_xy(secp256k1, &public_key_pt, public_key_compressed); // extract xy coordinates of original public key Secp256k1 point from compressed public key
 
-    bnz_modular_multiplicative_inverse(&inv_s, s, &secp256k1.n);
-    bnz_multiply_bnz(&m1, &inv_s, hash);
-    bnz_mod_bnz(&m1, &m1, &secp256k1.n);
-    bnz_multiply_bnz(&m2, &inv_s, r);
-    bnz_mod_bnz(&m2, &m2, &secp256k1.n);
+    bnz_modular_multiplicative_inverse(&inv_s, s, &secp256k1.n); // set value of inv_s to the modular multiplicative inverse of s, modulo secp256k1.n the curve order
+    bnz_multiply_bnz(&m1, &inv_s, hash); // m1 = inv_s * hash
+    bnz_mod_bnz(&m1, &m1, &secp256k1.n); // m1 = m1 mod  mod secp256k1.n
+    bnz_multiply_bnz(&m2, &inv_s, r); // m2 = inv_s * r
+    bnz_mod_bnz(&m2, &m2, &secp256k1.n); // m2 = m2 mod  mod secp256k1.n
 
-    secp256k1_scalar_multiplication(secp256k1, &secp256k1.G, &m1, &tmp1);
-    secp256k1_scalar_multiplication(secp256k1, &public_key_pt, &m2, &tmp2);
-    secp256k1_point_addition(secp256k1, &tmp1, &tmp2, &verification_pt);
+    secp256k1_scalar_multiplication(secp256k1, &secp256k1.G, &m1, &tmp1); // tmp1 = m1 * secp256k1 generator mod secp256k1.p
+    secp256k1_scalar_multiplication(secp256k1, &public_key_pt, &m2, &tmp2); // tmp2 = m2 * public key point mod secp256k1.p
+    secp256k1_point_addition(secp256k1, &tmp1, &tmp2, &verification_pt); // verification_pt = tmp1 + tmp2 mod secp256k1.p
 
-    bnz_mod_bnz(&verification_pt.x, &verification_pt.x, &secp256k1.n);
+    bnz_mod_bnz(&verification_pt.x, &verification_pt.x, &secp256k1.n);// verification_pt.x = verification_pt.x mod secp256k1.n
 
-    if (bnz_cmp_bnz(&verification_pt.x, r) == 0) {
-        verified = 1;
+    if (bnz_cmp_bnz(&verification_pt.x, r) == 0) { // compare verfication_pt.x and r
+        verified = 1; // if verification_pt.x and r are equal, verification has succeded, set value of verfied to 1
     } else {
-        verified = 0;
+        verified = 0; // if verification_pt.x and r are not equal, verification has failed, set value of verfied to 0
     }
 
-    bnz_free(&public_key_pt.x);
+    bnz_free(&public_key_pt.x); // free resources
     bnz_free(&public_key_pt.y);
     bnz_free(&tmp1.x);
     bnz_free(&tmp1.y);
@@ -3146,7 +3223,7 @@ int secp256k1_ecdsa_verify(const SECP256K1 secp256k1, bnz_t *public_key_compress
     bnz_free(&verification_pt.x);
     bnz_free(&verification_pt.y);
 
-    return verified;
+    return verified; // return verified
 }
 
 /* MENU */
@@ -3161,15 +3238,19 @@ void menu_2_3_public_child(const char *);
 void menu_2_4_hdk_intermediate_values(const char *);
 void menu_3_base_converter(const char *);
 void menu_4_functions(const char *);
-void menu_4_1_public_key_to_address(const char *);
-void menu_4_2_validate_mnemonic_phrase_checksum(const char *);
-void menu_4_3_private_key_to_WIF(const char *);
-void menu_4_4_WIF_to_private_key(const char *);
-void menu_4_5_secp256k1_point_addition(const char *);
-void menu_4_6_secp256k1_point_doubling(const char *);
-void menu_4_7_secp256k1_scalar_multiplication(const char *);
-void menu_4_9_ecdsa_verify(const char *);
-void menu_4_8_ecdsa_sign(const char *);
+void menu_4_1_validate_mnemonic_phrase_checksum(const char *);
+void menu_4_2_private_and_public_key_functions(const char *);
+void menu_4_2_1_private_key_to_WIF(const char *);
+void menu_4_2_2_WIF_to_private_key(const char *);
+void menu_4_2_3_public_key_to_address(const char *);
+void menu_4_3_secp256k1_functions(const char *);
+void menu_4_3_1_secp256k1_point_addition(const char *);
+void menu_4_3_2_secp256k1_point_doubling(const char *);
+void menu_4_3_3_secp256k1_scalar_multiplication(const char *);
+void menu_4_4_ecdsa_functions(const char *);
+void menu_4_4_1_ecdsa_sign(const char *);
+void menu_4_4_2_ecdsa_verify_signature(const char *);
+void menu_4_4_3_ecdsa_verify_r_s(const char *);
 
 uint32_t get_num_input(uint32_t max_len, uint32_t min, uint32_t max) // get base 10 number between min and max from stdin
 {
@@ -4077,95 +4158,31 @@ void menu_4_functions(const char *version)
     int menu;
     system("cls");
     printf("%s\n\n", version);
-    printf("1. Public key to P2PKH, P2SH-P2WPKH and P2WPKH\n");
-    printf("2. Validate mnemonic phrase checksum\n");
-    printf("3. Private key to WIF / public key / P2PKH / P2SH-P2WPKH / P2WPKH address\n");
-    printf("4. WIF to private key / public key / P2PKH / P2SH-P2WPKH / P2WPKH address\n");
-    printf("5. Secp256k1 point addition\n");
-    printf("6. Secp256k1 point doubling\n");
-    printf("7. Secp256k1 scalar multiplication\n");
-    printf("8. ECDSA sign\n");
-    printf("9. ECDSA verify\n");
+    printf("1. Validate mnemonic phrase checksum\n");
+    printf("2. Private and public key functions\n");
+    printf("3. Secp256k1 functions\n");
+    printf("4. ECDSA functions\n");
     printf("\n");
-    menu = get_num_input(1, 0, 9);
+    menu = get_num_input(1, 0, 4);
     switch (menu) {
         case 1:
-            menu_4_1_public_key_to_address(version);
+            menu_4_1_validate_mnemonic_phrase_checksum(version);
             break;
         case 2:
-            menu_4_2_validate_mnemonic_phrase_checksum(version);
+            menu_4_2_private_and_public_key_functions(version);
             break;
         case 3:
-            menu_4_3_private_key_to_WIF(version);
+            menu_4_3_secp256k1_functions(version);
             break;
         case 4:
-            menu_4_4_WIF_to_private_key(version);
-            break;
-        case 5:
-            menu_4_5_secp256k1_point_addition(version);
-            break;
-        case 6:
-            menu_4_6_secp256k1_point_doubling(version);
-            break;
-        case 7:
-            menu_4_7_secp256k1_scalar_multiplication(version);
-            break;
-        case 8:
-            menu_4_8_ecdsa_sign(version);
-            break;
-        case 9:
-            menu_4_9_ecdsa_verify(version);
+            menu_4_4_ecdsa_functions(version);
             break;
         default:
             break;
     }
 }
 
-void menu_4_1_public_key_to_address(const char *version)
-{
-    uint8_t public_key_compressed_str[69]; // optional "0x" + 33 bytes + null terminus
-    uint32_t p2pkh_leading_zeros;
-    bnz_t public_key_compressed, p2pkh, p2sh_p2wpkh, p2wpkh;
-
-    bnz_init(&public_key_compressed);
-    bnz_init(&p2pkh);
-    bnz_init(&p2sh_p2wpkh);
-    bnz_init(&p2wpkh);
-
-    system("cls");
-    printf("%s\n\n", version);
-
-    printf("Public key (compressed): ");
-    get_str_input(public_key_compressed_str, 68);
-    bnz_set_str(&public_key_compressed, public_key_compressed_str, 16);
-
-    system("cls");
-    printf("%s\n\n", version);
-
-    bnz_print(&public_key_compressed, 16, "PUBLIC KEY (COMPRESSED): ");
-    printf("\n");
-
-    get_p2pkh_address(&p2pkh, &public_key_compressed, &p2pkh_leading_zeros);
-    get_p2sh_p2wpkh_address(&p2sh_p2wpkh, &public_key_compressed);
-    get_p2wpkh_address(&p2wpkh, &public_key_compressed);
-
-    print_p2pkh_address(&p2pkh, "P2PKH ADDRESS: ", p2pkh_leading_zeros);
-    bnz_print(&p2sh_p2wpkh, 58, "P2SH-P2WPKH ADDRESS: ");
-    print_p2wpkh_address(&p2wpkh, "P2WPKH ADDRESS: ");
-
-    printf("\n");
-
-    bnz_free(&public_key_compressed);
-    bnz_free(&p2pkh);
-    bnz_free(&p2sh_p2wpkh);
-    bnz_free(&p2wpkh);
-
-    printf("press any key to continue...");
-
-    getchar();
-}
-
-void menu_4_2_validate_mnemonic_phrase_checksum(const char *version) // check validity of entropy checksum from mnemonic phrase comprising 24 BIP39 words
+void menu_4_1_validate_mnemonic_phrase_checksum(const char *version) // check validity of entropy checksum from mnemonic phrase comprising 24 BIP39 words
 {
     uint8_t chk;
     char mnemonic_str[257];
@@ -4216,7 +4233,32 @@ void menu_4_2_validate_mnemonic_phrase_checksum(const char *version) // check va
     getchar();
 }
 
-void menu_4_3_private_key_to_WIF(const char *version)
+void menu_4_2_private_and_public_key_functions(const char *version)
+{
+    int menu;
+    system("cls");
+    printf("%s\n\n", version);
+    printf("1. Private key to WIF / public key / P2PKH / P2SH-P2WPKH / P2WPKH address\n");
+    printf("2. WIF to private key / public key / P2PKH / P2SH-P2WPKH / P2WPKH address\n");
+    printf("3. Public key to P2PKH, P2SH-P2WPKH and P2WPKH address\n");
+    printf("\n");
+    menu = get_num_input(1, 0, 3);
+    switch (menu) {
+        case 1:
+            menu_4_2_1_private_key_to_WIF(version);
+            break;
+        case 2:
+            menu_4_2_2_WIF_to_private_key(version);
+            break;
+        case 3:
+            menu_4_2_3_public_key_to_address(version);
+            break;
+        default:
+            break;
+    }
+}
+
+void menu_4_2_1_private_key_to_WIF(const char *version)
 {
     uint8_t private_key_str[67]; // optional "0x" + 32 bytes + null terminus
     uint32_t p2pkh_leading_zeros;
@@ -4285,7 +4327,7 @@ void menu_4_3_private_key_to_WIF(const char *version)
     
         secp256k1_free(secp256k1);
 
-        menu_4_3_private_key_to_WIF(version);
+        menu_4_2_1_private_key_to_WIF(version);
     }
 
     bnz_set_bnz(&private_key_wif, &private_key); // copy private key to private_key_wif
@@ -4336,7 +4378,7 @@ void menu_4_3_private_key_to_WIF(const char *version)
     getchar();
 }
 
-void menu_4_4_WIF_to_private_key(const char *version)
+void menu_4_2_2_WIF_to_private_key(const char *version)
 {
     uint8_t wif_str[53]; // 51 or 52 Bitcoin base 58 characters + null terminus
     uint32_t p2pkh_leading_zeros;
@@ -4415,7 +4457,76 @@ void menu_4_4_WIF_to_private_key(const char *version)
     getchar();
 }
 
-void menu_4_5_secp256k1_point_addition(const char *version)
+void menu_4_2_3_public_key_to_address(const char *version)
+{
+    uint8_t public_key_compressed_str[69]; // optional "0x" + 33 bytes + null terminus
+    uint32_t p2pkh_leading_zeros;
+    bnz_t public_key_compressed, p2pkh, p2sh_p2wpkh, p2wpkh;
+
+    bnz_init(&public_key_compressed);
+    bnz_init(&p2pkh);
+    bnz_init(&p2sh_p2wpkh);
+    bnz_init(&p2wpkh);
+
+    system("cls");
+    printf("%s\n\n", version);
+
+    printf("Public key (compressed): ");
+    get_str_input(public_key_compressed_str, 68);
+    bnz_set_str(&public_key_compressed, public_key_compressed_str, 16);
+
+    system("cls");
+    printf("%s\n\n", version);
+
+    bnz_print(&public_key_compressed, 16, "PUBLIC KEY (COMPRESSED): ");
+    printf("\n");
+
+    get_p2pkh_address(&p2pkh, &public_key_compressed, &p2pkh_leading_zeros);
+    get_p2sh_p2wpkh_address(&p2sh_p2wpkh, &public_key_compressed);
+    get_p2wpkh_address(&p2wpkh, &public_key_compressed);
+
+    print_p2pkh_address(&p2pkh, "P2PKH ADDRESS: ", p2pkh_leading_zeros);
+    bnz_print(&p2sh_p2wpkh, 58, "P2SH-P2WPKH ADDRESS: ");
+    print_p2wpkh_address(&p2wpkh, "P2WPKH ADDRESS: ");
+
+    printf("\n");
+
+    bnz_free(&public_key_compressed);
+    bnz_free(&p2pkh);
+    bnz_free(&p2sh_p2wpkh);
+    bnz_free(&p2wpkh);
+
+    printf("press any key to continue...");
+
+    getchar();
+}
+
+void menu_4_3_secp256k1_functions(const char *version)
+{
+    int menu;
+    system("cls");
+    printf("%s\n\n", version);
+    printf("1. Secp256k1 point addition\n");
+    printf("2. Secp256k1 point doubling\n");
+    printf("3. Secp256k1 scalar multiplication\n");
+    printf("\n");
+    menu = get_num_input(1, 0, 3);
+    switch (menu) {
+        case 1:
+            menu_4_3_1_secp256k1_point_addition(version);
+            break;
+        case 2:
+            menu_4_3_2_secp256k1_point_doubling(version);
+            break;
+        case 3:
+            menu_4_3_3_secp256k1_scalar_multiplication(version);
+            break;
+        default:
+            break;
+    }
+}
+
+void menu_4_3_1_secp256k1_point_addition(const char *version)
 {
     uint8_t a_x_str[67], a_y_str[67], b_x_str[67], b_y_str[67];
     APT a, b, c;
@@ -4458,7 +4569,7 @@ void menu_4_5_secp256k1_point_addition(const char *version)
 
         secp256k1_free(secp256k1);
 
-        menu_4_5_secp256k1_point_addition(version);
+        menu_4_3_1_secp256k1_point_addition(version);
     }
 
     printf("Point 2 x: ");
@@ -4485,7 +4596,7 @@ void menu_4_5_secp256k1_point_addition(const char *version)
 
         secp256k1_free(secp256k1);
 
-        menu_4_5_secp256k1_point_addition(version);
+        menu_4_3_1_secp256k1_point_addition(version);
     }
 
     secp256k1_point_addition(secp256k1, &a, &b, &c);
@@ -4522,7 +4633,7 @@ void menu_4_5_secp256k1_point_addition(const char *version)
     getchar();
 }
 
-void menu_4_6_secp256k1_point_doubling(const char *version)
+void menu_4_3_2_secp256k1_point_doubling(const char *version)
 {
     uint8_t a_x_str[67], a_y_str[67];
     APT a, b;
@@ -4561,7 +4672,7 @@ void menu_4_6_secp256k1_point_doubling(const char *version)
 
         secp256k1_free(secp256k1);
 
-        menu_4_6_secp256k1_point_doubling(version);
+        menu_4_3_2_secp256k1_point_doubling(version);
     }
 
     secp256k1_point_doubling(secp256k1, &a, &b);
@@ -4591,7 +4702,7 @@ void menu_4_6_secp256k1_point_doubling(const char *version)
     getchar();
 }
 
-void menu_4_7_secp256k1_scalar_multiplication(const char *version)
+void menu_4_3_3_secp256k1_scalar_multiplication(const char *version)
 {
     uint8_t q_x_str[67], q_y_str[67], multiplier_str[67];
     bnz_t multiplier;
@@ -4647,7 +4758,7 @@ void menu_4_7_secp256k1_scalar_multiplication(const char *version)
 
         secp256k1_free(secp256k1);
 
-        menu_4_7_secp256k1_scalar_multiplication(version);
+        menu_4_3_3_secp256k1_scalar_multiplication(version);
     }
 
     system("cls");
@@ -4714,18 +4825,47 @@ void menu_4_7_secp256k1_scalar_multiplication(const char *version)
     getchar();
 }
 
-void menu_4_8_ecdsa_sign(const char *version)
+void menu_4_4_ecdsa_functions(const char *version)
+{
+    int menu;
+    system("cls");
+    printf("%s\n\n", version);
+    printf("1. Secp256k1 ECDSA sign\n");
+    printf("2. Secp256k1 ECDSA verify (signature)\n");
+    printf("3. Secp256k1 ECDSA verify (r, s)\n");
+    printf("\n");
+    menu = get_num_input(1, 0, 3);
+    switch (menu) {
+        case 1:
+            menu_4_4_1_ecdsa_sign(version);
+            break;
+        case 2:
+            menu_4_4_2_ecdsa_verify_signature(version);
+            break;
+        case 3:
+            menu_4_4_3_ecdsa_verify_r_s(version);
+            break;
+        default:
+            break;
+    }
+}
+
+void menu_4_4_1_ecdsa_sign(const char *version)
 {
     char private_key_str[67], message_hash_str[67];
-    bnz_t private_key, message_hash, signature_r, signature_s;
+    bnz_t private_key, message_hash, r, s, signature, half_n;
     SECP256K1 secp256k1;
 
     bnz_init(&private_key);
     bnz_init(&message_hash);
-    bnz_init(&signature_r);
-    bnz_init(&signature_s);
+    bnz_init(&r);
+    bnz_init(&s);
+    bnz_init(&signature);
+    bnz_init(&half_n);
 
     secp256k1 = secp256k1_init();
+
+    bnz_set_str(&half_n, "57896044618658097711785492504343953926418782139537452191302581570759080747168", 10); // floor(secp256k1.n / 2)
 
     system("cls");
     printf("%s\n\n", version);
@@ -4747,7 +4887,8 @@ void menu_4_8_ecdsa_sign(const char *version)
     bnz_print(&private_key, 16, "Private key: ");
     bnz_print(&message_hash, 16, "Message hash: ");
 
-    secp256k1_ecdsa_sign(secp256k1, &private_key, &message_hash, &signature_r, &signature_s);
+    secp256k1_ecdsa_sign(secp256k1, &private_key, &message_hash, &r, &s);
+    secp256k1_ecdsa_get_signature_from_r_s(&r, &s, &signature);
 
     system("cls");
     printf("%s\n\n", version);
@@ -4755,14 +4896,24 @@ void menu_4_8_ecdsa_sign(const char *version)
     bnz_print(&message_hash, 16, "MESSAGE HASH: ");
     printf("\n");
 
-    bnz_print(&signature_r, 16, "ECDSA SIGNATURE R: ");
-    bnz_print(&signature_s, 16, "ECDSA SIGNATURE S: ");
+    bnz_print(&signature, 16, "ECDSA SIGNATURE: ");
+    bnz_print(&r, 16, "ECDSA SIGNATURE R: ");
+    bnz_print(&s, 16, "ECDSA SIGNATURE S: ");
     printf("\n");
+
+    if (bnz_cmp_bnz(&s, &half_n) == 1) { // s > floor(secp256k1.n / 2), "high s"
+        bnz_subtract_bnz(&s, &secp256k1.n, &s); // s = secp256k1.n - s, "low s"
+        secp256k1_ecdsa_get_signature_from_r_s(&r, &s, &signature); // update signature with low s
+        bnz_print(&signature, 16, "ECDSA SIGNATURE: ");
+        bnz_print(&r, 16, "ECDSA SIGNATURE R: ");
+        bnz_print(&s, 16, "ECDSA SIGNATURE LOW S: ");
+        printf("\n");
+    }
 
     bnz_free(&private_key);
     bnz_free(&message_hash);
-    bnz_free(&signature_r);
-    bnz_free(&signature_s);
+    bnz_free(&r);
+    bnz_free(&s);
 
     secp256k1_free(secp256k1);
 
@@ -4771,17 +4922,81 @@ void menu_4_8_ecdsa_sign(const char *version)
     getchar();
 }
 
-void menu_4_9_ecdsa_verify(const char *version)
+void menu_4_4_2_ecdsa_verify_signature(const char *version)
 {
-    char public_key_compressed_str[69], message_hash_str[67], signature_r_str[67], signature_s_str[67];
+    char public_key_compressed_str[69], message_hash_str[67], signature_str[147]; // 0x + (2 * (1 + 1 + 1 + 1 + 33 + 1 + 1 + 33)) + 0x0
     int verified;
-    bnz_t public_key_compressed, message_hash, signature_r, signature_s;
+    bnz_t public_key_compressed, message_hash, signature;
     SECP256K1 secp256k1;
 
     bnz_init(&public_key_compressed);
     bnz_init(&message_hash);
-    bnz_init(&signature_r);
-    bnz_init(&signature_s);
+    bnz_init(&signature);
+
+    secp256k1 = secp256k1_init();
+
+    system("cls");
+    printf("%s\n\n", version);
+
+    printf("Public key (compressed): ");
+    get_str_input(public_key_compressed_str, 68);
+    bnz_set_str(&public_key_compressed, public_key_compressed_str, 16);
+
+    system("cls");
+    printf("%s\n\n", version);
+    bnz_print(&public_key_compressed, 16, "Public key (compressed): ");
+
+    printf("Message hash: ");
+    get_str_input(message_hash_str, 66);
+    bnz_set_str(&message_hash, message_hash_str, 16);
+
+    system("cls");
+    printf("%s\n\n", version);
+    bnz_print(&public_key_compressed, 16, "Public key (compressed): ");
+    bnz_print(&message_hash, 16, "Message hash: ");
+
+    printf("ECDSA signature: ");
+    get_str_input(signature_str, 146);
+    bnz_set_str(&signature, signature_str, 16);
+
+    system("cls");
+    printf("%s\n\n", version);
+    bnz_print(&public_key_compressed, 16, "Public key (compressed): ");
+    bnz_print(&message_hash, 16, "Message hash: ");
+    bnz_print(&signature, 16, "ECDSA signature: ");
+    printf("\n");
+
+    verified = secp256k1_ecdsa_verify_from_signature(secp256k1, &public_key_compressed, &message_hash, &signature);
+
+    bnz_free(&public_key_compressed);
+    bnz_free(&message_hash);
+    bnz_free(&signature);
+
+    secp256k1_free(secp256k1);
+
+    if (verified) {
+        printf("VERIFICATION SUCCEEDED\n");
+    } else {
+        printf("VERIFICATION FAILED\n");
+    }
+    printf("\n");
+
+    printf("press any key to continue...");
+
+    getchar();
+}
+
+void menu_4_4_3_ecdsa_verify_r_s(const char *version)
+{
+    char public_key_compressed_str[69], message_hash_str[67], r_str[67], s_str[67];
+    int verified;
+    bnz_t public_key_compressed, message_hash, r, s;
+    SECP256K1 secp256k1;
+
+    bnz_init(&public_key_compressed);
+    bnz_init(&message_hash);
+    bnz_init(&r);
+    bnz_init(&s);
 
     secp256k1 = secp256k1_init();
 
@@ -4806,33 +5021,33 @@ void menu_4_9_ecdsa_verify(const char *version)
     bnz_print(&message_hash, 16, "Message hash: ");
 
     printf("ECDSA signature r: ");
-    get_str_input(signature_r_str, 66);
-    bnz_set_str(&signature_r, signature_r_str, 16);
+    get_str_input(r_str, 66);
+    bnz_set_str(&r, r_str, 16);
 
     system("cls");
     printf("%s\n\n", version);
     bnz_print(&public_key_compressed, 16, "Public key (compressed): ");
     bnz_print(&message_hash, 16, "Message hash: ");
-    bnz_print(&signature_r, 16, "ECDSA signature r: ");
+    bnz_print(&r, 16, "ECDSA signature r: ");
 
     printf("ECDSA signature s: ");
-    get_str_input(signature_s_str, 66);
-    bnz_set_str(&signature_s, signature_s_str, 16);
+    get_str_input(s_str, 66);
+    bnz_set_str(&s, s_str, 16);
 
     system("cls");
     printf("%s\n\n", version);
     bnz_print(&public_key_compressed, 16, "Public key (compressed): ");
     bnz_print(&message_hash, 16, "Message hash: ");
-    bnz_print(&signature_r, 16, "ECDSA signature r: ");
-    bnz_print(&signature_s, 16, "ECDSA signature s: ");
+    bnz_print(&r, 16, "ECDSA signature r: ");
+    bnz_print(&s, 16, "ECDSA signature s: ");
     printf("\n");
 
-    verified = secp256k1_ecdsa_verify(secp256k1, &public_key_compressed, &message_hash, &signature_r, &signature_s);
+    verified = secp256k1_ecdsa_verify_from_r_s(secp256k1, &public_key_compressed, &message_hash, &r, &s);
 
     bnz_free(&public_key_compressed);
     bnz_free(&message_hash);
-    bnz_free(&signature_r);
-    bnz_free(&signature_s);
+    bnz_free(&r);
+    bnz_free(&s);
 
     secp256k1_free(secp256k1);
 
@@ -4852,7 +5067,7 @@ void menu_4_9_ecdsa_verify(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.21, 2025-10-09";
+    static char *version = "bitcoin_math\nv0.23, 2025-11-11";
     int menu, running = 1;
     while (running) {
         system("cls");
@@ -4862,7 +5077,7 @@ int main()
         printf("3. Base converter\n");
         printf("4. Functions\n");
         printf("\n");
-        menu = get_num_input(1, 0, 5);
+        menu = get_num_input(1, 0, 4);
         switch (menu) {
             case 1:
                 menu_1_master_keys(version);
