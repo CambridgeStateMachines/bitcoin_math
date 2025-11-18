@@ -17,6 +17,22 @@ The result is `bitcoin_math.exe`, a simple menu driven console application which
 
 Wherever possible, hash digests, MACs, seeds, keys, and addresses are manipulated as arbitrary precision integers, reflecting their essentially numerical nature. These numbers are typically rendered onscreen in hex or Bitcoin base 58 format, but can be rendered in any base between 2 and 64 using the base conversion function.
 
+Notes on ECDSA signing and verification functions
+-------------------------------------------------
+
+The November 18, 2025 update includes improved ECDSA signing and verification functions.
+
+The signing function accepts a private key and the SHA256 hash of the relevant message as parameters, both in hex format. The user can choose between a random nonce, or a deterministic nonce calculated using the RFC6979 algorithm (https://www.rfc-editor.org/rfc/rfc6979). The function which implements the RFC6979 algorithm treats all intermediary values as `bnz_t` numbers, meaning that their bytes are stored in little endian order. However, the RFC6979 algorthim processes the `K`, `V`, `Key` and `Message` variables as big endian numbers. This necessitates multiple calls to the `bnz_reverse_digits` function, obviously advsersely impacting efficiency, but necessary for consistency with the remainder of the code where all big integer variables are stored as `bnz_t` type.
+
+The ECDSA signing function outputs the signature in DER format and also as separate `S` and `R` components. There are two corresponding verification functions which accept a public key, a SHA256 hash of the message, and either the ECDSA signature in DER format or the separate `S` and `R` components, in each case in hex format.
+
+The ECDSA signing function produces signatures that are identical to those given in the 20 test cases set out here:
+
+https://crypto.stackexchange.com/questions/20838/request-for-data-to-test-deterministic-ecdsa-signature-algorithm-for-secp256k1.
+
+The inclusion of a function implementing the RFC6979 algorithm necessitated updating the third party hash functions used in the `bicoin_math.c` source code to include a HMAC-SHA256 function. I took this ooportunity to overhaul the hash functions to use a single consistent source (Olivier Gay <olivier.gay@a3.epfl.ch>) whose (c) 2005 SHA2 implementation in C is widely used throughout GitHub and which I gratefully acknowlegde here.
+
+
 Notes on elliptic curve scalar multiplication alogorithms
 ---------------------------------------------------------
 
@@ -73,7 +89,7 @@ The `get_hdk_intermediate_values` function calculates and displays the intermedi
 Acknowledgements
 ================
 
-The BIP39 word list, and the source code for the cryptographic hash functions (RIPEMD160, SHA256, SHA512, HMAC-SHA512), were copied from various third party Github repositories, with a few minor modifications for readability e.g. conversion of inline functions into standalone functions.
+The BIP39 word list, and the source code for the cryptographic hash functions (RIPEMD160, SHA256, SHA512, HMAC-SHA512), were copied from various third party Github repositories, with a few minor modifications for readability e.g. conversion of inline functions into standalone functions. The pricipal source was Olivier Gay's 2005 implementation of sha2 and hmac_sha2 in C.
 
 The majority of the original source code in `bitcoin_math` relates to arbitrary precision integer math which is required to implement the elliptic curve functions used in Bitcoin to convert private keys into public keys.
 

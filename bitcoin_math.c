@@ -42,6 +42,12 @@ uint8_t *init_uint8_array(uint32_t len)
     return uint8_array;
 }
 
+#define SHFR(x, n) (x >> n)
+#define ROTR(x, n) ((x >> n) | (x << ((sizeof(x) << 3) - n)))
+#define ROTL(x, n) ((x << n) | (x >> ((sizeof(x) << 3) - n)))
+#define CH(x, y, z) ((x & y) ^ (~x & z))
+#define MAJ(x, y, z) ((x & y) ^ (x & z) ^ (y & z))
+
 /* RIPEMD160 */
 
 uint32_t rol(uint32_t, uint8_t);
@@ -199,291 +205,152 @@ void ripemd160(const uint8_t* data, uint32_t data_len, uint8_t* digest_bytes)
 /* SHA256 */
 
 typedef struct {
-    uint32_t state[8];
-    uint8_t block[64];
-    uint64_t n_bits;
-    uint8_t buffer_counter;
+    uint32_t tot_len;
+    uint32_t len;
+    uint8_t block[128];
+    uint32_t h[8];
 } SHA256_CTX;
 
-uint32_t rotr32(uint32_t, int);
-uint32_t sha256_f1(uint32_t, uint32_t, uint32_t);
-uint32_t sha256_f2(uint32_t, uint32_t, uint32_t);
-void update_w(uint32_t *, int, const uint8_t *);
-void sha256_block(SHA256_CTX *);
+void sha256_transf(SHA256_CTX *, const uint8_t *, uint32_t);
+void sha256(const uint8_t *, uint32_t, uint8_t *);
+void sha256_update(SHA256_CTX *, const uint8_t *, uint32_t);
+void sha256_final(SHA256_CTX *, uint8_t *);
 void sha256_init(SHA256_CTX *);
-void sha256_append(SHA256_CTX *, const uint8_t *, size_t);
-void sha256_finalize(SHA256_CTX *, uint8_t *);
-void sha256(const uint8_t *, size_t, uint8_t *);
 
-uint32_t rotr32(uint32_t x, int n)
-{
-    return (x >> n) | (x << (32 - n));
+#define SHA256_F1(x) (ROTR(x, 2) ^ ROTR(x, 13) ^ ROTR(x, 22))
+#define SHA256_F2(x) (ROTR(x, 6) ^ ROTR(x, 11) ^ ROTR(x, 25))
+#define SHA256_F3(x) (ROTR(x, 7) ^ ROTR(x, 18) ^ SHFR(x, 3))
+#define SHA256_F4(x) (ROTR(x, 17) ^ ROTR(x, 19) ^ SHFR(x, 10))
+
+#define UNPACK32(x, str) { \
+    *((str) + 3) = (uint8_t) ((x)); \
+    *((str) + 2) = (uint8_t) ((x) >>  8); \
+    *((str) + 1) = (uint8_t) ((x) >> 16); \
+    *((str) + 0) = (uint8_t) ((x) >> 24); \
 }
 
-uint32_t sha256_f1(uint32_t e, uint32_t f, uint32_t g)
-{
-    return (rotr32(e, 6) ^ rotr32(e, 11) ^ rotr32(e, 25)) + ((e & f) ^ ((~ e) & g));
+#define PACK32(str, x) { \
+    *(x) = ((uint32_t) *((str) + 3)) \
+    | ((uint32_t) *((str) + 2) <<  8) \
+    | ((uint32_t) *((str) + 1) << 16) \
+    | ((uint32_t) *((str) + 0) << 24); \
 }
 
-uint32_t sha256_f2(uint32_t a, uint32_t b, uint32_t c)
-{
-    return (rotr32(a, 2) ^ rotr32(a, 13) ^ rotr32(a, 22)) + ((a & b) ^ (a & c) ^ (b & c));
+#define SHA256_SCR(i) { \
+    w[i] =  SHA256_F4(w[i -  2]) + w[i -  7] \
+    + SHA256_F3(w[i - 15]) + w[i - 16]; \
 }
 
-void update_w(uint32_t *w, int i, const uint8_t *block)
-{
-    size_t j;
-    uint32_t a, b, s0, s1;
-    for (j = 0; j < 16; j++) {
-        if (i < 16) {
-            w[j] = ((uint32_t)block[0] << 24) | ((uint32_t)block[1] << 16) | ((uint32_t)block[2] <<  8) | ((uint32_t)block[3]);
-            block += 4;
-        } else {
-            a = w[(j + 1) & 15];
-            b = w[(j + 14) & 15];
-            s0 = (rotr32(a, 7) ^ rotr32(a, 18) ^ (a >> 3));
-            s1 = (rotr32(b, 17) ^ rotr32(b, 19) ^ (b >> 10));
-            w[j] += w[(j + 9) & 15] + s0 + s1;
-        }
-    }
+#define SHA256_EXP(a, b, c, d, e, f, g, h, j) { \
+    t1 = wv[h] + SHA256_F2(wv[e]) + CH(wv[e], wv[f], wv[g]) \
+    + sha256_k[j] + w[j]; \
+    t2 = SHA256_F1(wv[a]) + MAJ(wv[a], wv[b], wv[c]); \
+    wv[d] += t1; \
+    wv[h] = t1 + t2; \
 }
 
-void sha256_block(SHA256_CTX *ctx)
+uint32_t sha256_h0[8] = {
+    0x6a09e667,
+    0xbb67ae85,
+    0x3c6ef372,
+    0xa54ff53a,
+    0x510e527f,
+    0x9b05688c,
+    0x1f83d9ab,
+    0x5be0cd19
+};
+
+uint32_t sha256_k[64] = {
+    0x428a2f98,
+    0x71374491,
+    0xb5c0fbcf,
+    0xe9b5dba5,
+    0x3956c25b,
+    0x59f111f1,
+    0x923f82a4,
+    0xab1c5ed5,
+    0xd807aa98,
+    0x12835b01,
+    0x243185be,
+    0x550c7dc3,
+    0x72be5d74,
+    0x80deb1fe,
+    0x9bdc06a7,
+    0xc19bf174,
+    0xe49b69c1,
+    0xefbe4786,
+    0x0fc19dc6,
+    0x240ca1cc,
+    0x2de92c6f,
+    0x4a7484aa,
+    0x5cb0a9dc,
+    0x76f988da,
+    0x983e5152,
+    0xa831c66d,
+    0xb00327c8,
+    0xbf597fc7,
+    0xc6e00bf3,
+    0xd5a79147,
+    0x06ca6351,
+    0x14292967,
+    0x27b70a85,
+    0x2e1b2138,
+    0x4d2c6dfc,
+    0x53380d13,
+    0x650a7354,
+    0x766a0abb,
+    0x81c2c92e,
+    0x92722c85,
+    0xa2bfe8a1,
+    0xa81a664b,
+    0xc24b8b70,
+    0xc76c51a3,
+    0xd192e819,
+    0xd6990624,
+    0xf40e3585,
+    0x106aa070,
+    0x19a4c116,
+    0x1e376c08,
+    0x2748774c,
+    0x34b0bcb5,
+    0x391c0cb3,
+    0x4ed8aa4a,
+    0x5b9cca4f,
+    0x682e6ff3,
+    0x748f82ee,
+    0x78a5636f,
+    0x84c87814,
+    0x8cc70208,
+    0x90befffa,
+    0xa4506ceb,
+    0xbef9a3f7,
+    0xc67178f2
+};
+
+void sha256_transf(SHA256_CTX *ctx, const uint8_t *message, uint32_t block_nb)
 {
+    const uint8_t *sub_block;
     int i, j;
-    uint32_t a, b, c, d, e, f, g, h, w[16], temp;
+    uint32_t w[64], wv[8], t1, t2;
 
-    static const uint32_t k[8 * 8] = {
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
-    };
-
-    a = ctx->state[0];
-    b = ctx->state[1];
-    c = ctx->state[2];
-    d = ctx->state[3];
-    e = ctx->state[4];
-    f = ctx->state[5];
-    g = ctx->state[6];
-    h = ctx->state[7];
-    w[16];
-
-    for (i = 0; i < 64; i += 16) {
-        update_w(w, i, ctx->block);
-
-        for (j = 0; j < 16; j += 4) {
-            temp = h + sha256_f1(e, f, g) + k[i + j + 0] + w[j + 0];
-            h = temp + d;
-            d = temp + sha256_f2(a, b, c);
-            temp = g + sha256_f1(h, e, f) + k[i + j + 1] + w[j + 1];
-            g = temp + c;
-            c = temp + sha256_f2(d, a, b);
-            temp = f + sha256_f1(g, h, e) + k[i + j + 2] + w[j + 2];
-            f = temp + b;
-            b = temp + sha256_f2(c, d, a);
-            temp = e + sha256_f1(f, g, h) + k[i + j + 3] + w[j + 3];
-            e = temp + a;
-            a = temp + sha256_f2(b, c, d);
-        }
-    }
-
-    ctx->state[0] += a;
-    ctx->state[1] += b;
-    ctx->state[2] += c;
-    ctx->state[3] += d;
-    ctx->state[4] += e;
-    ctx->state[5] += f;
-    ctx->state[6] += g;
-    ctx->state[7] += h;
-}
-
-void sha256_init(SHA256_CTX *ctx)
-{
-    ctx->state[0] = 0x6a09e667;
-    ctx->state[1] = 0xbb67ae85;
-    ctx->state[2] = 0x3c6ef372;
-    ctx->state[3] = 0xa54ff53a;
-    ctx->state[4] = 0x510e527f;
-    ctx->state[5] = 0x9b05688c;
-    ctx->state[6] = 0x1f83d9ab;
-    ctx->state[7] = 0x5be0cd19;
-    ctx->n_bits = 0;
-    ctx->buffer_counter = 0;
-}
-
-void sha256_append_byte(SHA256_CTX *ctx, uint8_t byte)
-{
-    ctx->block[ctx->buffer_counter++] = byte;
-    ctx->n_bits += 8;
-
-    if (ctx->buffer_counter == 64) {
-        ctx->buffer_counter = 0;
-        sha256_block(ctx);
-    }
-}
-
-void sha256_append(SHA256_CTX *ctx, const uint8_t *message, size_t size)
-{
-    int i;
-    for (i = 0; i < size; i++) {
-        sha256_append_byte(ctx, message[i]);
-    }
-}
-
-void sha256_finalize(SHA256_CTX *ctx, uint8_t *digest)
-{
-    uint8_t byte;
-    int i;
-    uint64_t n_bits = ctx->n_bits;
-
-    sha256_append_byte(ctx, 0x80);
-
-    while (ctx->buffer_counter != 56) {
-        sha256_append_byte(ctx, 0);
-    }
-
-    for (i = 7; i >= 0; i--) {
-        byte = (n_bits >> 8 * i) & 0xff;
-        sha256_append_byte(ctx, byte);
-    }
-
-    /* extract uint32_t state[8] into uint8_t digest[32] */
-    for (i = 0; i < 8; i++) {
-        digest[(i * 4)] = (ctx->state[i] >> 24) & 0xff;
-        digest[(i * 4) + 1] = (ctx->state[i] >> 16) & 0xff;
-        digest[(i * 4) + 2] = (ctx->state[i] >> 8) & 0xff;
-        digest[(i * 4) + 3] = (ctx->state[i]) & 0xff;
-    }
-}
-
-void sha256(const uint8_t *message, size_t size, uint8_t *digest)
-{
-    SHA256_CTX ctx;
-    sha256_init(&ctx);
-    sha256_append(&ctx, message, size);
-    sha256_finalize(&ctx, digest);
-}
-
-/* SHA512 */
-
-typedef struct {
-    uint64_t state[8];
-    uint8_t block[256];
-    uint32_t tot_len;
-    size_t len;
-} SHA512_CTX;
-
-uint64_t rotr64(uint64_t, int);
-uint64_t rotl64(uint64_t, int);
-uint64_t shfr64(uint64_t, int);
-uint64_t ch(uint64_t, uint64_t, uint64_t);
-uint64_t maj(uint64_t, uint64_t, uint64_t);
-uint64_t sha512_f1(uint64_t);
-uint64_t sha512_f2(uint64_t);
-uint64_t sha512_f3(uint64_t);
-uint64_t sha512_f4(uint64_t);
-void sha512_transf(SHA512_CTX *, const uint8_t *, uint32_t);
-void sha512_init(SHA512_CTX *);
-void sha512_update(SHA512_CTX *, const uint8_t *, size_t);
-void sha512_finalize(SHA512_CTX *, uint8_t *);
-void sha512(const uint8_t *, size_t, uint8_t *);
-
-uint64_t sha512_k[80] = {
-    0x428a2f98d728ae22, 0x7137449123ef65cd, 0xb5c0fbcfec4d3b2f, 0xe9b5dba58189dbbc, 0x3956c25bf348b538, 0x59f111f1b605d019,
-    0x923f82a4af194f9b, 0xab1c5ed5da6d8118, 0xd807aa98a3030242, 0x12835b0145706fbe, 0x243185be4ee4b28c, 0x550c7dc3d5ffb4e2,
-    0x72be5d74f27b896f, 0x80deb1fe3b1696b1, 0x9bdc06a725c71235, 0xc19bf174cf692694, 0xe49b69c19ef14ad2, 0xefbe4786384f25e3,
-    0x0fc19dc68b8cd5b5, 0x240ca1cc77ac9c65, 0x2de92c6f592b0275, 0x4a7484aa6ea6e483, 0x5cb0a9dcbd41fbd4, 0x76f988da831153b5,
-    0x983e5152ee66dfab, 0xa831c66d2db43210, 0xb00327c898fb213f, 0xbf597fc7beef0ee4, 0xc6e00bf33da88fc2, 0xd5a79147930aa725,
-    0x06ca6351e003826f, 0x142929670a0e6e70, 0x27b70a8546d22ffc, 0x2e1b21385c26c926, 0x4d2c6dfc5ac42aed, 0x53380d139d95b3df,
-    0x650a73548baf63de, 0x766a0abb3c77b2a8, 0x81c2c92e47edaee6, 0x92722c851482353b, 0xa2bfe8a14cf10364, 0xa81a664bbc423001,
-    0xc24b8b70d0f89791, 0xc76c51a30654be30, 0xd192e819d6ef5218, 0xd69906245565a910, 0xf40e35855771202a, 0x106aa07032bbd1b8,
-    0x19a4c116b8d2d0c8, 0x1e376c085141ab53, 0x2748774cdf8eeb99, 0x34b0bcb5e19b48a8, 0x391c0cb3c5c95a63, 0x4ed8aa4ae3418acb,
-    0x5b9cca4f7763e373, 0x682e6ff3d6b2b8a3, 0x748f82ee5defb2fc, 0x78a5636f43172f60, 0x84c87814a1f0ab72, 0x8cc702081a6439ec,
-    0x90befffa23631e28, 0xa4506cebde82bde9, 0xbef9a3f7b2c67915, 0xc67178f2e372532b, 0xca273eceea26619c, 0xd186b8c721c0c207,
-    0xeada7dd6cde0eb1e, 0xf57d4f7fee6ed178, 0x06f067aa72176fba, 0x0a637dc5a2c898a6, 0x113f9804bef90dae, 0x1b710b35131c471b,
-    0x28db77f523047d84, 0x32caab7b40c72493, 0x3c9ebe0a15c9bebc, 0x431d67c49c100d4c, 0x4cc5d4becb3e42b6, 0x597f299cfc657e2a,
-    0x5fcb6fab3ad6faec, 0x6c44198c4a475817
-};
-             
-uint64_t sha512_h0[8] = {
-    0x6a09e667f3bcc908, 0xbb67ae8584caa73b, 0x3c6ef372fe94f82b, 0xa54ff53a5f1d36f1, 0x510e527fade682d1, 0x9b05688c2b3e6c1f,
-    0x1f83d9abfb41bd6b, 0x5be0cd19137e2179
-};
-
-uint64_t rotr64(uint64_t x, int n)
-{
-    return (x >> n) | (x << (64 - n));
-}
-
-uint64_t rotl64(uint64_t x, int n)
-{
-    return (x << n) | (x >> (64 - n));
-}
-
-uint64_t shfr64(uint64_t x, int n)
-{
-    return x >> n;
-}
-
-uint64_t ch(uint64_t x, uint64_t y, uint64_t z)
-{
-    return (x & y) ^ (~x & z);
-}
-
-uint64_t maj(uint64_t x, uint64_t y, uint64_t z)
-{
-    return (x & y) ^ (x & z) ^ (y & z);
-}
-
-uint64_t sha512_f1(uint64_t x)
-{
-    return rotr64(x, 28) ^ rotr64(x, 34) ^ rotr64(x, 39);
-}
-
-uint64_t sha512_f2(uint64_t x)
-{
-    return rotr64(x, 14) ^ rotr64(x, 18) ^ rotr64(x, 41);
-}
-
-uint64_t sha512_f3(uint64_t x)
-{
-    return rotr64(x, 1) ^ rotr64(x, 8) ^ shfr64(x, 7);
-}
-
-uint64_t sha512_f4(uint64_t x)
-{
-    return rotr64(x, 19) ^ rotr64(x, 61) ^ shfr64(x, 6);
-}
-
-void sha512_transf(SHA512_CTX *ctx, const uint8_t *message, uint32_t block_nb)
-{
-    int i, j, pos;
-    uint64_t w[80], wv[8], t1, t2;
-
-    for (i = 0; i < block_nb; i++) {
+    for (i = 0; i < (int)block_nb; i++) {
+        sub_block = message + (i << 6);
 
         for (j = 0; j < 16; j++) {
-            pos = (i * 128) + (j * 8);
-            w[j] = ((uint64_t)(message[pos]) << 56) + ((uint64_t)(message[pos + 1]) << 48) + ((uint64_t)(message[pos + 2]) << 40) + ((uint64_t)(message[pos + 3]) << 32) + ((uint64_t)(message[pos + 4]) << 24) + ((uint64_t)(message[pos + 5]) << 16) + ((uint64_t)(message[pos + 6]) << 8) + (uint64_t)(message[pos + 7]);
+            PACK32(&sub_block[j << 2], &w[j]);
         }
 
-        for (j = 16; j < 80; j++) {
-            w[j] = sha512_f4(w[j -  2]) + w[j -  7] + sha512_f3(w[j - 15]) + w[j - 16];
+        for (j = 16; j < 64; j++) {
+            SHA256_SCR(j);
         }
 
         for (j = 0; j < 8; j++) {
-            wv[j] = ctx->state[j];
+            wv[j] = ctx->h[j];
         }
 
-        for (j = 0; j < 80; j++) {
-            t1 = wv[7] + sha512_f2(wv[4]) + ch(wv[4], wv[5], wv[6]) + sha512_k[j] + w[j];
-            t2 = sha512_f1(wv[0]) + maj(wv[0], wv[1], wv[2]);
+        for (j = 0; j < 64; j++) {
+            t1 = wv[7] + SHA256_F2(wv[4]) + CH(wv[4], wv[5], wv[6]) + sha256_k[j] + w[j];
+            t2 = SHA256_F1(wv[0]) + MAJ(wv[0], wv[1], wv[2]);
             wv[7] = wv[6];
             wv[6] = wv[5];
             wv[5] = wv[4];
@@ -495,7 +362,353 @@ void sha512_transf(SHA512_CTX *ctx, const uint8_t *message, uint32_t block_nb)
         }
 
         for (j = 0; j < 8; j++) {
-            ctx->state[j] += wv[j];
+            ctx->h[j] += wv[j];
+        }
+    }
+}
+
+void sha256_init(SHA256_CTX *ctx)
+{
+    int i;
+    for (i = 0; i < 8; i++) {
+        ctx->h[i] = sha256_h0[i];
+    }
+    ctx->len = 0;
+    ctx->tot_len = 0;
+}
+
+void sha256_update(SHA256_CTX *ctx, const uint8_t *message, uint32_t len)
+{
+    const uint8_t *shifted_message;
+    uint32_t block_nb, new_len, rem_len, tmp_len;
+
+    tmp_len = 64 - ctx->len;
+    rem_len = len < tmp_len ? len : tmp_len;
+
+    memcpy(&ctx->block[ctx->len], message, rem_len);
+
+    if (ctx->len + len < 64) {
+        ctx->len += len;
+        return;
+    }
+
+    new_len = len - rem_len;
+    block_nb = new_len / 64;
+
+    shifted_message = message + rem_len;
+
+    sha256_transf(ctx, ctx->block, 1);
+    sha256_transf(ctx, shifted_message, block_nb);
+
+    rem_len = new_len % 64;
+
+    memcpy(ctx->block, &shifted_message[block_nb << 6], rem_len);
+
+    ctx->len = rem_len;
+    ctx->tot_len += (block_nb + 1) << 6;
+}
+
+void sha256_final(SHA256_CTX *ctx, uint8_t *digest)
+{
+    int i;
+    uint32_t block_nb, pm_len, len_b;
+
+    block_nb = (1 + ((64 - 9) < (ctx->len % 64)));
+
+    len_b = (ctx->tot_len + ctx->len) << 3;
+    pm_len = block_nb << 6;
+
+    memset(ctx->block + ctx->len, 0, pm_len - ctx->len);
+    ctx->block[ctx->len] = 0x80;
+    UNPACK32(len_b, ctx->block + pm_len - 4);
+
+    sha256_transf(ctx, ctx->block, block_nb);
+
+    for (i = 0 ; i < 8; i++) {
+        UNPACK32(ctx->h[i], &digest[i << 2]);
+    }
+}
+
+void sha256(const uint8_t *message, uint32_t len, uint8_t *digest)
+{
+    SHA256_CTX ctx;
+    sha256_init(&ctx);
+    sha256_update(&ctx, message, len);
+    sha256_final(&ctx, digest);
+}
+
+/* HMAC_SHA256 */
+
+typedef struct {
+    SHA256_CTX ctx_inside;
+    SHA256_CTX ctx_outside;
+    SHA256_CTX ctx_inside_reinit;
+    SHA256_CTX ctx_outside_reinit;
+    uint8_t block_ipad[64];
+    uint8_t block_opad[64];
+} HMAC_SHA256_CTX;
+
+void hmac_sha256_init(HMAC_SHA256_CTX *, const uint8_t *, uint32_t);
+void hmac_sha256_reinit(HMAC_SHA256_CTX *);
+void hmac_sha256_update(HMAC_SHA256_CTX *, const uint8_t *, uint32_t);
+void hmac_sha256_final(HMAC_SHA256_CTX *, uint8_t *, uint32_t);
+void hmac_sha256(const uint8_t *, uint32_t, const uint8_t *, uint32_t, uint8_t *, uint32_t);
+
+void hmac_sha256_init(HMAC_SHA256_CTX *ctx, const uint8_t *key, uint32_t key_size)
+{
+    const uint8_t *key_used;
+    uint8_t key_temp[32];
+    uint32_t fill, num;
+    int i;
+
+    if (key_size == 64) {
+        key_used = key;
+        num = 64;
+    } else {
+        if (key_size > 64){
+            num = 32;
+            sha256(key, key_size, key_temp);
+            key_used = key_temp;
+        } else { /* key_size > 64 */
+            key_used = key;
+            num = key_size;
+        }
+        fill = 64 - num;
+        memset(ctx->block_ipad + num, 0x36, fill);
+        memset(ctx->block_opad + num, 0x5c, fill);
+    }
+
+    for (i = 0; i < (int) num; i++) {
+        ctx->block_ipad[i] = key_used[i] ^ 0x36;
+        ctx->block_opad[i] = key_used[i] ^ 0x5c;
+    }
+
+    sha256_init(&ctx->ctx_inside);
+    sha256_update(&ctx->ctx_inside, ctx->block_ipad, 64);
+
+    sha256_init(&ctx->ctx_outside);
+    sha256_update(&ctx->ctx_outside, ctx->block_opad, 64);
+
+    /* for hmac_reinit */
+    memcpy(&ctx->ctx_inside_reinit, &ctx->ctx_inside, sizeof(SHA256_CTX));
+    memcpy(&ctx->ctx_outside_reinit, &ctx->ctx_outside, sizeof(SHA256_CTX));
+}
+
+void hmac_sha256_reinit(HMAC_SHA256_CTX *ctx)
+{
+    memcpy(&ctx->ctx_inside, &ctx->ctx_inside_reinit, sizeof(SHA256_CTX));
+    memcpy(&ctx->ctx_outside, &ctx->ctx_outside_reinit, sizeof(SHA256_CTX));
+}
+
+void hmac_sha256_update(HMAC_SHA256_CTX *ctx, const uint8_t *message, uint32_t message_len)
+{
+    sha256_update(&ctx->ctx_inside, message, message_len);
+}
+
+void hmac_sha256_final(HMAC_SHA256_CTX *ctx, uint8_t *mac, uint32_t mac_size)
+{
+    uint8_t digest_inside[32];
+    uint8_t mac_temp[32];
+    sha256_final(&ctx->ctx_inside, digest_inside);
+    sha256_update(&ctx->ctx_outside, digest_inside, 32);
+    sha256_final(&ctx->ctx_outside, mac_temp);
+    memcpy(mac, mac_temp, mac_size);
+}
+
+void hmac_sha256(const uint8_t *key, uint32_t key_size, const uint8_t *message, uint32_t message_len, uint8_t *mac, uint32_t mac_size)
+{
+    HMAC_SHA256_CTX ctx;
+    hmac_sha256_init(&ctx, key, key_size);
+    hmac_sha256_update(&ctx, message, message_len);
+    hmac_sha256_final(&ctx, mac, mac_size);
+}
+
+/* SHA512 */
+
+typedef struct {
+    uint32_t tot_len;
+    uint32_t len;
+    uint8_t block[256];
+    uint64_t h[8];
+} SHA512_CTX;
+
+void sha512_transf(SHA512_CTX *, const uint8_t *, uint32_t);
+void sha512_init(SHA512_CTX *);
+void sha512_update(SHA512_CTX *, const uint8_t *, uint32_t);
+void sha512_final(SHA512_CTX *, uint8_t *);
+void sha512(const uint8_t *, uint32_t, uint8_t *);
+
+#define SHA512_F1(x) (ROTR(x, 28) ^ ROTR(x, 34) ^ ROTR(x, 39))
+#define SHA512_F2(x) (ROTR(x, 14) ^ ROTR(x, 18) ^ ROTR(x, 41))
+#define SHA512_F3(x) (ROTR(x,  1) ^ ROTR(x,  8) ^ SHFR(x,  7))
+#define SHA512_F4(x) (ROTR(x, 19) ^ ROTR(x, 61) ^ SHFR(x,  6))
+
+#define UNPACK64(x, str) { \
+    *((str) + 7) = (uint8_t) ((x)); \
+    *((str) + 6) = (uint8_t) ((x) >>  8); \
+    *((str) + 5) = (uint8_t) ((x) >> 16); \
+    *((str) + 4) = (uint8_t) ((x) >> 24); \
+    *((str) + 3) = (uint8_t) ((x) >> 32); \
+    *((str) + 2) = (uint8_t) ((x) >> 40); \
+    *((str) + 1) = (uint8_t) ((x) >> 48); \
+    *((str) + 0) = (uint8_t) ((x) >> 56); \
+}
+
+#define PACK64(str, x) { \
+    *(x) = ((uint64_t) *((str) + 7)) \
+    | ((uint64_t) *((str) + 6) <<  8) \
+    | ((uint64_t) *((str) + 5) << 16) \
+    | ((uint64_t) *((str) + 4) << 24) \
+    | ((uint64_t) *((str) + 3) << 32) \
+    | ((uint64_t) *((str) + 2) << 40) \
+    | ((uint64_t) *((str) + 1) << 48) \
+    | ((uint64_t) *((str) + 0) << 56); \
+}
+
+#define SHA512_SCR(i) { \
+    w[i] = SHA512_F4(w[i - 2]) + w[i - 7] \
+    + SHA512_F3(w[i - 15]) + w[i - 16]; \
+}
+
+#define SHA512_EXP(a, b, c, d, e, f, g ,h, j) { \
+    t1 = wv[h] + SHA512_F2(wv[e]) + CH(wv[e], wv[f], wv[g]) \
+    + sha512_k[j] + w[j]; \
+    t2 = SHA512_F1(wv[a]) + MAJ(wv[a], wv[b], wv[c]); \
+    wv[d] += t1; \
+    wv[h] = t1 + t2; \
+}
+
+uint64_t sha512_h0[8] = {
+    0x6a09e667f3bcc908ULL,
+    0xbb67ae8584caa73bULL,
+    0x3c6ef372fe94f82bULL,
+    0xa54ff53a5f1d36f1ULL,
+    0x510e527fade682d1ULL,
+    0x9b05688c2b3e6c1fULL,
+    0x1f83d9abfb41bd6bULL,
+    0x5be0cd19137e2179ULL
+};
+
+uint64_t sha512_k[80] = {
+    0x428a2f98d728ae22ULL,
+    0x7137449123ef65cdULL,
+    0xb5c0fbcfec4d3b2fULL,
+    0xe9b5dba58189dbbcULL,
+    0x3956c25bf348b538ULL,
+    0x59f111f1b605d019ULL,
+    0x923f82a4af194f9bULL,
+    0xab1c5ed5da6d8118ULL,
+    0xd807aa98a3030242ULL,
+    0x12835b0145706fbeULL,
+    0x243185be4ee4b28cULL,
+    0x550c7dc3d5ffb4e2ULL,
+    0x72be5d74f27b896fULL,
+    0x80deb1fe3b1696b1ULL,
+    0x9bdc06a725c71235ULL,
+    0xc19bf174cf692694ULL,
+    0xe49b69c19ef14ad2ULL,
+    0xefbe4786384f25e3ULL,
+    0x0fc19dc68b8cd5b5ULL,
+    0x240ca1cc77ac9c65ULL,
+    0x2de92c6f592b0275ULL,
+    0x4a7484aa6ea6e483ULL,
+    0x5cb0a9dcbd41fbd4ULL,
+    0x76f988da831153b5ULL,
+    0x983e5152ee66dfabULL,
+    0xa831c66d2db43210ULL,
+    0xb00327c898fb213fULL,
+    0xbf597fc7beef0ee4ULL,
+    0xc6e00bf33da88fc2ULL,
+    0xd5a79147930aa725ULL,
+    0x06ca6351e003826fULL,
+    0x142929670a0e6e70ULL,
+    0x27b70a8546d22ffcULL,
+    0x2e1b21385c26c926ULL,
+    0x4d2c6dfc5ac42aedULL,
+    0x53380d139d95b3dfULL,
+    0x650a73548baf63deULL,
+    0x766a0abb3c77b2a8ULL,
+    0x81c2c92e47edaee6ULL,
+    0x92722c851482353bULL,
+    0xa2bfe8a14cf10364ULL,
+    0xa81a664bbc423001ULL,
+    0xc24b8b70d0f89791ULL,
+    0xc76c51a30654be30ULL,
+    0xd192e819d6ef5218ULL,
+    0xd69906245565a910ULL,
+    0xf40e35855771202aULL,
+    0x106aa07032bbd1b8ULL,
+    0x19a4c116b8d2d0c8ULL,
+    0x1e376c085141ab53ULL,
+    0x2748774cdf8eeb99ULL,
+    0x34b0bcb5e19b48a8ULL,
+    0x391c0cb3c5c95a63ULL,
+    0x4ed8aa4ae3418acbULL,
+    0x5b9cca4f7763e373ULL,
+    0x682e6ff3d6b2b8a3ULL,
+    0x748f82ee5defb2fcULL,
+    0x78a5636f43172f60ULL,
+    0x84c87814a1f0ab72ULL,
+    0x8cc702081a6439ecULL,
+    0x90befffa23631e28ULL,
+    0xa4506cebde82bde9ULL,
+    0xbef9a3f7b2c67915ULL,
+    0xc67178f2e372532bULL,
+    0xca273eceea26619cULL,
+    0xd186b8c721c0c207ULL,
+    0xeada7dd6cde0eb1eULL,
+    0xf57d4f7fee6ed178ULL,
+    0x06f067aa72176fbaULL,
+    0x0a637dc5a2c898a6ULL,
+    0x113f9804bef90daeULL,
+    0x1b710b35131c471bULL,
+    0x28db77f523047d84ULL,
+    0x32caab7b40c72493ULL,
+    0x3c9ebe0a15c9bebcULL,
+    0x431d67c49c100d4cULL,
+    0x4cc5d4becb3e42b6ULL,
+    0x597f299cfc657e2aULL,
+    0x5fcb6fab3ad6faecULL,
+    0x6c44198c4a475817ULL
+};
+
+void sha512_transf(SHA512_CTX *ctx, const uint8_t *message, uint32_t block_nb)
+{
+    const uint8_t *sub_block;
+    int i, j;
+    uint64_t w[80], wv[8], t1, t2;
+
+    for (i = 0; i < (int) block_nb; i++) {
+        sub_block = message + (i << 7);
+
+        for (j = 0; j < 16; j++) {
+            PACK64(&sub_block[j << 3], &w[j]);
+        }
+
+        for (j = 16; j < 80; j++) {
+            SHA512_SCR(j);
+        }
+
+        for (j = 0; j < 8; j++) {
+            wv[j] = ctx->h[j];
+        }
+
+        for (j = 0; j < 80; j++) {
+            t1 = wv[7] + SHA512_F2(wv[4]) + CH(wv[4], wv[5], wv[6])
+                + sha512_k[j] + w[j];
+            t2 = SHA512_F1(wv[0]) + MAJ(wv[0], wv[1], wv[2]);
+            wv[7] = wv[6];
+            wv[6] = wv[5];
+            wv[5] = wv[4];
+            wv[4] = wv[3] + t1;
+            wv[3] = wv[2];
+            wv[2] = wv[1];
+            wv[1] = wv[0];
+            wv[0] = t1 + t2;
+        }
+
+        for (j = 0; j < 8; j++) {
+            ctx->h[j] += wv[j];
         }
     }
 }
@@ -504,17 +717,16 @@ void sha512_init(SHA512_CTX *ctx)
 {
     int i;
     for (i = 0; i < 8; i++) {
-        ctx->state[i] = sha512_h0[i];
+        ctx->h[i] = sha512_h0[i];
     }
-
     ctx->len = 0;
     ctx->tot_len = 0;
 }
 
-void sha512_update(SHA512_CTX *ctx, const uint8_t *message, size_t len)
+void sha512_update(SHA512_CTX *ctx, const uint8_t *message, uint32_t len)
 {
-    uint32_t block_nb, new_len, rem_len, tmp_len;
     const uint8_t *shifted_message;
+    uint32_t block_nb, new_len, rem_len, tmp_len;
 
     tmp_len = 128 - ctx->len;
     rem_len = len < tmp_len ? len : tmp_len;
@@ -536,50 +748,40 @@ void sha512_update(SHA512_CTX *ctx, const uint8_t *message, size_t len)
 
     rem_len = new_len % 128;
 
-    memcpy(ctx->block, &shifted_message[block_nb << 7], rem_len);
+    memcpy(ctx->block, &shifted_message[block_nb << 7],
+           rem_len);
 
     ctx->len = rem_len;
     ctx->tot_len += (block_nb + 1) << 7;
 }
 
-void sha512_finalize(SHA512_CTX *ctx, uint8_t *digest)
+void sha512_final(SHA512_CTX *ctx, uint8_t *digest)
 {
     uint32_t block_nb, pm_len, len_b;
-
     int i;
 
-    block_nb = 1 + (111 < (ctx->len % 128));
+    block_nb = 1 + ((128 - 17) < (ctx->len % 128));
 
     len_b = (ctx->tot_len + ctx->len) << 3;
     pm_len = block_nb << 7;
 
     memset(ctx->block + ctx->len, 0, pm_len - ctx->len);
     ctx->block[ctx->len] = 0x80;
-    ctx->block[pm_len - 1] = (uint8_t)((len_b));
-    ctx->block[pm_len - 2] = (uint8_t)((len_b) >>  8);
-    ctx->block[pm_len - 3] = (uint8_t)((len_b) >> 16);
-    ctx->block[pm_len - 4] = (uint8_t)((len_b) >> 24);
+    UNPACK32(len_b, ctx->block + pm_len - 4);
 
     sha512_transf(ctx, ctx->block, block_nb);
 
     for (i = 0 ; i < 8; i++) {
-        digest[(i * 8) + 7] = (uint8_t)(ctx->state[i]);
-        digest[(i * 8) + 6] = (uint8_t)((ctx->state[i]) >> 8);
-        digest[(i * 8) + 5] = (uint8_t)((ctx->state[i]) >> 16);
-        digest[(i * 8) + 4] = (uint8_t)((ctx->state[i]) >> 24);
-        digest[(i * 8) + 3] = (uint8_t)((ctx->state[i]) >> 32);
-        digest[(i * 8) + 2] = (uint8_t)((ctx->state[i]) >> 40);
-        digest[(i * 8) + 1] = (uint8_t)((ctx->state[i]) >> 48);
-        digest[(i * 8) + 0] = (uint8_t)((ctx->state[i]) >> 56);
+        UNPACK64(ctx->h[i], &digest[i << 3]);
     }
 }
 
-void sha512(const uint8_t *message, size_t len, uint8_t *digest)
+void sha512(const uint8_t *message, uint32_t len, uint8_t *digest)
 {
     SHA512_CTX ctx;
     sha512_init(&ctx);
     sha512_update(&ctx, message, len);
-    sha512_finalize(&ctx, digest);
+    sha512_final(&ctx, digest);
 }
 
 /* HMAC-SHA512 */
@@ -603,7 +805,7 @@ void hmac_sha512_init(HMAC_SHA512_CTX *ctx, const uint8_t *key, uint32_t key_siz
 {
     uint8_t key_temp[64];
     const uint8_t *key_used;
-    uint32_t fill, num;
+    uint32_t fill,num;
     int i;
     if (key_size == 128) {
         key_used = key;
@@ -652,9 +854,9 @@ void hmac_sha512_update(HMAC_SHA512_CTX *ctx, const uint8_t *message, uint32_t m
 void hmac_sha512_final(HMAC_SHA512_CTX *ctx, uint8_t *mac, uint32_t mac_size)
 {
     uint8_t digest_inside[64], mac_temp[64];
-    sha512_finalize(&ctx->ctx_inside, digest_inside);
+    sha512_final(&ctx->ctx_inside, digest_inside);
     sha512_update(&ctx->ctx_outside, digest_inside, 64);
-    sha512_finalize(&ctx->ctx_outside, mac_temp);
+    sha512_final(&ctx->ctx_outside, mac_temp);
     memcpy(mac, mac_temp, mac_size);
 }
 
@@ -1093,7 +1295,7 @@ uint8_t *get_base_n_str(const bnz_t *a, uint32_t base, const char *alpha, uint32
     return base_n_str_trimmed;
 }
 
-void bnz_set_i32(bnz_t *res, int32_t val) // set bnz_t to 32 bit signed int
+void bnz_set_i32(bnz_t *res, int32_t val) // set bnz_t to 32 bit signed int, if the resultant bnz_t has leading zeros, these are trimmed
 {
     if (val < 0) { // val is negative
         res->sign = 1; // sign == 1 for negative val, 0 for positive val
@@ -1104,7 +1306,7 @@ void bnz_set_i32(bnz_t *res, int32_t val) // set bnz_t to 32 bit signed int
     bnz_trim(res); // trim zero bytes from msb end
 }
 
-void bnz_set_ui32(bnz_t *res, uint32_t val) // set bnz_t to 32 bit unsigned int
+void bnz_set_ui32(bnz_t *res, uint32_t val) // set bnz_t to 32 bit uint32_t, if the resultant bnz_t has leading zeros, these are trimmed
 {
     bnz_resize(res, 4, 0); // resize res to 4 bytes, zero bytes
     memcpy(res->digits, &val, 4); // copy bytes from val to res->digits
@@ -1730,7 +1932,6 @@ void get_affine_from_jacobian(const SECP256K1, const JPT *, APT *);
 void secp256k1_jacobian_point_addition(const SECP256K1, const JPT *, const APT *, JPT *);
 void secp256k1_jacobian_scalar_multiplication(const SECP256K1, const bnz_t *, APT *);
 int secp256k1_valid_point(const SECP256K1, const APT);
-void secp256k1_ecdsa_sign(const SECP256K1, bnz_t *, bnz_t *, bnz_t *, bnz_t *);
 
 SECP256K1 secp256k1_init() // initiate secp256k1 curve, y^2 = (x^3 + 7) mod secp256k1.p
 {
@@ -2169,7 +2370,7 @@ void get_child_hardened(const SECP256K1, bnz_t *, bnz_t *, const bnz_t *, const 
 void get_hdk_intermediate_values(const SECP256K1, const bnz_t *, const bnz_t *, char *);
 void get_public_key_compressed(const SECP256K1, bnz_t *, bnz_t *);
 void get_public_key(const SECP256K1, APT *, bnz_t *, bnz_t *);
-void get_public_key_xy(const SECP256K1, APT *, bnz_t *);
+void get_public_key_xy(const SECP256K1, APT *, const bnz_t *);
 void get_random_master_keys(bnz_t *, bnz_t *, bnz_t *);
 void get_p2pkh_address(bnz_t *, bnz_t *, uint32_t *);
 void print_p2pkh_address(const bnz_t *, const uint8_t *, uint32_t);
@@ -2555,7 +2756,7 @@ void get_public_key(const SECP256K1 secp256k1, APT *public_key, bnz_t *public_ke
     }
 }
 
-void get_public_key_xy(const SECP256K1 secp256k1, APT *public_key, bnz_t *public_key_compressed) // regenerate public key point on secp256k1 from compressed public key
+void get_public_key_xy(const SECP256K1 secp256k1, APT *public_key, const bnz_t *public_key_compressed) // regenerate public key point on secp256k1 from compressed public key
 {
     uint8_t typ = public_key_compressed->digits[public_key_compressed->size - 1]; // byte at msb encodes the parity of y: typ = 0x02 for even y, typ = 0x03 for odd y
     bnz_t exp, y_sq;
@@ -3059,11 +3260,166 @@ void get_xpub_child(bnz_t *xpub, uint8_t depth_num, uint32_t index_num, bnz_t *p
 
 /* BITCOIN ECDSA */
 
+void secp256k1_ecdsa_get_random_nonce(bnz_t *);
+void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1, const bnz_t *, const bnz_t *, bnz_t *);
 void secp256k1_ecdsa_get_signature_from_r_s(const bnz_t *, const bnz_t *, bnz_t *);
 void secp256k1_ecdsa_get_r_s_from_signature(const bnz_t *, bnz_t *, bnz_t *);
-void secp256k1_ecdsa_sign(const SECP256K1, bnz_t *, bnz_t *, bnz_t *, bnz_t *);
+void secp256k1_ecdsa_sign(const SECP256K1, const bnz_t *, const bnz_t *, bnz_t *, bnz_t *, uint32_t);
 int secp256k1_ecdsa_verify_from_signature(const SECP256K1, const bnz_t *, const bnz_t *, const bnz_t *);
-int secp256k1_ecdsa_verify_from_r_s(const SECP256K1, bnz_t *, bnz_t *, bnz_t *, bnz_t *);
+int secp256k1_ecdsa_verify_from_r_s(const SECP256K1, const bnz_t *, const bnz_t *, const bnz_t *, const bnz_t *);
+
+void secp256k1_ecdsa_get_random_nonce(bnz_t *nonce)
+{
+    bnz_256_bit_rnd(nonce);
+}
+
+void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1 secp256k1, const bnz_t *private_key, const bnz_t *hash, bnz_t *nonce) // RFC6979
+{
+    uint8_t mac[32];
+    int range_flag;
+
+    bnz_t k, v, key, message, private_key_tmp;
+    bnz_init(&k);
+    bnz_init(&v);
+    bnz_init(&key);
+    bnz_init(&message);
+    bnz_init(&private_key_tmp);
+
+    bnz_set_bnz(&private_key_tmp, private_key);
+    bnz_resize(&private_key_tmp, 32, 1);
+
+    // (a) hash = SHA256(m)
+
+    // (b) V = 0x1 x 32
+    bnz_set_str(&v, "0101010101010101010101010101010101010101010101010101010101010101", 16); // v = 0x1 x 32
+
+    // (c) K = 0x0 x 32
+    bnz_set_i32(&k, 0); // k = 0x0 x 32
+
+    // (d) K = HMAC_K(V || 0x00 || private_key || hash)
+    bnz_set_bnz(&key, &k); // key = k
+    // no need to convert key to big endian order because is is an array of 32 x 0x0 bytes
+    bnz_resize(&key, 32, 1); // ensure key size is 32 bytes
+
+    bnz_set_bnz(&message, &v); // message = v
+    bnz_concatenate_ui8(&message, &message, 0, 1); // message = v || 0x0
+    bnz_concatenate_bnz(&message, &message, &private_key_tmp, 1); // message = v || 0x0 || private_key_tmp
+    bnz_concatenate_bnz(&message, &message, hash, 1); // message = v || 0x0 || private_key_tmp || hash
+    bnz_reverse_digits(&message); // convert message to big endian order
+
+    hmac_sha256(key.digits, key.size, message.digits, message.size, mac, 32); // mac = hmac_sha256(key, message)
+
+    bnz_resize(&k, 32, 0); // prepare k to receive 32 bytes of mac
+    memcpy(k.digits, mac, 32); // k = mac
+    bnz_reverse_digits(&k); // convert k to standard little endian order
+
+    // (e) V = HMAC_K(V)
+    bnz_set_bnz(&key, &k); // key = k
+    bnz_reverse_digits(&key); // convert key to big endian order
+
+    bnz_set_bnz(&message, &v); // message = v
+    bnz_reverse_digits(&message); // convert message to big endian order
+
+    hmac_sha256(key.digits, key.size, message.digits, message.size, mac, 32); // mac = hmac_sha256(key, message)
+
+    bnz_resize(&v, 32, 0); // prepare v to receive 32 bytes of mac
+    memcpy(v.digits, mac, 32); // v = mac
+    bnz_reverse_digits(&v); // convert v to standard little endian order
+
+    // (f) K = HMAC_K(V || 0x01 || int2octets(x) || bits2octets(h1))
+    bnz_set_bnz(&key, &k); // key = k
+    bnz_reverse_digits(&key); // convert key to big endian order
+    bnz_resize(&key, 32, 1); // ensure that key is 32 bytes
+
+    bnz_set_bnz(&message, &v); // message = v
+    bnz_concatenate_ui8(&message, &message, 1, 1); // message = v || 0x1 
+    bnz_concatenate_bnz(&message, &message, &private_key_tmp, 1); // message = v || 0x1 || private_key_tmp
+    bnz_concatenate_bnz(&message, &message, hash, 1); // message = v || 0x1 || private_key_tmp || hash
+    bnz_reverse_digits(&message); // convert message to big endian order
+
+    hmac_sha256(key.digits, key.size, message.digits, message.size, mac, 32); // mac = hmac_sha256(key, message)
+
+    bnz_resize(&k, 32, 0); // prepare k to receive 32 bytes of mac
+    memcpy(k.digits, mac, 32); // k = mac
+    bnz_reverse_digits(&k); // convert k to standard little endian order
+
+    // (g) V = HMAC_K(V)
+    bnz_set_bnz(&key, &k); // key = k
+    bnz_reverse_digits(&key); // convert key to big endian order
+
+    bnz_set_bnz(&message, &v); // message = v
+    bnz_reverse_digits(&message); // convert message to big endian order
+
+    hmac_sha256(key.digits, key.size, message.digits, message.size, mac, 32); // mac = hmac_sha256(key, message)
+
+    bnz_resize(&v, 32, 0); // prepare v to receive 32 bytes of mac
+    memcpy(v.digits, mac, 32); // v = mac
+    bnz_reverse_digits(&v); // convert v to standard little endian order
+
+    // (h) final loop to confirm nonce is at least 32 bytes and lies in the range 1 <= nonce <= secp256k1.n
+    do {
+        // 1. set nonce to zero length bnz_t
+        bnz_init(nonce);
+
+        // 2. V = HMAC_K(V), nonce = nonce || V until nonce.size >= 32
+        while (nonce->size < 32) {
+            bnz_set_bnz(&key, &k); // key = k
+            bnz_reverse_digits(&key); // convert key to big endian order
+
+            bnz_set_bnz(&message, &v); // message = v
+            bnz_reverse_digits(&message); // convert message to big endian order
+
+            hmac_sha256(key.digits, key.size, message.digits, message.size, mac, 32); // mac = hmac_sha256(key, message)
+
+            bnz_resize(&v, 32, 0); // prepare v to receive 32 bytes of mac
+            memcpy(v.digits, mac, 32); // v = mac
+            bnz_reverse_digits(&v); // convert v to standard little endian order
+
+            bnz_concatenate_bnz(nonce, nonce, &v, 1); // nonce = nonce || v
+        }
+
+        // 3. ensure nonce is in the range 1 to Secp256k1.n
+        range_flag = 0;
+
+        if (bnz_cmp_i32(nonce, 1) == -1 || bnz_cmp_bnz(nonce, &secp256k1.n) == 1) {
+
+            // K = HMAC_K(V || 0x00)
+            bnz_set_bnz(&key, &k); // key = k
+
+            bnz_set_bnz(&message, &v); // message = v
+
+            bnz_concatenate_ui8(&message, &message, 0, 1); // message = message || 0x0
+            bnz_concatenate_bnz(&message, &message, &private_key_tmp, 1); // message = message || 0x0 || private_key_tmp
+            bnz_concatenate_bnz(&message, &message, hash, 1); // message = message || 0x0 || private_key_tmp || hash
+            bnz_reverse_digits(&message); // convert message to big endian order
+
+            hmac_sha256(key.digits, key.size, message.digits, message.size, mac, 32); // mac = hmac_sha256(key, message)
+
+            bnz_resize(&k, 32, 0); // prepare k to receive 32 bytes of mac
+            memcpy(k.digits, mac, 32); // k = mac
+            bnz_reverse_digits(&k); // convert k to standard little endian order
+
+            // V = HMAC_K(V)
+            bnz_set_bnz(&key, &k); // key = k
+
+            bnz_set_bnz(&message, &v); // message = v
+
+            hmac_sha256(key.digits, key.size, message.digits, message.size, mac, 32); // mac = hmac_sha256(key, message)
+
+            bnz_resize(&v, 32, 0); // prepare v to receive max
+            memcpy(v.digits, mac, 32); // v = mac
+            bnz_reverse_digits(&v); // convert to standard little endian order 
+        } else {
+            range_flag = 1; // if 1 <= nonce <= secp256k1.n, set range_flag 
+        }
+    } while (range_flag != 1);
+
+    bnz_free(&k);
+    bnz_free(&v);
+    bnz_free(&key);
+    bnz_free(&message);
+    bnz_free(&private_key_tmp);
+}
 
 void secp256k1_ecdsa_get_signature_from_r_s(const bnz_t *r, const bnz_t *s, bnz_t *signature) // 0x30 [len(signature)] 0x02 [len(r)] [r] 0x02 [len(s)] [s]
 {
@@ -3073,24 +3429,24 @@ void secp256k1_ecdsa_get_signature_from_r_s(const bnz_t *r, const bnz_t *s, bnz_
     bnz_init(&rr);
     bnz_init(&ss);
 
-    bnz_set_bnz(&rr, r); //mutable copies of r and s
+    bnz_set_bnz(&rr, r); // mutable copies of r and s
     bnz_set_bnz(&ss, s);
 
-    if (rr.digits[rr.size - 1] > 128) bnz_concatenate_ui8(&rr, &rr, 0, 0); // if msb of r > 128, concatenate 0x0
-    if (ss.digits[ss.size - 1] > 128) bnz_concatenate_ui8(&ss, &ss, 0, 0); // if msb of s > 128, concatenate 0x0
+    if (rr.digits[rr.size - 1] > 128) bnz_concatenate_ui8(&rr, &rr, 0, 0); // if msb of r > 128, concatenate 0x0 at msb end
+    if (ss.digits[ss.size - 1] > 128) bnz_concatenate_ui8(&ss, &ss, 0, 0); // if msb of s > 128, concatenate 0x0 at msb end
 
     len = rr.size + ss.size + 6; // len = total length of signature
 
     bnz_set_ui32(signature, 48); // signature = 0x30
-    bnz_concatenate_ui8(signature, signature, len, 1); // signature = 0x30, len
+    bnz_concatenate_ui8(signature, signature, len, 1); // concatente total length
 
-    bnz_concatenate_ui8(signature, signature, 2, 1); // signature = 0x30, len, 0x02
-    bnz_concatenate_ui8(signature, signature, rr.size, 1); // signature = 0x30, len, 0x02, len(rr)
-    bnz_concatenate_bnz(signature, signature, &rr, 1); // signature = 0x30, len, 0x02, len(rr), rr
+    bnz_concatenate_ui8(signature, signature, 2, 1); // concatenate 0x02
+    bnz_concatenate_ui8(signature, signature, rr.size, 1); // concatenate len(rr)
+    bnz_concatenate_bnz(signature, signature, &rr, 1); // concatenate rr
 
-    bnz_concatenate_ui8(signature, signature, 2, 1); // signature = 0x30, len, 0x02, len(rr), 0x02
-    bnz_concatenate_ui8(signature, signature, ss.size, 1); // signature = 0x30, len, 0x02, len(rr), 0x02, len(ss)
-    bnz_concatenate_bnz(signature, signature, &ss, 1); // signature = 0x30, len, 0x02, len(rr), rr, 0x02, len(ss), ss
+    bnz_concatenate_ui8(signature, signature, 2, 1); // concatenate 0x02
+    bnz_concatenate_ui8(signature, signature, ss.size, 1); // concatenate len(ss)
+    bnz_concatenate_bnz(signature, signature, &ss, 1); // concatenate ss
 
     bnz_free(&rr); // free resources
     bnz_free(&ss);
@@ -3118,18 +3474,26 @@ void secp256k1_ecdsa_get_r_s_from_signature(const bnz_t *signature, bnz_t *r, bn
     bnz_free(&tmp); // free resources
 }
 
-void secp256k1_ecdsa_sign(const SECP256K1 secp256k1, bnz_t *private_key, bnz_t *hash, bnz_t *r, bnz_t *s)
+void secp256k1_ecdsa_sign(const SECP256K1 secp256k1, const bnz_t *private_key, const bnz_t *hash, bnz_t *r, bnz_t *s, uint32_t nonce_type) // r = x coordinate of (nonce * Secp256k1.G), s = (hash + (r * private_key)) / nonce
 {
-    bnz_t nonce, inv_nonce;
+    bnz_t nonce, inv_nonce, half_n;
     APT tmp; // temporary APT
 
     bnz_init(&nonce); // random nonce ("number used once")
     bnz_init(&inv_nonce); // modular multiplicative inverse of nonce
+    bnz_init(&half_n);
 
     bnz_init(&tmp.x);
     bnz_init(&tmp.y);
 
-    bnz_256_bit_rnd(&nonce); // set value of nonce to random 256 bit bnz_t
+    bnz_set_str(&half_n, "57896044618658097711785492504343953926418782139537452191302581570759080747168", 10); // floor(secp256k1.n / 2)
+
+    if (nonce_type == 0) {
+        secp256k1_ecdsa_get_RFC6979_nonce(secp256k1, private_key, hash, &nonce); // RFC6979 deterministic nonce
+    } else {
+        secp256k1_ecdsa_get_random_nonce(&nonce); // random nonce
+    }
+
     bnz_mod_bnz(&nonce, &nonce, &secp256k1.n); // nonce = nonce mod secp256k1.n, ensure that the value of nonce is less than the order of Secp256k1
     bnz_modular_multiplicative_inverse(&inv_nonce, &nonce, &secp256k1.n); // set value of inv_nonce to the modular multiplicative inverse of nonce, modulo secp256k1.n the curve order
 
@@ -3137,14 +3501,17 @@ void secp256k1_ecdsa_sign(const SECP256K1 secp256k1, bnz_t *private_key, bnz_t *
 
     bnz_set_bnz(r, &tmp.x); // r = x coordinate of tmp
     bnz_multiply_bnz(s, private_key, r); // s = private_key * r
+
     bnz_mod_bnz(s, s, &secp256k1.n); // s = s mod secp256k1.n
     bnz_add_bnz(s, s, hash); // s = s + hash
     bnz_mod_bnz(s, s, &secp256k1.n); // s = s mod secp256k1.n
     bnz_multiply_bnz(s, s, &inv_nonce); // s = s * inv_nonce
     bnz_mod_bnz(s, s, &secp256k1.n); // s = s mod secp256k1.n
+    if (bnz_cmp_bnz(s, &half_n) == 1) bnz_subtract_bnz(s, &secp256k1.n, s); // if s > floor(secp256k1.n / 2) ("high s") negate s i.e. s = secp256k1.n - s to ensure "low s"
 
     bnz_free(&nonce); // free resources
     bnz_free(&inv_nonce);
+    bnz_free(&half_n);
     bnz_free(&tmp.x);
     bnz_free(&tmp.y);
 }
@@ -3153,28 +3520,21 @@ int secp256k1_ecdsa_verify_from_signature(const SECP256K1 secp256k1, const bnz_t
 {
     int verified;
 
-    bnz_t r, s, public_key_compressed_tmp, hash_tmp;
+    bnz_t r, s;
 
-    bnz_init(&r);
-    bnz_init(&s);
-    bnz_init(&public_key_compressed_tmp);
-    bnz_init(&hash_tmp);
+    bnz_init(&r); // variable to hold r extracted from DER format ECDSA signature
+    bnz_init(&s); // variable to hold s extracted from DER format ECDSA signature
 
-    bnz_set_bnz(&public_key_compressed_tmp, public_key_compressed);
-    bnz_set_bnz(&hash_tmp, hash);
-
-    secp256k1_ecdsa_get_r_s_from_signature(signature, &r, &s);
-    verified = secp256k1_ecdsa_verify_from_r_s(secp256k1, &public_key_compressed_tmp, &hash_tmp, &r, &s);
+    secp256k1_ecdsa_get_r_s_from_signature(signature, &r, &s); // extract r and s from DER format ECDSA signature
+    verified = secp256k1_ecdsa_verify_from_r_s(secp256k1, public_key_compressed, hash, &r, &s); // verify using r and s
 
     bnz_free(&r);
     bnz_free(&s);
-    bnz_free(&public_key_compressed_tmp);
-    bnz_free(&hash_tmp);
 
     return verified;
 }
 
-int secp256k1_ecdsa_verify_from_r_s(const SECP256K1 secp256k1, bnz_t *public_key_compressed, bnz_t *hash, bnz_t *r, bnz_t *s)
+int secp256k1_ecdsa_verify_from_r_s(const SECP256K1 secp256k1, const bnz_t *public_key_compressed, const bnz_t *hash, const bnz_t *r, const bnz_t *s)
 {
     int verified;
     
@@ -3197,13 +3557,15 @@ int secp256k1_ecdsa_verify_from_r_s(const SECP256K1 secp256k1, bnz_t *public_key
     get_public_key_xy(secp256k1, &public_key_pt, public_key_compressed); // extract xy coordinates of original public key Secp256k1 point from compressed public key
 
     bnz_modular_multiplicative_inverse(&inv_s, s, &secp256k1.n); // set value of inv_s to the modular multiplicative inverse of s, modulo secp256k1.n the curve order
-    bnz_multiply_bnz(&m1, &inv_s, hash); // m1 = inv_s * hash
-    bnz_mod_bnz(&m1, &m1, &secp256k1.n); // m1 = m1 mod  mod secp256k1.n
-    bnz_multiply_bnz(&m2, &inv_s, r); // m2 = inv_s * r
-    bnz_mod_bnz(&m2, &m2, &secp256k1.n); // m2 = m2 mod  mod secp256k1.n
 
+    bnz_multiply_bnz(&m1, &inv_s, hash); // m1 = inv_s * hash
+    bnz_mod_bnz(&m1, &m1, &secp256k1.n); // m1 = m1 mod secp256k1.n
     secp256k1_scalar_multiplication(secp256k1, &secp256k1.G, &m1, &tmp1); // tmp1 = m1 * secp256k1 generator mod secp256k1.p
+
+    bnz_multiply_bnz(&m2, &inv_s, r); // m2 = inv_s * r
+    bnz_mod_bnz(&m2, &m2, &secp256k1.n); // m2 = m2 mod secp256k1.n
     secp256k1_scalar_multiplication(secp256k1, &public_key_pt, &m2, &tmp2); // tmp2 = m2 * public key point mod secp256k1.p
+
     secp256k1_point_addition(secp256k1, &tmp1, &tmp2, &verification_pt); // verification_pt = tmp1 + tmp2 mod secp256k1.p
 
     bnz_mod_bnz(&verification_pt.x, &verification_pt.x, &secp256k1.n);// verification_pt.x = verification_pt.x mod secp256k1.n
@@ -4853,7 +5215,8 @@ void menu_4_4_ecdsa_functions(const char *version)
 void menu_4_4_1_ecdsa_sign(const char *version)
 {
     char private_key_str[67], message_hash_str[67];
-    bnz_t private_key, message_hash, r, s, signature, half_n;
+    uint32_t nonce_type = 0;
+    bnz_t private_key, message_hash, r, s, signature;
     SECP256K1 secp256k1;
 
     bnz_init(&private_key);
@@ -4861,11 +5224,8 @@ void menu_4_4_1_ecdsa_sign(const char *version)
     bnz_init(&r);
     bnz_init(&s);
     bnz_init(&signature);
-    bnz_init(&half_n);
 
     secp256k1 = secp256k1_init();
-
-    bnz_set_str(&half_n, "57896044618658097711785492504343953926418782139537452191302581570759080747168", 10); // floor(secp256k1.n / 2)
 
     system("cls");
     printf("%s\n\n", version);
@@ -4887,28 +5247,38 @@ void menu_4_4_1_ecdsa_sign(const char *version)
     bnz_print(&private_key, 16, "Private key: ");
     bnz_print(&message_hash, 16, "Message hash: ");
 
-    secp256k1_ecdsa_sign(secp256k1, &private_key, &message_hash, &r, &s);
+    printf("Nonce: deterministic (0) or random (1): ");
+    nonce_type = get_num_input(1, 0, 1);
+
+    system("cls");
+    printf("%s\n\n", version);
+    bnz_print(&private_key, 16, "Private key: ");
+    bnz_print(&message_hash, 16, "Message hash: ");
+    if (nonce_type == 0) {
+        printf("Nonce: deterministic\n");
+    } else {
+        printf("Nonce: random\n");
+    }
+    printf("\n");
+
+    secp256k1_ecdsa_sign(secp256k1, &private_key, &message_hash, &r, &s, nonce_type);
     secp256k1_ecdsa_get_signature_from_r_s(&r, &s, &signature);
 
     system("cls");
     printf("%s\n\n", version);
     bnz_print(&private_key, 16, "PRIVATE KEY: ");
     bnz_print(&message_hash, 16, "MESSAGE HASH: ");
+    if (nonce_type == 0) {
+        printf("NONCE: DETERMINISTIC\n");
+    } else {
+        printf("NONCE: RANDOM\n");
+    }
     printf("\n");
 
     bnz_print(&signature, 16, "ECDSA SIGNATURE: ");
     bnz_print(&r, 16, "ECDSA SIGNATURE R: ");
     bnz_print(&s, 16, "ECDSA SIGNATURE S: ");
     printf("\n");
-
-    if (bnz_cmp_bnz(&s, &half_n) == 1) { // s > floor(secp256k1.n / 2), "high s"
-        bnz_subtract_bnz(&s, &secp256k1.n, &s); // s = secp256k1.n - s, "low s"
-        secp256k1_ecdsa_get_signature_from_r_s(&r, &s, &signature); // update signature with low s
-        bnz_print(&signature, 16, "ECDSA SIGNATURE: ");
-        bnz_print(&r, 16, "ECDSA SIGNATURE R: ");
-        bnz_print(&s, 16, "ECDSA SIGNATURE LOW S: ");
-        printf("\n");
-    }
 
     bnz_free(&private_key);
     bnz_free(&message_hash);
@@ -5067,7 +5437,7 @@ void menu_4_4_3_ecdsa_verify_r_s(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.23, 2025-11-11";
+    static char *version = "bitcoin_math\nv0.25, 2025-11-18";
     int menu, running = 1;
     while (running) {
         system("cls");
