@@ -19,6 +19,39 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+/*
+ * The code for the SHA256, HMAC-SHA256, SHA512 and HMAC-SHA512
+ * functions in this file was adapted from Olivier Gay's
+ * implementation of SHA2 in C, licensed under the BSD license.
+ *
+ * Copyright (C) 2005, 2007 Olivier Gay <olivier.gay@a3.epfl.ch>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the project nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE PROJECT AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE PROJECT OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
 #define _CRT_RAND_S // prerequisite for the (cryptographically secure) rand_s function, part of the Windows stdlib
 
 #include <ctype.h>
@@ -1945,7 +1978,7 @@ SECP256K1 secp256k1_init() // initiate secp256k1 curve, y^2 = (x^3 + 7) mod secp
     bnz_init(&secp256k1.n);
     bnz_init(&secp256k1.h);
 
-    bnz_set_str(&secp256k1.p , "115792089237316195423570985008687907853269984665640564039457584007908834671663", 10); // prime
+    bnz_set_str(&secp256k1.p, "115792089237316195423570985008687907853269984665640564039457584007908834671663", 10); // prime
     bnz_set_i32(&secp256k1.a, 0);
     bnz_set_i32(&secp256k1.b, 7);
     bnz_set_str(&secp256k1.G.x, "55066263022277343669578718895168534326250603453777594175500187360389116729240", 10); // generator x
@@ -2663,7 +2696,7 @@ void get_hdk_intermediate_values(const SECP256K1 secp256k1, const bnz_t *master_
     char *tok = strtok(hdk_str, "/"), display_str[32]; // split str into an array of indicies
     uint32_t index, depth = 0;
 
-    bnz_t parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, child_public_key_compressed, child_xpub;
+    bnz_t parent_private_key, parent_chain_code, parent_public_key_compressed, child_private_key, child_chain_code, child_public_key_compressed;
 
     bnz_init(&parent_private_key);
     bnz_init(&parent_chain_code);
@@ -3260,7 +3293,7 @@ void get_xpub_child(bnz_t *xpub, uint8_t depth_num, uint32_t index_num, bnz_t *p
 
 /* BITCOIN ECDSA */
 
-void secp256k1_ecdsa_get_random_nonce(bnz_t *);
+void secp256k1_ecdsa_get_random_nonce(const SECP256K1, bnz_t *);
 void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1, const bnz_t *, const bnz_t *, bnz_t *);
 void secp256k1_ecdsa_get_signature_from_r_s(const bnz_t *, const bnz_t *, bnz_t *);
 void secp256k1_ecdsa_get_r_s_from_signature(const bnz_t *, bnz_t *, bnz_t *);
@@ -3268,9 +3301,11 @@ void secp256k1_ecdsa_sign(const SECP256K1, const bnz_t *, const bnz_t *, bnz_t *
 int secp256k1_ecdsa_verify_from_signature(const SECP256K1, const bnz_t *, const bnz_t *, const bnz_t *);
 int secp256k1_ecdsa_verify_from_r_s(const SECP256K1, const bnz_t *, const bnz_t *, const bnz_t *, const bnz_t *);
 
-void secp256k1_ecdsa_get_random_nonce(bnz_t *nonce)
+void secp256k1_ecdsa_get_random_nonce(SECP256K1 secp256k1, bnz_t *nonce)
 {
-    bnz_256_bit_rnd(nonce);
+    do {
+        bnz_256_bit_rnd(nonce);
+    } while (bnz_cmp_bnz(nonce, &secp256k1.n) == 1);
 }
 
 void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1 secp256k1, const bnz_t *private_key, const bnz_t *hash, bnz_t *nonce) // RFC6979
@@ -3285,13 +3320,14 @@ void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1 secp256k1, const bnz_t *p
     bnz_init(&message);
     bnz_init(&private_key_tmp);
 
-    bnz_set_bnz(&private_key_tmp, private_key);
-    bnz_resize(&private_key_tmp, 32, 1);
+    bnz_set_bnz(&private_key_tmp, private_key); // mutable copy of private_key to permit resizing to 32 bytes
+    bnz_resize(&private_key_tmp, 32, 1); // private_key_tmp resized to 32 bytes
 
     // (a) hash = SHA256(m)
 
     // (b) V = 0x1 x 32
     bnz_set_str(&v, "0101010101010101010101010101010101010101010101010101010101010101", 16); // v = 0x1 x 32
+    // no need to convert v to big endian order because is is an array of 32 x 0x1 bytes
 
     // (c) K = 0x0 x 32
     bnz_set_i32(&k, 0); // k = 0x0 x 32
@@ -3301,7 +3337,7 @@ void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1 secp256k1, const bnz_t *p
     // no need to convert key to big endian order because is is an array of 32 x 0x0 bytes
     bnz_resize(&key, 32, 1); // ensure key size is 32 bytes
 
-    bnz_set_bnz(&message, &v); // message = v
+    bnz_set_bnz(&message, &v); // message = v, message will be assembled in little endian order
     bnz_concatenate_ui8(&message, &message, 0, 1); // message = v || 0x0
     bnz_concatenate_bnz(&message, &message, &private_key_tmp, 1); // message = v || 0x0 || private_key_tmp
     bnz_concatenate_bnz(&message, &message, hash, 1); // message = v || 0x0 || private_key_tmp || hash
@@ -3481,7 +3517,7 @@ void secp256k1_ecdsa_sign(const SECP256K1 secp256k1, const bnz_t *private_key, c
 
     bnz_init(&nonce); // random nonce ("number used once")
     bnz_init(&inv_nonce); // modular multiplicative inverse of nonce
-    bnz_init(&half_n);
+    bnz_init(&half_n); // floor(secp256k1.n / 2) // floor(secp256k1.n / 2), to determine whether s is "high" or "low"
 
     bnz_init(&tmp.x);
     bnz_init(&tmp.y);
@@ -3491,12 +3527,10 @@ void secp256k1_ecdsa_sign(const SECP256K1 secp256k1, const bnz_t *private_key, c
     if (nonce_type == 0) {
         secp256k1_ecdsa_get_RFC6979_nonce(secp256k1, private_key, hash, &nonce); // RFC6979 deterministic nonce
     } else {
-        secp256k1_ecdsa_get_random_nonce(&nonce); // random nonce
+        secp256k1_ecdsa_get_random_nonce(secp256k1, &nonce); // random nonce
     }
 
-    bnz_mod_bnz(&nonce, &nonce, &secp256k1.n); // nonce = nonce mod secp256k1.n, ensure that the value of nonce is less than the order of Secp256k1
     bnz_modular_multiplicative_inverse(&inv_nonce, &nonce, &secp256k1.n); // set value of inv_nonce to the modular multiplicative inverse of nonce, modulo secp256k1.n the curve order
-
     secp256k1_scalar_multiplication(secp256k1, &secp256k1.G, &nonce, &tmp); // tmp = nonce * secp256k1.G (generator point)
 
     bnz_set_bnz(r, &tmp.x); // r = x coordinate of tmp
@@ -3560,7 +3594,7 @@ int secp256k1_ecdsa_verify_from_r_s(const SECP256K1 secp256k1, const bnz_t *publ
 
     bnz_multiply_bnz(&m1, &inv_s, hash); // m1 = inv_s * hash
     bnz_mod_bnz(&m1, &m1, &secp256k1.n); // m1 = m1 mod secp256k1.n
-    secp256k1_scalar_multiplication(secp256k1, &secp256k1.G, &m1, &tmp1); // tmp1 = m1 * secp256k1 generator mod secp256k1.p
+    secp256k1_scalar_multiplication(secp256k1, &secp256k1.G, &m1, &tmp1); // tmp1 = m1 * secp256k1.G mod secp256k1.p
 
     bnz_multiply_bnz(&m2, &inv_s, r); // m2 = inv_s * r
     bnz_mod_bnz(&m2, &m2, &secp256k1.n); // m2 = m2 mod secp256k1.n
