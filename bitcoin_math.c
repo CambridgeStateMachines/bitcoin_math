@@ -1031,7 +1031,7 @@ int8_t char_d[256] = {  // ascii - general
 uint8_t *init_uint8_array(uint32_t);
 
 void bnz_init(bnz_t *);
-void bnz_resize(bnz_t *, size_t, int32_t);
+void bnz_resize(bnz_t *, size_t, bool);
 void bnz_align(bnz_t *, bnz_t *);
 void bnz_reverse_digits(bnz_t *); 
 void bnz_shift_r(bnz_t *, uint32_t);
@@ -1039,12 +1039,12 @@ void bnz_trim(bnz_t *);
 void bnz_print(const bnz_t *, int32_t, const char *);
 void bnz_free(bnz_t *);
 
-int8_t get_digit(const uint8_t *, size_t, uint8_t);
+int8_t get_digit(const char *, size_t, uint8_t);
 uint8_t *get_base_n_str(const bnz_t *, uint32_t, const char *, uint32_t *);
 
 void bnz_set_i32(bnz_t *, int32_t);
 void bnz_set_ui32(bnz_t *, uint32_t);
-void bnz_set_str(bnz_t *, const uint8_t *, uint8_t);
+void bnz_set_str(bnz_t *, const char *, uint8_t);
 void bnz_set_bnz(bnz_t *, const bnz_t *);
 
 int32_t cmp_uint8_arr(uint8_t *, uint8_t *, size_t);
@@ -1071,7 +1071,7 @@ void bnz_mod_bnz(bnz_t *, const bnz_t *, const bnz_t *);
 void bnz_mod_pow(bnz_t *, const bnz_t *, const bnz_t *, const bnz_t *);
 void bnz_modular_multiplicative_inverse(bnz_t *, const bnz_t *, const bnz_t *);
 
-uint8_t *init_uint8_array(uint32_t len)
+uint8_t *init_uint8_array(uint32_t len) // allocate and zero a one dimensional uint8_t array of length len
 {
     uint8_t *uint8_array = NULL;
     if (!(uint8_array = malloc(len))) return NULL;
@@ -1086,15 +1086,17 @@ void bnz_init(bnz_t *a) // initiate bnz_t components
     a->digits = NULL;
 }
 
-void bnz_resize(bnz_t *a, size_t new_size, int32_t preserve) // increase or decrease number of bytes in a->digits, zeroing added bytes, and preserving or zeroing existing bytes
+void bnz_resize(bnz_t *a, size_t new_size, bool preserve) // increase or decrease number of bytes in a->digits, zeroing added bytes, and preserving or zeroing existing bytes
 {
     uint8_t *tmp = NULL;
     size_t prev_size = a->size;
     if (new_size < 1) new_size = 1;
     tmp = realloc(a->digits, new_size);
     if (tmp) {
-        if (preserve) {
-            if (new_size > prev_size) memset(tmp + prev_size, 0, new_size - prev_size); // zero new bytes
+        if (preserve == true) {
+            if (new_size > prev_size) {
+                memset(tmp + prev_size, 0, new_size - prev_size); // zero new bytes
+            }
         } else {
             a->sign = 0;
             memset(tmp, 0, new_size); //zero all bytes
@@ -1109,9 +1111,9 @@ void bnz_align(bnz_t *a, bnz_t *b) // resize a->digits or b->digits to match the
     bnz_trim(a);
     bnz_trim(b);
     if (a->size > b->size) {
-        bnz_resize(b, a->size, 1);
+        bnz_resize(b, a->size, true);
     } else {
-        bnz_resize(a, b->size, 1);
+        bnz_resize(a, b->size, true);
     }
 }
 
@@ -1133,13 +1135,13 @@ void bnz_shift_r(bnz_t *a, uint32_t sh) // shift the bits in a->digits to the ri
     uint8_t msk = 255 >> (8 - sh);
     size_t i, orig_size = a->size;
     if (sh < 1 || sh > 7) return;
-    bnz_resize(a, orig_size + 1, 1);
+    bnz_resize(a, orig_size + 1, true);
     bnz_reverse_digits(a);
     for (i = a->size - 1; i > 0; i--) {
         a->digits[i] = (a->digits[i - 1] & msk) << (8 - sh) | a->digits[i] >> sh;
     }
     bnz_reverse_digits(a);
-    bnz_resize(a, orig_size, 1);
+    bnz_resize(a, orig_size, true);
 }
 
 void bnz_trim(bnz_t *a) // trim 0 value bytes from msb end of a->digits
@@ -1148,7 +1150,7 @@ void bnz_trim(bnz_t *a) // trim 0 value bytes from msb end of a->digits
     while (a->digits[new_size - 1] == 0 && new_size >= 0) {
         new_size--;
     }
-    bnz_resize(a, new_size, 1);
+    bnz_resize(a, new_size, true);
 }
 
 void bnz_print(const bnz_t *a, int32_t base, const char *txt) // print a in a given base, preceded by optional string txt
@@ -1305,7 +1307,7 @@ void bnz_free(bnz_t *a) // free bnz_t resources
     a->digits = NULL;
 }
 
-int8_t get_digit(const uint8_t *str, size_t idx, uint8_t base) // return numerical value of char at index idx of str which represents a number in the given base and in big endian order
+int8_t get_digit(const char *str, size_t idx, uint8_t base) // return numerical value of char at index idx of str which represents a number in the given base and in big endian order
 {
     int8_t dgt = -1;
     switch (base) {
@@ -1368,23 +1370,23 @@ void bnz_set_i32(bnz_t *res, int32_t val) // set bnz_t to 32 bit signed int, if 
         res->sign = 1; // sign == 1 for negative val, 0 for positive val
         val *= -1; // multiply negative int32_t by -1 to de-complement bytes
     }
-    bnz_resize(res, 4, 0); // resize res to 4 bytes, zero bytes
+    bnz_resize(res, 4, false); // resize res to 4 bytes, zero bytes
     memcpy(res->digits, &val, 4); // copy bytes from val to res->digits
     bnz_trim(res); // trim zero bytes from msb end
 }
 
 void bnz_set_ui32(bnz_t *res, uint32_t val) // set bnz_t to 32 bit uint32_t, if the resultant bnz_t has leading zeros, these are trimmed
 {
-    bnz_resize(res, 4, 0); // resize res to 4 bytes, zero bytes
+    bnz_resize(res, 4, false); // resize res to 4 bytes, zero bytes
     memcpy(res->digits, &val, 4); // copy bytes from val to res->digits
     bnz_trim(res); // trim zero bytes from msb end
 }
 
-void bnz_set_str(bnz_t *res, const uint8_t *str, uint8_t base) // set bnz_t to number represented by str with radix between 2 and 64, and with its digits in big endian order
+void bnz_set_str(bnz_t *res, const char *str, uint8_t base) // set bnz_t to number represented by str with radix between 2 and 64, and with its digits in big endian order
 {
     int32_t dgt;
     size_t i, j, len = (size_t)((double)strlen(str) * log(base)/log(256)) + 1, idx = 0;
-    bnz_resize(res, len, 0);
+    bnz_resize(res, len, false);
     if (str[0] == '-') { // if first symbol of str is "-", set sign to 1 and set starting index of digits to 1 
         res->sign = 1;
         idx = 1;
@@ -1405,7 +1407,7 @@ void bnz_set_str(bnz_t *res, const uint8_t *str, uint8_t base) // set bnz_t to n
 
 void bnz_set_bnz(bnz_t *res, const bnz_t *val) // set bnz_t equivalent to another bnz_t
 {
-    bnz_resize(res, val->size, 0);
+    bnz_resize(res, val->size, false);
     memcpy(res->digits, val->digits, val->size);
     res->sign = val->sign;
 }
@@ -1488,7 +1490,7 @@ void bnz_concatenate_ui8(bnz_t *res, const bnz_t *a, uint8_t b, size_t order) //
 {
     bnz_t bb;
     bnz_init(&bb);
-    bnz_resize(&bb, 1, 0);
+    bnz_resize(&bb, 1, false);
     memcpy(bb.digits, &b, 1);
     bnz_concatenate_bnz(res, a, &bb, order);
     bnz_free(&bb);
@@ -1498,7 +1500,7 @@ void bnz_concatenate_bnz(bnz_t *res, const bnz_t *a, const bnz_t *b, size_t orde
 {
     bnz_t tmp; // local variable permits a = a || b, a = b || a
     bnz_init(&tmp);
-    bnz_resize(&tmp, a->size + b->size, 0);
+    bnz_resize(&tmp, a->size + b->size, false);
     if (order) {
         memcpy(tmp.digits, b->digits, b->size);
         memcpy(tmp.digits + b->size, a->digits, a->size);
@@ -1576,7 +1578,7 @@ void bnz_addition(bnz_t *res, const bnz_t *a, const bnz_t *b) // res = |a| + |b|
     size_t i, carry = 0;
     bnz_t tmp;
     bnz_init(&tmp);
-    bnz_resize(&tmp, a->size + 1, 0);
+    bnz_resize(&tmp, a->size + 1, false);
     for (i = 0; i < a->size; i++) {
         tmp.digits[i] = a->digits[i] + carry;
         carry = tmp.digits[i] < carry ? 1 : 0;
@@ -1646,7 +1648,7 @@ void bnz_subtraction(bnz_t *res, const bnz_t *a, const bnz_t *b) // res = |a| - 
     size_t i, borrow = 0;
     bnz_t tmp;
     bnz_init(&tmp);
-    bnz_resize(&tmp, a->size, 0);
+    bnz_resize(&tmp, a->size, false);
     for (i = 0; i < a->size; i++) {
         tmp.digits[i] = a->digits[i] - borrow;
         borrow = tmp.digits[i] > 255 - borrow ? 1 : 0;
@@ -1681,7 +1683,7 @@ void bnz_multiply_bnz(bnz_t *res, const bnz_t *a, const bnz_t *b) // res = |a| *
     bnz_set_bnz(&bb, b);
 
     bnz_align(&aa, &bb);
-    bnz_resize(&tmp, aa.size * 2, 0);
+    bnz_resize(&tmp, aa.size * 2, false);
 
     if (a->sign) { // -a
         if (b->sign) { // -a, -b
@@ -1803,8 +1805,8 @@ void bnz_division(bnz_t *q, bnz_t *r, const bnz_t *a, const bnz_t *b) // get q a
     uint16_t q_hat, r_hat, p, base = 256;
     int32_t sh = 0, i, j, t, k;
 
-    bnz_resize(q, a->size - b->size + 1, 0);
-    bnz_resize(r, b->size, 0);
+    bnz_resize(q, a->size - b->size + 1, false);
+    bnz_resize(r, b->size, false);
 
     while (tmp < 128) { // measure left shift required to ensure that the highest bit of bn->digits[bn->size - 1] is set
         sh++;
@@ -2043,8 +2045,8 @@ void secp256k1_populate_G_doublings_mod_p(APT *G_doublings_mod_p)
     for (i = 0; i < 256; i++) { // initiate and resize bnz_t variables within the G_doublings_mod_p array and populate with data from the g_doublings_data array
         bnz_init(&G_doublings_mod_p[i].x); // initiate x
         bnz_init(&G_doublings_mod_p[i].y); // initiate y
-        bnz_resize(&G_doublings_mod_p[i].x, 32, 0); // resize x.digits to 32 bytes
-        bnz_resize(&G_doublings_mod_p[i].y, 32, 0); // resize y.digits to 32 bytes
+        bnz_resize(&G_doublings_mod_p[i].x, 32, false); // resize x.digits to 32 bytes
+        bnz_resize(&G_doublings_mod_p[i].y, 32, false); // resize y.digits to 32 bytes
         memcpy(G_doublings_mod_p[i].x.digits, g_doublings_data + i * 64, 32); // populate x.digits from the g_doublings_data array
         memcpy(G_doublings_mod_p[i].y.digits, g_doublings_data + i * 64 + 32, 32); // populate y.digits from the g_doublings_data array
     }
@@ -2465,29 +2467,31 @@ void get_xpub_child(bnz_t *, uint8_t, uint32_t, bnz_t *, bnz_t *, bnz_t *);
 uint8_t *get_salt(const char *passphrase) // generate salt string from passphrase
 {
     uint8_t *salt = NULL;
-    if (!(salt = init_uint8_array(strlen(passphrase) + 12))) return NULL; // strlen(passphrase) + strlen("mnemonic") + sizeof(uint32_t)
-    sprintf(salt, "mnemonic%s", passphrase); // concatenate "mnemonic" with passphrase string, plus 4 zero bytes
-    salt[strlen(passphrase) + 11] = 1; // last 4 bytes = 1 formatted as uint32_t
+
+    if (!(salt = init_uint8_array(strlen("mnemonic") + strlen(passphrase) + sizeof(uint32_t)))) return NULL; // strlen("mnemonic") + strlen(passphrase) + sizeof(uint32_t)
+    sprintf((char *)salt, "mnemonic%s", passphrase); // concatenate "mnemonic" with passphrase string, leaving 4 zero bytes
+    salt[strlen("mnemonic") + strlen(passphrase) + sizeof(uint32_t) - 1] = 1; // last 4 bytes = 1 formatted as uint32_t
+
     return salt;
 }
 
 void get_ripemd160(bnz_t *res, const uint8_t *a) // res = ripemd160(a) as a bnz_t
 {
-    bnz_resize(res, 20, 0); // prepare res.digits to receive 20 bytes of hash digest
+    bnz_resize(res, 20, false); // prepare res.digits to receive 20 bytes of hash digest
     ripemd160(a, strlen((const char *)a), res->digits); // res.digits = ripemd160(a), big endian order
     bnz_reverse_digits(res); // convert res.digits to standard bnz_t little endian order
 }
 
 void get_sha256(bnz_t *res, const uint8_t *a) // res = sha256(a) as a bnz_t
 {
-    bnz_resize(res, 32, 0); // prepare res.digits to receive 32 bytes of hash digest
+    bnz_resize(res, 32, false); // prepare res.digits to receive 32 bytes of hash digest
     sha256(a, (uint64_t)strlen((const char *)a), res->digits); // res.digits = sha256(a), big endian order
     bnz_reverse_digits(res); // convert res.digits to standard bnz_t little endian order
 }
 
 void get_sha512(bnz_t *res, const uint8_t *a) // res = sha512(a) as a bnz_t
 {
-    bnz_resize(res, 64, 0); // prepare res.digits to receive 64 bytes of hash digest
+    bnz_resize(res, 64, false); // prepare res.digits to receive 64 bytes of hash digest
     sha512(a, (uint64_t)strlen((const char *)a), res->digits); // res.digits = sha512(a), big endian order
     bnz_reverse_digits(res); // convert res.digits to standard bnz_t little endian order
 }
@@ -2501,7 +2505,7 @@ void get_ripemd160_sha256(bnz_t *res, const bnz_t *a, size_t len) // res = first
     bnz_reverse_digits(&aa); // convert aa.digits to big endian order
     sha256(aa.digits, aa.size, h1); // h1 = sha256(aa.digits)
     ripemd160(h1, 32, h2); // h2 = ripemd160(sha256(aa.digits))
-    bnz_resize(res, len, 0); // prepare res.digits to receive first len bytes of h2
+    bnz_resize(res, len, false); // prepare res.digits to receive first len bytes of h2
     memcpy(res->digits, h2, len); // copy first len bytes of h2 into res.digits, big endian order
     bnz_reverse_digits(res); // convert res.digits to standard bnz_t little endian order
     bnz_free(&aa); // free aa resources
@@ -2516,7 +2520,7 @@ void get_sha256_sha256(bnz_t *res, const bnz_t *a, size_t len) // res = first le
     bnz_reverse_digits(&aa); // convert aa.digits to big endian order
     sha256(aa.digits, aa.size, h1); // h1 = sha256(aa.digits)
     sha256(h1, 32, h2); // h2 = sha256(sha256(aa.digits))
-    bnz_resize(res, len, 0); // prepare res.digits to receive the first len bytes of h2
+    bnz_resize(res, len, false); // prepare res.digits to receive the first len bytes of h2
     memcpy(res->digits, h2, len); // copy first len bytes of h2 into res.digits, big endian order
     bnz_reverse_digits(res); // convert res.digits to standard bnz_t little endian order
     bnz_free(&aa); // free aa resources
@@ -2526,7 +2530,7 @@ void bnz_256_bit_rnd(bnz_t *rnd) // generate pseudo random 256 bit entropy as a 
 {
     uint32_t random;
     size_t i;
-    bnz_resize(rnd, 32, 0);
+    bnz_resize(rnd, 32, false);
     for (i = 0; i < 32; i++) {
         rand_s(&random); // on non-Windows systems, change this to some other source of cryptographically secure random numbers
         rnd->digits[i] = random & 255; // rnd->digits[i] = last byte of random
@@ -2540,7 +2544,7 @@ void entropy_checksum(bnz_t *entropy) // append checksum byte to the lsb end of 
     bnz_init(&tmp); // initiate tmp
 
     bnz_set_bnz(&tmp, entropy); // copy entropy into tmp
-    bnz_resize(&tmp, 32, 1); // ensure that tmp is 32 bytes
+    bnz_resize(&tmp, 32, true); // ensure that tmp is 32 bytes
     bnz_reverse_digits(&tmp); // convert tmp.digits to big endian order
     sha256(tmp.digits, tmp.size, sha256_digest); // sha256_digest = sha256[tmp.digits]
 
@@ -2558,7 +2562,7 @@ void get_bip39_word_ids_bnz(bnz_t *entropy_chk, uint32_t *wd_ids) // convert 33 
     bnz_init(&tmp);
 
     bnz_set_bnz(&tmp, entropy_chk);
-    bnz_resize(&tmp, 33, 1);
+    bnz_resize(&tmp, 33, true);
     bnz_reverse_digits(&tmp);
 
     for (i = 0; i < 3; i++) {
@@ -2581,7 +2585,7 @@ void get_bip39_word_ids_str(bnz_t *entropy_chk, bnz_t *entropy, uint8_t *chk, ch
     char sha256_digest[32], *tok = strtok(mnemonic_str, " "); // split mnemonic string into an array of BIP39 words
     uint32_t wd_ids[24];
 
-    bnz_resize(entropy_chk, 33, 0);
+    bnz_resize(entropy_chk, 33, false);
 
     while (tok != NULL) { // traverse array
         for (j = 0; j < 2048; j++) { // search BIP39 list for matches
@@ -2608,7 +2612,7 @@ void get_bip39_word_ids_str(bnz_t *entropy_chk, bnz_t *entropy, uint8_t *chk, ch
     }
 
     bnz_set_bnz(entropy, entropy_chk); // copy 33 bytes of entropy_chk into entropy
-    bnz_resize(entropy, 32, 1); // resize entropy to 32 bytes of entropy
+    bnz_resize(entropy, 32, true); // resize entropy to 32 bytes of entropy
     sha256(entropy->digits, 32, sha256_digest); // get SHA256 hash digest of entropy->digits
     *chk = sha256_digest[0]; // set chk to first byte of SHA256 hash digest
     bnz_reverse_digits(entropy); // convert to little
@@ -2634,7 +2638,7 @@ void get_seed_from_mnemonic_phrase(bnz_t *seed, const char *mnemonic, const char
 {
     uint8_t tmp[64], *salt = NULL;
     size_t i, j;
-    bnz_resize(seed, 64, 0); // ensure that seed is 64 bytes
+    bnz_resize(seed, 64, false); // ensure that seed is 64 bytes
     if (!(salt = get_salt(passphrase))) return; // salt = "mnemonic" concatenated with passphrase, strlen(salt) = strlen(passphrase) + strlen("mnemonic") + 4 bytes of uint32_t
     hmac_sha512(mnemonic, strlen(mnemonic), salt, strlen(passphrase) + 12, tmp, 64); // tmp = first hmac(mnemonic, salt)
     memcpy(seed->digits, tmp, 64); // set seed = result of first hmac process
@@ -2657,15 +2661,15 @@ void get_master_keys(bnz_t *master_private_key, bnz_t *master_chain_code, const 
 
     bnz_set_bnz(&tmp, seed); // copy seed to tmp
 
-    bnz_resize(&tmp, 64, 1); // ensure that tmp is 64 bytes
+    bnz_resize(&tmp, 64, true); // ensure that tmp is 64 bytes
     bnz_reverse_digits(&tmp); // convert tmp.digits to big endian order
     hmac_sha512("Bitcoin seed", 12, tmp.digits, tmp.size, mac, 64); // generate 64 byte MAC from tmp.digits and the initial key "Bitcoin seed"
 
-    bnz_resize(master_private_key, 32, 0); // prepare master_private_key to receive the first 32 bytes of the MAC
+    bnz_resize(master_private_key, 32, false); // prepare master_private_key to receive the first 32 bytes of the MAC
     memcpy(master_private_key->digits, mac, 32); // copy the first 32 bytes of the MAC into master_private_key
     bnz_reverse_digits(master_private_key); // convert master_private_key.digits to default little endian order
 
-    bnz_resize(master_chain_code, 32, 0); // prepare master_chain_code to receive the last 32 bytes of the MAC
+    bnz_resize(master_chain_code, 32, false); // prepare master_chain_code to receive the last 32 bytes of the MAC
     memcpy(master_chain_code->digits, mac + 32, 32); // copy the last 32 bytes of the MAC into master_chain_code
     bnz_reverse_digits(master_chain_code); // convert master_chain_code.digits to default little endian order
 
@@ -2685,9 +2689,9 @@ void get_child_normal(const SECP256K1 secp256k1, bnz_t *child_private_key, bnz_t
     bnz_set_bnz(&tmp1, parent_chain_code);
     bnz_set_bnz(&tmp2, parent_public_key_compressed);
 
-    bnz_resize(&index, 4, 1);
-    bnz_resize(&tmp1, 32, 1);
-    bnz_resize(&tmp2, 33, 1);
+    bnz_resize(&index, 4, true);
+    bnz_resize(&tmp1, 32, true);
+    bnz_resize(&tmp2, 33, true);
 
     bnz_concatenate_bnz(&tmp2, &tmp2, &index, 1);
 
@@ -2696,8 +2700,8 @@ void get_child_normal(const SECP256K1 secp256k1, bnz_t *child_private_key, bnz_t
 
     hmac_sha512(tmp1.digits, tmp1.size, tmp2.digits, tmp2.size, mac, 64);
 
-    bnz_resize(child_private_key, 32, 0);
-    bnz_resize(child_chain_code, 32, 0);
+    bnz_resize(child_private_key, 32, false);
+    bnz_resize(child_chain_code, 32, false);
 
     memcpy(child_private_key->digits, mac, 32);
     memcpy(child_chain_code->digits, mac + 32, 32);
@@ -2726,9 +2730,9 @@ void get_child_hardened(const SECP256K1 secp256k1, bnz_t *child_private_key, bnz
     bnz_set_bnz(&tmp1, parent_chain_code);
     bnz_set_bnz(&tmp2, parent_private_key);
 
-    bnz_resize(&index, 4, 1);
-    bnz_resize(&tmp1, 32, 1);
-    bnz_resize(&tmp2, 32, 1);
+    bnz_resize(&index, 4, true);
+    bnz_resize(&tmp1, 32, true);
+    bnz_resize(&tmp2, 32, true);
 
     bnz_concatenate_ui8(&tmp2, &tmp2, 0, 0);
     bnz_concatenate_bnz(&tmp2, &tmp2, &index, 1);
@@ -2738,8 +2742,8 @@ void get_child_hardened(const SECP256K1 secp256k1, bnz_t *child_private_key, bnz
 
     hmac_sha512(tmp1.digits, tmp1.size, tmp2.digits, tmp2.size, mac, 64);
 
-    bnz_resize(child_private_key, 32, 0);
-    bnz_resize(child_chain_code, 32, 0);
+    bnz_resize(child_private_key, 32, false);
+    bnz_resize(child_chain_code, 32, false);
 
     memcpy(child_private_key->digits, mac, 32);
     memcpy(child_chain_code->digits, mac + 32, 32);
@@ -2828,7 +2832,7 @@ void get_public_key_compressed(const SECP256K1 secp256k1, bnz_t *public_key_comp
 
     secp256k1_jacobian_scalar_multiplication(secp256k1, private_key, &public_key);
 
-    bnz_resize(&public_key.x, 32, 1);
+    bnz_resize(&public_key.x, 32, true);
 
     if (bnz_bit_set(&public_key.y, 0) == 0) {
         bnz_concatenate_ui8(public_key_compressed, &public_key.x, 2, 0);
@@ -2844,7 +2848,7 @@ void get_public_key(const SECP256K1 secp256k1, APT *public_key, bnz_t *public_ke
 {
     secp256k1_jacobian_scalar_multiplication(secp256k1, private_key, public_key); // public_key = (secp256k1.G * private_key) mod secp256k1.p
 
-    bnz_resize(&public_key->x, 32, 1); // ensure that the compressed public key is 32 bytes long before concatenation with the even y / odd y byte
+    bnz_resize(&public_key->x, 32, true); // ensure that the compressed public key is 32 bytes long before concatenation with the even y / odd y byte
 
     if (bnz_bit_set(&public_key->y, 0) == 0) { // even y
         bnz_concatenate_ui8(public_key_compressed, &public_key->x, 2, 0); // prepend 2
@@ -2876,10 +2880,10 @@ void get_public_key_xy(const SECP256K1 secp256k1, APT *public_key, const bnz_t *
     In this function we use a pre-calculated value of (secp256k1.p + 1) / 4.
 
     */
-    bnz_set_str(&exp, "28948022309329048855892746252171976963317496166410141009864396001977208667916", 10); // (secp256k1.p + 1) / 4
+    bnz_set_str(&exp, (const char *)"28948022309329048855892746252171976963317496166410141009864396001977208667916", 10); // (secp256k1.p + 1) / 4
 
     bnz_set_bnz(&public_key->x, public_key_compressed); // public_key.x = compressed public key
-    bnz_resize(&public_key->x, public_key->x.size - 1, 1); // public_key.x = decompressed public key, byte at msb end removed
+    bnz_resize(&public_key->x, public_key->x.size - 1, true); // public_key.x = decompressed public key, byte at msb end removed
 
     bnz_set_bnz(&y_sq, &public_key->x); // y_sq = public_key.x
     bnz_multiply_bnz(&y_sq, &y_sq, &public_key->x); // y_sq = public_key.x^2
@@ -3265,10 +3269,10 @@ void get_xprv_master(bnz_t *xprv, bnz_t *master_private_key, bnz_t *master_chain
     bnz_t chk;
     bnz_init(&chk);
 
-    bnz_resize(master_private_key, 32, 1); // ensure master_private_key is 32 bytes
-    bnz_resize(master_chain_code, 32, 1); // ensure master_chain_code is 32 bytes
+    bnz_resize(master_private_key, 32, true); // ensure master_private_key is 32 bytes
+    bnz_resize(master_chain_code, 32, true); // ensure master_chain_code is 32 bytes
 
-    bnz_set_str(xprv, "0488ade4000000000000000000", 16); // 0x0488ade4 + 9 zero bytes: depth (1 byte), index (4 bytes), and parent public key hash fingerprint (4 bytes) are all 0 
+    bnz_set_str(xprv, (const char *)"0488ade4000000000000000000", 16); // 0x0488ade4 + 9 zero bytes: depth (1 byte), index (4 bytes), and parent public key hash fingerprint (4 bytes) are all 0 
     bnz_concatenate_bnz(xprv, xprv, master_chain_code, 1); // append master_chain_code at lsb end
     bnz_concatenate_ui8(xprv, xprv, 0, 1); // append 0x0 before master_private_key at lsb  end
     bnz_concatenate_bnz(xprv, xprv, master_private_key, 1); // append master master_private_key at lsb end
@@ -3283,10 +3287,10 @@ void get_xpub_master(bnz_t *xpub, bnz_t *master_public_key_compressed, bnz_t *ma
     bnz_t chk;
     bnz_init(&chk);
 
-    bnz_resize(master_public_key_compressed, 33, 1); // ensure master_public_key_compressed is 33 bytes
-    bnz_resize(master_chain_code, 32, 1); // ensure master_chain_code is 32 bytes
+    bnz_resize(master_public_key_compressed, 33, true); // ensure master_public_key_compressed is 33 bytes
+    bnz_resize(master_chain_code, 32, true); // ensure master_chain_code is 32 bytes
 
-    bnz_set_str(xpub, "0488b21e000000000000000000", 16); // 0x0488b21e + 9 zero bytes: depth (1 byte), index (4 bytes), and parent public key hash fingerprint (4 bytes) are all 0 
+    bnz_set_str(xpub, (const char *)"0488b21e000000000000000000", 16); // 0x0488b21e + 9 zero bytes: depth (1 byte), index (4 bytes), and parent public key hash fingerprint (4 bytes) are all 0 
     bnz_concatenate_bnz(xpub, xpub, master_chain_code, 1); // append master_chain_code at lsb end
     bnz_concatenate_bnz(xpub, xpub, master_public_key_compressed, 1); // append master_public_key_compressed at lsb end
     get_sha256_sha256(&chk, xpub, 4); // get 4 byte checksum
@@ -3306,9 +3310,9 @@ void get_xprv_child(bnz_t *xprv, uint8_t depth_num, uint32_t index_num, bnz_t *p
 
     get_ripemd160_sha256(&parent_public_key_hash_fingerprint, parent_public_key_compressed, 4); // parent_public_key_hash_fingerprint = first 4 bytes of ripemd160(sha256(parent_public_key_compressed))
 
-    bnz_resize(&index, 4, 1); // ensure index is four bytes
-    bnz_resize(child_private_key, 32, 1); // ensure child_private_key is 32 bytes
-    bnz_resize(child_chain_code, 32, 1); // ensure child_chain_code is 32 bytes
+    bnz_resize(&index, 4, true); // ensure index is four bytes
+    bnz_resize(child_private_key, 32, true); // ensure child_private_key is 32 bytes
+    bnz_resize(child_chain_code, 32, true); // ensure child_chain_code is 32 bytes
 
     bnz_set_str(xprv, "0488ade4", 16); // 0x0488ade4
     bnz_concatenate_ui8(xprv, xprv, depth_num, 1); // append depth byte at lsb end
@@ -3336,11 +3340,11 @@ void get_xpub_child(bnz_t *xpub, uint8_t depth_num, uint32_t index_num, bnz_t *p
 
     get_ripemd160_sha256(&parent_public_key_hash_fingerprint, parent_public_key_compressed, 4);
 
-    bnz_resize(&index, 4, 1); // ensure index is four bytes
-    bnz_resize(child_public_key_compressed, 33, 1); // ensure child_public_key_compressed is 33 bytes
-    bnz_resize(child_chain_code, 32, 1); // ensure child_chain_code is 32 bytes
+    bnz_resize(&index, 4, true); // ensure index is four bytes
+    bnz_resize(child_public_key_compressed, 33, true); // ensure child_public_key_compressed is 33 bytes
+    bnz_resize(child_chain_code, 32, true); // ensure child_chain_code is 32 bytes
 
-    bnz_set_str(xpub, "0488b21e", 16); // 0x0488b21e
+    bnz_set_str(xpub, (const char *)"0488b21e", 16); // 0x0488b21e
     bnz_concatenate_ui8(xpub, xpub, depth_num, 1); // append depth byte at lsb end
     bnz_concatenate_bnz(xpub, xpub, &parent_public_key_hash_fingerprint, 1); // append four byte parent_public_key_hash_fingerprint at lsb end
     bnz_concatenate_bnz(xpub, xpub, &index, 1); // append four byte index at lsb end
@@ -3384,12 +3388,12 @@ void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1 secp256k1, const bnz_t *p
     bnz_init(&private_key_tmp);
 
     bnz_set_bnz(&private_key_tmp, private_key); // mutable copy of private_key to permit resizing to 32 bytes
-    bnz_resize(&private_key_tmp, 32, 1); // private_key_tmp resized to 32 bytes
+    bnz_resize(&private_key_tmp, 32, true); // private_key_tmp resized to 32 bytes
 
     // (a) hash = SHA256(m)
 
     // (b) V = 0x1 x 32
-    bnz_set_str(&v, "0101010101010101010101010101010101010101010101010101010101010101", 16); // v = 0x1 x 32
+    bnz_set_str(&v, (const char *)"0101010101010101010101010101010101010101010101010101010101010101", 16); // v = 0x1 x 32
     // no need to convert v to big endian order because is is an array of 32 x 0x1 bytes
 
     // (c) K = 0x0 x 32
@@ -3398,7 +3402,7 @@ void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1 secp256k1, const bnz_t *p
     // (d) K = HMAC_K(V || 0x00 || private_key || hash)
     bnz_set_bnz(&key, &k); // key = k
     // no need to convert key to big endian order because is is an array of 32 x 0x0 bytes
-    bnz_resize(&key, 32, 1); // ensure key size is 32 bytes
+    bnz_resize(&key, 32, true); // ensure key size is 32 bytes
 
     bnz_set_bnz(&message, &v); // message = v, message will be assembled in little endian order
     bnz_concatenate_ui8(&message, &message, 0, 1); // message = v || 0x0
@@ -3408,7 +3412,7 @@ void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1 secp256k1, const bnz_t *p
 
     hmac_sha256(key.digits, key.size, message.digits, message.size, mac, 32); // mac = hmac_sha256(key, message)
 
-    bnz_resize(&k, 32, 0); // prepare k to receive 32 bytes of mac
+    bnz_resize(&k, 32, false); // prepare k to receive 32 bytes of mac
     memcpy(k.digits, mac, 32); // k = mac
     bnz_reverse_digits(&k); // convert k to standard little endian order
 
@@ -3421,14 +3425,14 @@ void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1 secp256k1, const bnz_t *p
 
     hmac_sha256(key.digits, key.size, message.digits, message.size, mac, 32); // mac = hmac_sha256(key, message)
 
-    bnz_resize(&v, 32, 0); // prepare v to receive 32 bytes of mac
+    bnz_resize(&v, 32, false); // prepare v to receive 32 bytes of mac
     memcpy(v.digits, mac, 32); // v = mac
     bnz_reverse_digits(&v); // convert v to standard little endian order
 
     // (f) K = HMAC_K(V || 0x01 || int2octets(x) || bits2octets(h1))
     bnz_set_bnz(&key, &k); // key = k
     bnz_reverse_digits(&key); // convert key to big endian order
-    bnz_resize(&key, 32, 1); // ensure that key is 32 bytes
+    bnz_resize(&key, 32, true); // ensure that key is 32 bytes
 
     bnz_set_bnz(&message, &v); // message = v
     bnz_concatenate_ui8(&message, &message, 1, 1); // message = v || 0x1 
@@ -3438,7 +3442,7 @@ void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1 secp256k1, const bnz_t *p
 
     hmac_sha256(key.digits, key.size, message.digits, message.size, mac, 32); // mac = hmac_sha256(key, message)
 
-    bnz_resize(&k, 32, 0); // prepare k to receive 32 bytes of mac
+    bnz_resize(&k, 32, false); // prepare k to receive 32 bytes of mac
     memcpy(k.digits, mac, 32); // k = mac
     bnz_reverse_digits(&k); // convert k to standard little endian order
 
@@ -3451,7 +3455,7 @@ void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1 secp256k1, const bnz_t *p
 
     hmac_sha256(key.digits, key.size, message.digits, message.size, mac, 32); // mac = hmac_sha256(key, message)
 
-    bnz_resize(&v, 32, 0); // prepare v to receive 32 bytes of mac
+    bnz_resize(&v, 32, false); // prepare v to receive 32 bytes of mac
     memcpy(v.digits, mac, 32); // v = mac
     bnz_reverse_digits(&v); // convert v to standard little endian order
 
@@ -3470,7 +3474,7 @@ void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1 secp256k1, const bnz_t *p
 
             hmac_sha256(key.digits, key.size, message.digits, message.size, mac, 32); // mac = hmac_sha256(key, message)
 
-            bnz_resize(&v, 32, 0); // prepare v to receive 32 bytes of mac
+            bnz_resize(&v, 32, false); // prepare v to receive 32 bytes of mac
             memcpy(v.digits, mac, 32); // v = mac
             bnz_reverse_digits(&v); // convert v to standard little endian order
 
@@ -3494,7 +3498,7 @@ void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1 secp256k1, const bnz_t *p
 
             hmac_sha256(key.digits, key.size, message.digits, message.size, mac, 32); // mac = hmac_sha256(key, message)
 
-            bnz_resize(&k, 32, 0); // prepare k to receive 32 bytes of mac
+            bnz_resize(&k, 32, false); // prepare k to receive 32 bytes of mac
             memcpy(k.digits, mac, 32); // k = mac
             bnz_reverse_digits(&k); // convert k to standard little endian order
 
@@ -3505,7 +3509,7 @@ void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1 secp256k1, const bnz_t *p
 
             hmac_sha256(key.digits, key.size, message.digits, message.size, mac, 32); // mac = hmac_sha256(key, message)
 
-            bnz_resize(&v, 32, 0); // prepare v to receive max
+            bnz_resize(&v, 32, false); // prepare v to receive max
             memcpy(v.digits, mac, 32); // v = mac
             bnz_reverse_digits(&v); // convert to standard little endian order 
         } else {
@@ -3560,12 +3564,12 @@ void secp256k1_ecdsa_get_r_s_from_signature(const bnz_t *signature, bnz_t *r, bn
 
     bnz_reverse_digits(&tmp); // reverse tmp, big endian order
 
-    bnz_resize(r, tmp.digits[3], 0); // tmp.digits[3] = len(r) 
+    bnz_resize(r, tmp.digits[3], false); // tmp.digits[3] = len(r) 
     memcpy(r->digits, tmp.digits + 4, tmp.digits[3]); // copy len(r) bytes into r, offset 4
     bnz_reverse_digits(r);
     bnz_trim(r); // delete any leading zeros from the msb end
 
-    bnz_resize(s, tmp.digits[tmp.digits[3] + 5], 0); // tmp.digits[len(r) + 5] = len(s)
+    bnz_resize(s, tmp.digits[tmp.digits[3] + 5], false); // tmp.digits[len(r) + 5] = len(s)
     memcpy(s->digits, tmp.digits + tmp.digits[3] + 6, tmp.digits[tmp.digits[3] + 5]); // copy len(s) bytes into s, offset len(r) + 6
     bnz_reverse_digits(s);
     bnz_trim(s); // delete any leading zeros from the msb end
@@ -3585,7 +3589,7 @@ void secp256k1_ecdsa_sign(const SECP256K1 secp256k1, const bnz_t *private_key, c
     bnz_init(&tmp.x);
     bnz_init(&tmp.y);
 
-    bnz_set_str(&half_n, "57896044618658097711785492504343953926418782139537452191302581570759080747168", 10); // floor(secp256k1.n / 2)
+    bnz_set_str(&half_n, (const char *)"57896044618658097711785492504343953926418782139537452191302581570759080747168", 10); // floor(secp256k1.n / 2)
 
     if (nonce_type == 0) {
         secp256k1_ecdsa_get_RFC6979_nonce(secp256k1, private_key, hash, &nonce); // RFC6979 deterministic nonce
@@ -3742,12 +3746,12 @@ void get_str_input(char str[], int max_len) // get string from stdin with strlen
     str[i] = 0;
 }
 
-size_t get_file_size(FILE *f)
+size_t get_file_size(FILE *file)
 {
     size_t file_size;
-    fseek(f, 0, SEEK_END);
-    file_size = ftell(f);
-    fseek(f, 0, SEEK_SET);
+    fseek(file, 0, SEEK_END);
+    file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
     return file_size;
 }
 
@@ -3755,28 +3759,28 @@ char *get_file_contents(const char *file_path)
 {
     char *file_contents = NULL;
     size_t file_size, bytes_read;
-    FILE *f = NULL;
+    FILE *file = NULL;
 
-    f = fopen(file_path, "rb");
+    file = fopen(file_path, "rb");
 
-    if (!f) {
+    if (!file) {
         printf("Could not open file: %s\n\n", file_path);
         return NULL;
     }
 
-    file_size = get_file_size(f);
+    file_size = get_file_size(file);
 
     file_contents = malloc(file_size + 1);
 
     if (!file_contents) {
-        fclose(f);
+        fclose(file);
         printf("Could not allocate memory for file contents: %s.\n\n", file_path);
         return NULL;
     }
 
     memset(file_contents, 0, file_size + 1);
-    bytes_read = fread(file_contents, 1, file_size, f);
-    fclose(f);
+    bytes_read = fread(file_contents, 1, file_size, file);
+    fclose(file);
 
     if (bytes_read != file_size) {
         free(file_contents);
@@ -3845,14 +3849,13 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
 {
     uint32_t i, wd_ids[24];
     char entropy_str[257], base = 16, passphrase_str[257], *mnemonic = NULL;
-    bnz_t entropy, master_private_key, master_chain_code, xprv, master_public_key, master_public_key_compressed, xpub, seed;
+    bnz_t entropy, master_private_key, master_chain_code, master_public_key, master_public_key_compressed, xpub, seed;
 
     SECP256K1 secp256k1;
 
     bnz_init(&entropy);
     bnz_init(&master_private_key);
     bnz_init(&master_chain_code);
-    bnz_init(&xprv);
     bnz_init(&master_public_key);
     bnz_init(&master_public_key_compressed);
     bnz_init(&xpub);
@@ -3875,7 +3878,7 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
         printf("Base (2 - 64): ");
         base = get_num_input(2, 0, 64);
         if (base < 2) base = 16;
-        bnz_set_str(&entropy, entropy_str, base);
+        bnz_set_str(&entropy, (const char *)entropy_str, base);
     } else {
         bnz_256_bit_rnd(&entropy);
     }
@@ -3895,13 +3898,7 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
     system("cls");
     printf("%s\n\n", version);
     bnz_print(&entropy, 16, "ENTROPY: ");
-    printf("BASE: 16\n");
-
-    if (isalnum(passphrase_str[0])) {
-        printf("PASSPHRASE: %s\n\n", passphrase_str);
-    } else {
-        printf("\n");
-    }
+    printf("BASE: 16\n\n");
 
     entropy_checksum(&entropy);
 
@@ -3917,6 +3914,10 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
 
     mnemonic = get_mnemonic_phrase(wd_ids);
     printf("MNEMONIC PHRASE: %s\n\n", mnemonic);
+
+    if (isalnum(passphrase_str[0])) {
+        printf("PASSPHRASE: %s\n\n", passphrase_str);
+    }
 
     get_seed_from_mnemonic_phrase(&seed, mnemonic, passphrase_str);
     bnz_print(&seed, 16, "SEED: ");
@@ -3937,7 +3938,6 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
         bnz_free(&entropy);
         bnz_free(&master_private_key);
         bnz_free(&master_chain_code);
-        bnz_free(&xprv);
         bnz_free(&master_public_key);
         bnz_free(&master_public_key_compressed);
         bnz_free(&xpub);
@@ -3948,11 +3948,8 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
         menu_1_master_keys(version);
     }
     
-    get_xprv_master(&xprv, &master_private_key, &master_chain_code);
-
     bnz_print(&master_private_key, 16, "MASTER PRIVATE KEY: ");
     bnz_print(&master_chain_code, 16, "MASTER CHAIN CODE: ");
-    bnz_print(&xprv, 58, "MASTER XPRV: ");
 
     printf("\nHDK ADDRESSES:\n");
     
@@ -3963,7 +3960,6 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
     bnz_free(&entropy);
     bnz_free(&master_private_key);
     bnz_free(&master_chain_code);
-    bnz_free(&xprv);
     bnz_free(&master_public_key);
     bnz_free(&master_public_key_compressed);
     bnz_free(&xpub);
@@ -4041,13 +4037,13 @@ void menu_2_1_normal_child(const char *version)
 
     if (isalnum(parent_private_key_str[0])) {
         printf("%s\n", parent_private_key_str);
-        bnz_set_str(&parent_private_key, parent_private_key_str, 16);
+        bnz_set_str(&parent_private_key, (const char *)parent_private_key_str, 16);
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&parent_private_key, 16, "Parent private key: ");
         printf("Parent chain code: ");
         get_str_input(parent_chain_code_str, 66);
-        bnz_set_str(&parent_chain_code, parent_chain_code_str, 16);
+        bnz_set_str(&parent_chain_code, (const char *)parent_chain_code_str, 16);
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&parent_private_key, 16, "Parent private key: ");
@@ -4213,13 +4209,13 @@ void menu_2_2_hardened_child(const char *version)
 
     if (isalnum(parent_private_key_str[0])) {
         printf("%s\n", parent_private_key_str);
-        bnz_set_str(&parent_private_key, parent_private_key_str, 16);
+        bnz_set_str(&parent_private_key, (const char *)parent_private_key_str, 16);
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&parent_private_key, 16, "Parent private key: ");
         printf("Parent chain code: ");
         get_str_input(parent_chain_code_str, 66);
-        bnz_set_str(&parent_chain_code, parent_chain_code_str, 16);
+        bnz_set_str(&parent_chain_code, (const char *)parent_chain_code_str, 16);
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&parent_private_key, 16, "Parent private key: ");
@@ -4379,13 +4375,13 @@ void menu_2_3_public_child(const char *version)
 
     if (isalnum(parent_public_key_compressed_str[0])) {
         printf("%s\n", parent_public_key_compressed_str);
-        bnz_set_str(&parent_public_key_compressed, parent_public_key_compressed_str, 16);
+        bnz_set_str(&parent_public_key_compressed, (const char *)parent_public_key_compressed_str, 16);
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&parent_public_key_compressed, 16, "Parent public key compressed: ");
         printf("Parent chain code: ");
         get_str_input(parent_chain_code_str, 66); // 32 bytes + optional "0x"
-        bnz_set_str(&parent_chain_code, parent_chain_code_str, 16);
+        bnz_set_str(&parent_chain_code, (const char *)parent_chain_code_str, 16);
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&parent_public_key_compressed, 16, "Parent public key compressed: ");
@@ -4421,9 +4417,9 @@ void menu_2_3_public_child(const char *version)
     printf("\n");
 
     bnz_set_i32(&index, index_num); // convert index to bnz_t
-    bnz_resize(&index, 4, 1); // ensure that index is four bytes
-    bnz_resize(&parent_public_key_compressed, 33, 1); // ensure that parent_public_key_compressed is 33 bytes
-    bnz_resize(&parent_chain_code, 32, 1); // ensure that parent_chain_code is 32 bytes
+    bnz_resize(&index, 4, true); // ensure that index is four bytes
+    bnz_resize(&parent_public_key_compressed, 33, true); // ensure that parent_public_key_compressed is 33 bytes
+    bnz_resize(&parent_chain_code, 32, true); // ensure that parent_chain_code is 32 bytes
 
     bnz_concatenate_bnz(&tmp, &parent_public_key_compressed, &index, 1); // tmp = parent_public_key_compressed concatenated with index
 
@@ -4433,7 +4429,7 @@ void menu_2_3_public_child(const char *version)
     hmac_sha512(parent_chain_code.digits, parent_chain_code.size, tmp.digits, tmp.size, mac, 64); // generate mac
     bnz_reverse_digits(&parent_chain_code); // convert parent_chain_code.digits back to default little endian
 
-    bnz_resize(&tmp, 32, 0); // resize and zero tmp in preparation for receipt of first 32 bytes of mac
+    bnz_resize(&tmp, 32, false); // resize and zero tmp in preparation for receipt of first 32 bytes of mac
     memcpy(tmp.digits, mac, 32); // copy first 32 bytes of mac into tmp.digits
     bnz_reverse_digits(&tmp); // convert tmp.digits back to default little endian
 
@@ -4511,13 +4507,13 @@ void menu_2_4_hdk_intermediate_values(const char *version)
 
     if (isalnum(master_private_key_str[0])) {
         printf("%s\n", master_private_key_str);
-        bnz_set_str(&master_private_key, master_private_key_str, 16);
+        bnz_set_str(&master_private_key, (const char *)master_private_key_str, 16);
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&master_private_key, 16, "Master private key: ");
         printf("Master chain code: ");
         get_str_input(master_chain_code_str, 66);
-        bnz_set_str(&master_chain_code, master_chain_code_str, 16);
+        bnz_set_str(&master_chain_code, (const char *)master_chain_code_str, 16);
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&master_private_key, 16, "Master private key: ");
@@ -4597,7 +4593,7 @@ void menu_3_base_converter(const char *version)
         printf("Base (2 - 64): ");
         base = get_num_input(3, 2, 64);
         if (base == 0) base = 16;
-        bnz_set_str(&number, number_str, base);
+        bnz_set_str(&number, (const char *)number_str, base);
     } else {
         bnz_256_bit_rnd(&number);
     }
@@ -4855,7 +4851,7 @@ void menu_4_2_1_private_key_to_WIF(const char *version)
 
     if (isalnum(private_key_str[0])) {
         printf("%s\n", private_key_str);
-        bnz_set_str(&private_key, private_key_str, 16);
+        bnz_set_str(&private_key, (const char *)private_key_str, 16);
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&private_key, 16, "Private key: ");
@@ -4972,7 +4968,7 @@ void menu_4_2_2_WIF_to_private_key(const char *version)
     get_str_input(wif_str, 52);
 
     printf("%s\n", wif_str);
-    bnz_set_str(&private_key_wif, wif_str, 58);
+    bnz_set_str(&private_key_wif, (const char *)wif_str, 58);
     system("cls");
     printf("%s\n\n", version);
     bnz_print(&private_key_wif, 58, "Private key WIF (Bitcoin base 58): ");
@@ -4980,10 +4976,10 @@ void menu_4_2_2_WIF_to_private_key(const char *version)
     printf("\n");
 
     bnz_set_bnz(&private_key, &private_key_wif); // copy wif to private key
-    bnz_resize(&private_key, private_key_wif.size - 1, 1); // remove version byte from msb end
+    bnz_resize(&private_key, private_key_wif.size - 1, true); // remove version byte from msb end
     bnz_reverse_digits(&private_key); // reverse private_key.digits to enable 4 checksum bytes to be removed from msb end
-    bnz_resize(&private_key, private_key_wif.size - 5, 1); // remove 4 checksum bytes from msb end
-    bnz_resize(&private_key, 32, 1); // resize private_key.digits to 32 bytes to ensure than the compression byte (if present) is deleted
+    bnz_resize(&private_key, private_key_wif.size - 5, true); // remove 4 checksum bytes from msb end
+    bnz_resize(&private_key, 32, true); // resize private_key.digits to 32 bytes to ensure than the compression byte (if present) is deleted
     bnz_reverse_digits(&private_key); // reverse private_key.digits to standard little endian order
 
     system("cls");
@@ -5039,7 +5035,7 @@ void menu_4_2_3_public_key_to_address(const char *version)
 
     printf("Public key (compressed): ");
     get_str_input(public_key_compressed_str, 68);
-    bnz_set_str(&public_key_compressed, public_key_compressed_str, 16);
+    bnz_set_str(&public_key_compressed, (const char *)public_key_compressed_str, 16);
 
     system("cls");
     printf("%s\n\n", version);
@@ -5113,11 +5109,11 @@ void menu_4_3_1_secp256k1_point_addition(const char *version)
 
     printf("Point 1 x: ");
     get_str_input(a_x_str, 66);
-    bnz_set_str(&a.x, a_x_str, 16);
+    bnz_set_str(&a.x, (const char *)a_x_str, 16);
 
     printf("Point 1 y: ");
     get_str_input(a_y_str, 66);
-    bnz_set_str(&a.y, a_y_str, 16);
+    bnz_set_str(&a.y, (const char *)a_y_str, 16);
 
     if (secp256k1_valid_point(secp256k1, a) == false) { 
         system("cls");
@@ -5140,11 +5136,11 @@ void menu_4_3_1_secp256k1_point_addition(const char *version)
 
     printf("Point 2 x: ");
     get_str_input(b_x_str, 66);
-    bnz_set_str(&b.x, b_x_str, 16);
+    bnz_set_str(&b.x, (const char *)b_x_str, 16);
 
     printf("Point 2 y: ");
     get_str_input(b_y_str, 66);
-    bnz_set_str(&b.y, b_y_str, 16);
+    bnz_set_str(&b.y, (const char *)b_y_str, 16);
 
     if (secp256k1_valid_point(secp256k1, b) == false) { 
         system("cls");
@@ -5218,11 +5214,11 @@ void menu_4_3_2_secp256k1_point_doubling(const char *version)
 
     printf("Point x: ");
     get_str_input(a_x_str, 66);
-    bnz_set_str(&a.x, a_x_str, 16);
+    bnz_set_str(&a.x, (const char *)a_x_str, 16);
 
     printf("Point y: ");
     get_str_input(a_y_str, 66);
-    bnz_set_str(&a.y, a_y_str, 16);
+    bnz_set_str(&a.y, (const char *)a_y_str, 16);
 
     if (secp256k1_valid_point(secp256k1, a) == false) { 
         system("cls");
@@ -5291,7 +5287,7 @@ void menu_4_3_3_secp256k1_scalar_multiplication(const char *version)
     get_str_input(q_x_str, 66);
 
     if (isalnum(q_x_str[0])) {
-        bnz_set_str(&q.x, q_x_str, 16);
+        bnz_set_str(&q.x, (const char *)q_x_str, 16);
     } else {
         bnz_set_bnz(&q.x, &secp256k1.G.x);
     }
@@ -5304,7 +5300,7 @@ void menu_4_3_3_secp256k1_scalar_multiplication(const char *version)
     get_str_input(q_y_str, 66);
 
     if (isalnum(q_y_str[0])) {
-        bnz_set_str(&q.y, q_y_str, 16);
+        bnz_set_str(&q.y, (const char *)q_y_str, 16);
     } else {
         bnz_set_bnz(&q.y, &secp256k1.G.y);
     }
@@ -5336,7 +5332,7 @@ void menu_4_3_3_secp256k1_scalar_multiplication(const char *version)
 
     printf("Multiplier: ");
     get_str_input(multiplier_str, 66);
-    bnz_set_str(&multiplier, multiplier_str, 16);
+    bnz_set_str(&multiplier, (const char *)multiplier_str, 16);
 
     system("cls");
     printf("%s\n\n", version);
@@ -5346,7 +5342,7 @@ void menu_4_3_3_secp256k1_scalar_multiplication(const char *version)
 
     printf("\n");
 
-    if (bnz_cmp_bnz(&multiplier, &secp256k1.n) != -1) {
+    if (bnz_cmp_bnz(&multiplier, &secp256k1.n) != -1) { // check if multiplier < Secp256k1.n
         bnz_mod_bnz(&multiplier, &multiplier, &secp256k1.n);
         bnz_print(&multiplier, 16, "Multiplier (mod Secp256k1.n): ");
     } else {
@@ -5436,7 +5432,7 @@ void menu_4_4_1_ecdsa_sign(const char *version)
 
     printf("Private key: ");
     get_str_input(private_key_str, 66);
-    bnz_set_str(&private_key, private_key_str, 16);
+    bnz_set_str(&private_key, (const char *)private_key_str, 16);
 
     system("cls");
     printf("%s\n\n", version);
@@ -5444,7 +5440,7 @@ void menu_4_4_1_ecdsa_sign(const char *version)
 
     printf("Message hash: ");
     get_str_input(message_hash_str, 66);
-    bnz_set_str(&message_hash, message_hash_str, 16);
+    bnz_set_str(&message_hash, (const char *)message_hash_str, 16);
 
     system("cls");
     printf("%s\n\n", version);
@@ -5514,7 +5510,7 @@ void menu_4_4_2_ecdsa_verify_signature(const char *version)
 
     printf("Public key (compressed): ");
     get_str_input(public_key_compressed_str, 68);
-    bnz_set_str(&public_key_compressed, public_key_compressed_str, 16);
+    bnz_set_str(&public_key_compressed, (const char *)public_key_compressed_str, 16);
 
     system("cls");
     printf("%s\n\n", version);
@@ -5522,7 +5518,7 @@ void menu_4_4_2_ecdsa_verify_signature(const char *version)
 
     printf("Message hash: ");
     get_str_input(message_hash_str, 66);
-    bnz_set_str(&message_hash, message_hash_str, 16);
+    bnz_set_str(&message_hash, (const char *)message_hash_str, 16);
 
     system("cls");
     printf("%s\n\n", version);
@@ -5531,7 +5527,7 @@ void menu_4_4_2_ecdsa_verify_signature(const char *version)
 
     printf("ECDSA signature: ");
     get_str_input(signature_str, 146);
-    bnz_set_str(&signature, signature_str, 16);
+    bnz_set_str(&signature, (const char *)signature_str, 16);
 
     system("cls");
     printf("%s\n\n", version);
@@ -5579,7 +5575,7 @@ void menu_4_4_3_ecdsa_verify_r_s(const char *version)
 
     printf("Public key (compressed): ");
     get_str_input(public_key_compressed_str, 68);
-    bnz_set_str(&public_key_compressed, public_key_compressed_str, 16);
+    bnz_set_str(&public_key_compressed, (const char *)public_key_compressed_str, 16);
 
     system("cls");
     printf("%s\n\n", version);
@@ -5587,7 +5583,7 @@ void menu_4_4_3_ecdsa_verify_r_s(const char *version)
 
     printf("Message hash: ");
     get_str_input(message_hash_str, 66);
-    bnz_set_str(&message_hash, message_hash_str, 16);
+    bnz_set_str(&message_hash, (const char *)message_hash_str, 16);
 
     system("cls");
     printf("%s\n\n", version);
@@ -5596,7 +5592,7 @@ void menu_4_4_3_ecdsa_verify_r_s(const char *version)
 
     printf("ECDSA signature r: ");
     get_str_input(r_str, 66);
-    bnz_set_str(&r, r_str, 16);
+    bnz_set_str(&r, (const char *)r_str, 16);
 
     system("cls");
     printf("%s\n\n", version);
