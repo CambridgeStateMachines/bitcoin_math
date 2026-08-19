@@ -1349,7 +1349,7 @@ uint8_t *get_base_n_str(const bnz_t *a, uint32_t base, const char *alpha, uint32
         }
     }
 
-    while ((base == 32 && alpha[base_n_str[trim]] == 'q') || (base == 58 && alpha[base_n_str[trim]] == '1') || (base == 64 && alpha[base_n_str[trim]] == 'A') || (base != 64 && base != 32 && alpha[base_n_str[trim]] == '0')) { // trim leading zeros at msb end, 'q' for Bech32, '1' for Bitcoin base 58, 'A' for base 64
+    while ((base == 32 && alpha[base_n_str[trim]] == 'q') || (base == 58 && alpha[base_n_str[trim]] == '1') || (base == 64 && alpha[base_n_str[trim]] == 'A') || (base != 64 && alpha[base_n_str[trim]] == '0')) { // trim leading zeros at msb end, 'q' for Bech32, '1' for Bitcoin base 58, 'A' for base 64
         trim++;
         (*len)--;
     }
