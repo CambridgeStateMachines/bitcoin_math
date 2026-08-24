@@ -1063,9 +1063,9 @@ void bnz_subtract_bnz(bnz_t *, const bnz_t *, const bnz_t *);
 void bnz_subtraction(bnz_t *, const bnz_t *, const bnz_t *);
 void bnz_multiply_i32(bnz_t *, const bnz_t *, int32_t);
 void bnz_multiply_bnz(bnz_t *, const bnz_t *, const bnz_t *);
-void bnz_division_signs(bnz_t *, bnz_t *, const bnz_t *, const bnz_t *);
 void bnz_divide_bnz(bnz_t *, bnz_t *, const bnz_t *, const bnz_t *);
 void bnz_division(bnz_t *, bnz_t *, const bnz_t *, const bnz_t *);
+void bnz_division_signs(bnz_t *, bnz_t *, const bnz_t *, const bnz_t *);
 void bnz_mod_bnz(bnz_t *, const bnz_t *, const bnz_t *);
 
 void bnz_mod_pow(bnz_t *, const bnz_t *, const bnz_t *, const bnz_t *);
@@ -1784,27 +1784,6 @@ void bnz_multiply_bnz(bnz_t *res, const bnz_t *a, const bnz_t *b) // res = |a| *
     bnz_free(&bb);
 }
 
-void bnz_division_signs(bnz_t *q, bnz_t *r, const bnz_t *a, const bnz_t *b) // process signs of q and r in a / b
-{
-    if (a->sign) { // -a
-        if (b->sign) { // -a, -b
-            q->sign = 0; // +q
-            r->sign = 1; // -r
-        } else { // -a, +b
-            q->sign = 1; // -q
-            r->sign = 1; // -r
-        }
-    } else { // +a
-        if (b->sign) { // +a, -b
-            q->sign = 1; // -q
-            r->sign = 0; // +r
-        } else { // +a, +b
-            q->sign = 0; // +q
-            r->sign = 0; // +r
-        }
-    }
-}
-
 void bnz_divide_bnz(bnz_t *q, bnz_t *r, const bnz_t *a, const bnz_t *b) // get q and r of a / b, taking account of signs, invoking bnz_division
 {
     int32_t cmp;
@@ -1945,6 +1924,27 @@ void bnz_division(bnz_t *q, bnz_t *r, const bnz_t *a, const bnz_t *b) // get q a
     free(bn);
 }
 
+void bnz_division_signs(bnz_t *q, bnz_t *r, const bnz_t *a, const bnz_t *b) // process signs of q and r in a / b
+{
+    if (a->sign) { // -a
+        if (b->sign) { // -a, -b
+            q->sign = 0; // +q
+            r->sign = 1; // -r
+        } else { // -a, +b
+            q->sign = 1; // -q
+            r->sign = 1; // -r
+        }
+    } else { // +a
+        if (b->sign) { // +a, -b
+            q->sign = 1; // -q
+            r->sign = 0; // +r
+        } else { // +a, +b
+            q->sign = 0; // +q
+            r->sign = 0; // +r
+        }
+    }
+}
+
 void bnz_mod_bnz(bnz_t *res, const bnz_t *a, const bnz_t *b) // res = a % b, invoking bnz_divide_bnz
 {
     bnz_t q, r;
@@ -2072,13 +2072,14 @@ void get_affine_from_jacobian(const SECP256K1, const JPT *, APT *);
 void secp256k1_jacobian_point_addition(const SECP256K1, const JPT *, const APT *, JPT *);
 void secp256k1_jacobian_scalar_multiplication(const SECP256K1, const bnz_t *, APT *);
 bool secp256k1_valid_point(const SECP256K1, const APT);
+bool secp256k1_valid_multiplier(const SECP256K1, const bnz_t *);
 
 SECP256K1 secp256k1_init() // initiate secp256k1 curve, y^2 = (x^3 + 7) mod secp256k1.p
 {
-    const char *secp256k1_p = "115792089237316195423570985008687907853269984665640564039457584007908834671663"; // prime, base 10
-    const char *secp256k1_G_x = "55066263022277343669578718895168534326250603453777594175500187360389116729240"; // generator x, base 10
-    const char *secp256k1_G_y = "32670510020758816978083085130507043184471273380659243275938904335757337482424"; // generator y, base 10
-    const char *secp256k1_n = "115792089237316195423570985008687907852837564279074904382605163141518161494337"; // order, base 10
+    const char *secp256k1_p_str = "115792089237316195423570985008687907853269984665640564039457584007908834671663"; // prime, base 10
+    const char *secp256k1_G_x_str = "55066263022277343669578718895168534326250603453777594175500187360389116729240"; // generator x, base 10
+    const char *secp256k1_G_y_str = "32670510020758816978083085130507043184471273380659243275938904335757337482424"; // generator y, base 10
+    const char *secp256k1_n_str = "115792089237316195423570985008687907852837564279074904382605163141518161494337"; // order, base 10
 
     SECP256K1 secp256k1;
 
@@ -2090,12 +2091,12 @@ SECP256K1 secp256k1_init() // initiate secp256k1 curve, y^2 = (x^3 + 7) mod secp
     bnz_init(&secp256k1.n);
     bnz_init(&secp256k1.h);
 
-    bnz_set_str(&secp256k1.p, secp256k1_p, 10); // prime
+    bnz_set_str(&secp256k1.p, secp256k1_p_str, 10); // prime
     bnz_set_i32(&secp256k1.a, 0);
     bnz_set_i32(&secp256k1.b, 7);
-    bnz_set_str(&secp256k1.G.x, secp256k1_G_x, 10); // generator x
-    bnz_set_str(&secp256k1.G.y, secp256k1_G_y, 10); // generator y
-    bnz_set_str(&secp256k1.n, secp256k1_n, 10); // order
+    bnz_set_str(&secp256k1.G.x, secp256k1_G_x_str, 10); // generator x
+    bnz_set_str(&secp256k1.G.y, secp256k1_G_y_str, 10); // generator y
+    bnz_set_str(&secp256k1.n, secp256k1_n_str, 10); // order
     bnz_set_i32(&secp256k1.h, 1); // included for completeness, but not used in any functions
 
     secp256k1_populate_G_doublings_mod_p(secp256k1.G_doublings_mod_p);
@@ -2450,7 +2451,7 @@ void secp256k1_jacobian_scalar_multiplication(const SECP256K1 secp256k1, const b
 
     for (i = 0; i < bits; i++) { // from lsb to msb
         if (bnz_bit_set(m, i) == true) {
-            secp256k1_jacobian_point_addition(secp256k1, &tmp, &secp256k1.G_doublings_mod_p[i], &tmp); // if the current bit is set, add the corresponding Secp256k1 doubling value to the running total
+            secp256k1_jacobian_point_addition(secp256k1, &tmp, &secp256k1.G_doublings_mod_p[i], &tmp); // if the current bit is set, add the corresponding Secp256k1.G doubling value to the running total
         }
     }
     get_affine_from_jacobian(secp256k1, &tmp, r); // convert final JPT into the corresponding APT via the formulae: APT.x = JPT.x / JPT.z^2 and APT.y = JPT.y / JPT.z^3
@@ -2488,6 +2489,15 @@ bool secp256k1_valid_point(const SECP256K1 secp256k1, const APT apt) // check th
     }
 }
 
+bool secp256k1_valid_multiplier(const SECP256K1 secp256k1, const bnz_t *a)
+{
+    if (bnz_cmp_i32(a, 0) == 1 && bnz_cmp_bnz(a, &secp256k1.n) == -1) { // a is in the range 0 < k < secp256k1.n
+        return true;
+    } else {
+        return false;
+    }
+}
+
 /* BITCOIN GLOBAL VARIABLES */
 
 const char bip39_wds[2048][9] = {"abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd", "abuse", "access", "accident", "account", "accuse", "achieve", "acid", "acoustic", "acquire", "across", "act", "action", "actor", "actress", "actual", "adapt", "add", "addict", "address", "adjust", "admit", "adult", "advance", "advice", "aerobic", "affair", "afford", "afraid", "again", "age", "agent", "agree", "ahead", "aim", "air", "airport", "aisle", "alarm", "album", "alcohol", "alert", "alien", "all", "alley", "allow", "almost", "alone", "alpha", "already", "also", "alter", "always", "amateur", "amazing", "among", "amount", "amused", "analyst", "anchor", "ancient", "anger", "angle", "angry", "animal", "ankle", "announce", "annual", "another", "answer", "antenna", "antique", "anxiety", "any", "apart", "apology", "appear", "apple", "approve", "april", "arch", "arctic", "area", "arena", "argue", "arm", "armed", "armor", "army", "around", "arrange", "arrest", "arrive", "arrow", "art", "artefact", "artist", "artwork", "ask", "aspect", "assault", "asset", "assist", "assume", "asthma", "athlete", "atom", "attack", "attend", "attitude", "attract", "auction", "audit", "august", "aunt", "author", "auto", "autumn", "average", "avocado", "avoid", "awake", "aware", "away", "awesome", "awful", "awkward", "axis", "baby", "bachelor", "bacon", "badge", "bag", "balance", "balcony", "ball", "bamboo", "banana", "banner", "bar", "barely", "bargain", "barrel", "base", "basic", "basket", "battle", "beach", "bean", "beauty", "because", "become", "beef", "before", "begin", "behave", "behind", "believe", "below", "belt", "bench", "benefit", "best", "betray", "better", "between", "beyond", "bicycle", "bid", "bike", "bind", "biology", "bird", "birth", "bitter", "black", "blade", "blame", "blanket", "blast", "bleak", "bless", "blind", "blood", "blossom", "blouse", "blue", "blur", "blush", "board", "boat", "body", "boil", "bomb", "bone", "bonus", "book", "boost", "border", "boring", "borrow", "boss", "bottom", "bounce", "box", "boy", "bracket", "brain", "brand", "brass", "brave", "bread", "breeze", "brick", "bridge", "brief", "bright", "bring", "brisk", "broccoli", "broken", "bronze", "broom", "brother", "brown", "brush", "bubble", "buddy", "budget", "buffalo", "build", "bulb", "bulk", "bullet", "bundle", "bunker", "burden", "burger", "burst", "bus", "business", "busy", "butter", "buyer", "buzz", "cabbage", "cabin", "cable", "cactus", "cage", "cake", "call", "calm", "camera", "camp", "can", "canal", "cancel", "candy", "cannon", "canoe", "canvas", "canyon", "capable", "capital", "captain", "car", "carbon", "card", "cargo", "carpet", "carry", "cart", "case", "cash", "casino", "castle", "casual", "cat", "catalog", "catch", "category", "cattle", "caught", "cause", "caution", "cave", "ceiling", "celery", "cement", "census", "century", "cereal", "certain", "chair", "chalk", "champion", "change", "chaos", "chapter", "charge", "chase", "chat", "cheap", "check", "cheese", "chef", "cherry", "chest", "chicken", "chief", "child", "chimney", "choice", "choose", "chronic", "chuckle", "chunk", "churn", "cigar", "cinnamon", "circle", "citizen", "city", "civil", "claim", "clap", "clarify", "claw", "clay", "clean", "clerk", "clever", "click", "client", "cliff", "climb", "clinic", "clip", "clock", "clog", "close", "cloth", "cloud", "clown", "club", "clump", "cluster", "clutch", "coach", "coast", "coconut", "code", "coffee", "coil", "coin", "collect", "color", "column", "combine", "come", "comfort", "comic", "common", "company", "concert", "conduct", "confirm", "congress", "connect", "consider", "control", "convince", "cook", "cool", "copper", "copy", "coral", "core", "corn", "correct", "cost", "cotton", "couch", "country", "couple", "course", "cousin", "cover", "coyote", "crack", "cradle", "craft", "cram", "crane", "crash", "crater", "crawl", "crazy", "cream", "credit", "creek", "crew", "cricket", "crime", "crisp", "critic", "crop", "cross", "crouch", "crowd", "crucial", "cruel", "cruise", "crumble", "crunch", "crush", "cry", "crystal", "cube", "culture", "cup", "cupboard", "curious", "current", "curtain", "curve", "cushion", "custom", "cute", "cycle", "dad", "damage", "damp", "dance", "danger", "daring", "dash", "daughter", "dawn", "day", "deal", "debate", "debris", "decade", "december", "decide", "decline", "decorate", "decrease", "deer", "defense", "define", "defy", "degree", "delay", "deliver", "demand", "demise", "denial", "dentist", "deny", "depart", "depend", "deposit", "depth", "deputy", "derive", "describe", "desert", "design", "desk", "despair", "destroy", "detail", "detect", "develop", "device", "devote", "diagram", "dial", "diamond", "diary", "dice", "diesel", "diet", "differ", "digital", "dignity", "dilemma", "dinner", "dinosaur", "direct", "dirt", "disagree", "discover", "disease", "dish", "dismiss", "disorder", "display", "distance", "divert", "divide", "divorce", "dizzy", "doctor", "document", "dog", "doll", "dolphin", "domain", "donate", "donkey", "donor", "door", "dose", "double", "dove", "draft", "dragon", "drama", "drastic", "draw", "dream", "dress", "drift", "drill", "drink", "drip", "drive", "drop", "drum", "dry", "duck", "dumb", "dune", "during", "dust", "dutch", "duty", "dwarf", "dynamic", "eager", "eagle", "early", "earn", "earth", "easily", "east", "easy", "echo", "ecology", "economy", "edge", "edit", "educate", "effort", "egg", "eight", "either", "elbow", "elder", "electric", "elegant", "element", "elephant", "elevator", "elite", "else", "embark", "embody", "embrace", "emerge", "emotion", "employ", "empower", "empty", "enable", "enact", "end", "endless", "endorse", "enemy", "energy", "enforce", "engage", "engine", "enhance", "enjoy", "enlist", "enough", "enrich", "enroll", "ensure", "enter", "entire", "entry", "envelope", "episode", "equal", "equip", "era", "erase", "erode", "erosion", "error", "erupt", "escape", "essay", "essence", "estate", "eternal", "ethics", "evidence", "evil", "evoke", "evolve", "exact", "example", "excess", "exchange", "excite", "exclude", "excuse", "execute", "exercise", "exhaust", "exhibit", "exile", "exist", "exit", "exotic", "expand", "expect", "expire", "explain", "expose", "express", "extend", "extra", "eye", "eyebrow", "fabric", "face", "faculty", "fade", "faint", "faith", "fall", "false", "fame", "family", "famous", "fan", "fancy", "fantasy", "farm", "fashion", "fat", "fatal", "father", "fatigue", "fault", "favorite", "feature", "february", "federal", "fee", "feed", "feel", "female", "fence", "festival", "fetch", "fever", "few", "fiber", "fiction", "field", "figure", "file", "film", "filter", "final", "find", "fine", "finger", "finish", "fire", "firm", "first", "fiscal", "fish", "fit", "fitness", "fix", "flag", "flame", "flash", "flat", "flavor", "flee", "flight", "flip", "float", "flock", "floor", "flower", "fluid", "flush", "fly", "foam", "focus", "fog", "foil", "fold", "follow", "food", "foot", "force", "forest", "forget", "fork", "fortune", "forum", "forward", "fossil", "foster", "found", "fox", "fragile", "frame", "frequent", "fresh", "friend", "fringe", "frog", "front", "frost", "frown", "frozen", "fruit", "fuel", "fun", "funny", "furnace", "fury", "future", "gadget", "gain", "galaxy", "gallery", "game", "gap", "garage", "garbage", "garden", "garlic", "garment", "gas", "gasp", "gate", "gather", "gauge", "gaze", "general", "genius", "genre", "gentle", "genuine", "gesture", "ghost", "giant", "gift", "giggle", "ginger", "giraffe", "girl", "give", "glad", "glance", "glare", "glass", "glide", "glimpse", "globe", "gloom", "glory", "glove", "glow", "glue", "goat", "goddess", "gold", "good", "goose", "gorilla", "gospel", "gossip", "govern", "gown", "grab", "grace", "grain", "grant", "grape", "grass", "gravity", "great", "green", "grid", "grief", "grit", "grocery", "group", "grow", "grunt", "guard", "guess", "guide", "guilt", "guitar", "gun", "gym", "habit", "hair", "half", "hammer", "hamster", "hand", "happy", "harbor", "hard", "harsh", "harvest", "hat", "have", "hawk", "hazard", "head", "health", "heart", "heavy", "hedgehog", "height", "hello", "helmet", "help", "hen", "hero", "hidden", "high", "hill", "hint", "hip", "hire", "history", "hobby", "hockey", "hold", "hole", "holiday", "hollow", "home", "honey", "hood", "hope", "horn", "horror", "horse", "hospital", "host", "hotel", "hour", "hover", "hub", "huge", "human", "humble", "humor", "hundred", "hungry", "hunt", "hurdle", "hurry", "hurt", "husband", "hybrid", "ice", "icon", "idea", "identify", "idle", "ignore", "ill", "illegal", "illness", "image", "imitate", "immense", "immune", "impact", "impose", "improve", "impulse", "inch", "include", "income", "increase", "index", "indicate", "indoor", "industry", "infant", "inflict", "inform", "inhale", "inherit", "initial", "inject", "injury", "inmate", "inner", "innocent", "input", "inquiry", "insane", "insect", "inside", "inspire", "install", "intact", "interest", "into", "invest", "invite", "involve", "iron", "island", "isolate", "issue", "item", "ivory", "jacket", "jaguar", "jar", "jazz", "jealous", "jeans", "jelly", "jewel", "job", "join", "joke", "journey", "joy", "judge", "juice", "jump", "jungle", "junior", "junk", "just", "kangaroo", "keen", "keep", "ketchup", "key", "kick", "kid", "kidney", "kind", "kingdom", "kiss", "kit", "kitchen", "kite", "kitten", "kiwi", "knee", "knife", "knock", "know", "lab", "label", "labor", "ladder", "lady", "lake", "lamp", "language", "laptop", "large", "later", "latin", "laugh", "laundry", "lava", "law", "lawn", "lawsuit", "layer", "lazy", "leader", "leaf", "learn", "leave", "lecture", "left", "leg", "legal", "legend", "leisure", "lemon", "lend", "length", "lens", "leopard", "lesson", "letter", "level", "liar", "liberty", "library", "license", "life", "lift", "light", "like", "limb", "limit", "link", "lion", "liquid", "list", "little", "live", "lizard", "load", "loan", "lobster", "local", "lock", "logic", "lonely", "long", "loop", "lottery", "loud", "lounge", "love", "loyal", "lucky", "luggage", "lumber", "lunar", "lunch", "luxury", "lyrics", "machine", "mad", "magic", "magnet", "maid", "mail", "main", "major", "make", "mammal", "man", "manage", "mandate", "mango", "mansion", "manual", "maple", "marble", "march", "margin", "marine", "market", "marriage", "mask", "mass", "master", "match", "material", "math", "matrix", "matter", "maximum", "maze", "meadow", "mean", "measure", "meat", "mechanic", "medal", "media", "melody", "melt", "member", "memory", "mention", "menu", "mercy", "merge", "merit", "merry", "mesh", "message", "metal", "method", "middle", "midnight", "milk", "million", "mimic", "mind", "minimum", "minor", "minute", "miracle", "mirror", "misery", "miss", "mistake", "mix", "mixed", "mixture", "mobile", "model", "modify", "mom", "moment", "monitor", "monkey", "monster", "month", "moon", "moral", "more", "morning", "mosquito", "mother", "motion", "motor", "mountain", "mouse", "move", "movie", "much", "muffin", "mule", "multiply", "muscle", "museum", "mushroom", "music", "must", "mutual", "myself", "mystery", "myth", "naive", "name", "napkin", "narrow", "nasty", "nation", "nature", "near", "neck", "need", "negative", "neglect", "neither", "nephew", "nerve", "nest", "net", "network", "neutral", "never", "news", "next", "nice", "night", "noble", "noise", "nominee", "noodle", "normal", "north", "nose", "notable", "note", "nothing", "notice", "novel", "now", "nuclear", "number", "nurse", "nut", "oak", "obey", "object", "oblige", "obscure", "observe", "obtain", "obvious", "occur", "ocean", "october", "odor", "off", "offer", "office", "often", "oil", "okay", "old", "olive", "olympic", "omit", "once", "one", "onion", "online", "only", "open", "opera", "opinion", "oppose", "option", "orange", "orbit", "orchard", "order", "ordinary", "organ", "orient", "original", "orphan", "ostrich", "other", "outdoor", "outer", "output", "outside", "oval", "oven", "over", "own", "owner", "oxygen", "oyster", "ozone", "pact", "paddle", "page", "pair", "palace", "palm", "panda", "panel", "panic", "panther", "paper", "parade", "parent", "park", "parrot", "party", "pass", "patch", "path", "patient", "patrol", "pattern", "pause", "pave", "payment", "peace", "peanut", "pear", "peasant", "pelican", "pen", "penalty", "pencil", "people", "pepper", "perfect", "permit", "person", "pet", "phone", "photo", "phrase", "physical", "piano", "picnic", "picture", "piece", "pig", "pigeon", "pill", "pilot", "pink", "pioneer", "pipe", "pistol", "pitch", "pizza", "place", "planet", "plastic", "plate", "play", "please", "pledge", "pluck", "plug", "plunge", "poem", "poet", "point", "polar", "pole", "police", "pond", "pony", "pool", "popular", "portion", "position", "possible", "post", "potato", "pottery", "poverty", "powder", "power", "practice", "praise", "predict", "prefer", "prepare", "present", "pretty", "prevent", "price", "pride", "primary", "print", "priority", "prison", "private", "prize", "problem", "process", "produce", "profit", "program", "project", "promote", "proof", "property", "prosper", "protect", "proud", "provide", "public", "pudding", "pull", "pulp", "pulse", "pumpkin", "punch", "pupil", "puppy", "purchase", "purity", "purpose", "purse", "push", "put", "puzzle", "pyramid", "quality", "quantum", "quarter", "question", "quick", "quit", "quiz", "quote", "rabbit", "raccoon", "race", "rack", "radar", "radio", "rail", "rain", "raise", "rally", "ramp", "ranch", "random", "range", "rapid", "rare", "rate", "rather", "raven", "raw", "razor", "ready", "real", "reason", "rebel", "rebuild", "recall", "receive", "recipe", "record", "recycle", "reduce", "reflect", "reform", "refuse", "region", "regret", "regular", "reject", "relax", "release", "relief", "rely", "remain", "remember", "remind", "remove", "render", "renew", "rent", "reopen", "repair", "repeat", "replace", "report", "require", "rescue", "resemble", "resist", "resource", "response", "result", "retire", "retreat", "return", "reunion", "reveal", "review", "reward", "rhythm", "rib", "ribbon", "rice", "rich", "ride", "ridge", "rifle", "right", "rigid", "ring", "riot", "ripple", "risk", "ritual", "rival", "river", "road", "roast", "robot", "robust", "rocket", "romance", "roof", "rookie", "room", "rose", "rotate", "rough", "round", "route", "royal", "rubber", "rude", "rug", "rule", "run", "runway", "rural", "sad", "saddle", "sadness", "safe", "sail", "salad", "salmon", "salon", "salt", "salute", "same", "sample", "sand", "satisfy", "satoshi", "sauce", "sausage", "save", "say", "scale", "scan", "scare", "scatter", "scene", "scheme", "school", "science", "scissors", "scorpion", "scout", "scrap", "screen", "script", "scrub", "sea", "search", "season", "seat", "second", "secret", "section", "security", "seed", "seek", "segment", "select", "sell", "seminar", "senior", "sense", "sentence", "series", "service", "session", "settle", "setup", "seven", "shadow", "shaft", "shallow", "share", "shed", "shell", "sheriff", "shield", "shift", "shine", "ship", "shiver", "shock", "shoe", "shoot", "shop", "short", "shoulder", "shove", "shrimp", "shrug", "shuffle", "shy", "sibling", "sick", "side", "siege", "sight", "sign", "silent", "silk", "silly", "silver", "similar", "simple", "since", "sing", "siren", "sister", "situate", "six", "size", "skate", "sketch", "ski", "skill", "skin", "skirt", "skull", "slab", "slam", "sleep", "slender", "slice", "slide", "slight", "slim", "slogan", "slot", "slow", "slush", "small", "smart", "smile", "smoke", "smooth", "snack", "snake", "snap", "sniff", "snow", "soap", "soccer", "social", "sock", "soda", "soft", "solar", "soldier", "solid", "solution", "solve", "someone", "song", "soon", "sorry", "sort", "soul", "sound", "soup", "source", "south", "space", "spare", "spatial", "spawn", "speak", "special", "speed", "spell", "spend", "sphere", "spice", "spider", "spike", "spin", "spirit", "split", "spoil", "sponsor", "spoon", "sport", "spot", "spray", "spread", "spring", "spy", "square", "squeeze", "squirrel", "stable", "stadium", "staff", "stage", "stairs", "stamp", "stand", "start", "state", "stay", "steak", "steel", "stem", "step", "stereo", "stick", "still", "sting", "stock", "stomach", "stone", "stool", "story", "stove", "strategy", "street", "strike", "strong", "struggle", "student", "stuff", "stumble", "style", "subject", "submit", "subway", "success", "such", "sudden", "suffer", "sugar", "suggest", "suit", "summer", "sun", "sunny", "sunset", "super", "supply", "supreme", "sure", "surface", "surge", "surprise", "surround", "survey", "suspect", "sustain", "swallow", "swamp", "swap", "swarm", "swear", "sweet", "swift", "swim", "swing", "switch", "sword", "symbol", "symptom", "syrup", "system", "table", "tackle", "tag", "tail", "talent", "talk", "tank", "tape", "target", "task", "taste", "tattoo", "taxi", "teach", "team", "tell", "ten", "tenant", "tennis", "tent", "term", "test", "text", "thank", "that", "theme", "then", "theory", "there", "they", "thing", "this", "thought", "three", "thrive", "throw", "thumb", "thunder", "ticket", "tide", "tiger", "tilt", "timber", "time", "tiny", "tip", "tired", "tissue", "title", "toast", "tobacco", "today", "toddler", "toe", "together", "toilet", "token", "tomato", "tomorrow", "tone", "tongue", "tonight", "tool", "tooth", "top", "topic", "topple", "torch", "tornado", "tortoise", "toss", "total", "tourist", "toward", "tower", "town", "toy", "track", "trade", "traffic", "tragic", "train", "transfer", "trap", "trash", "travel", "tray", "treat", "tree", "trend", "trial", "tribe", "trick", "trigger", "trim", "trip", "trophy", "trouble", "truck", "true", "truly", "trumpet", "trust", "truth", "try", "tube", "tuition", "tumble", "tuna", "tunnel", "turkey", "turn", "turtle", "twelve", "twenty", "twice", "twin", "twist", "two", "type", "typical", "ugly", "umbrella", "unable", "unaware", "uncle", "uncover", "under", "undo", "unfair", "unfold", "unhappy", "uniform", "unique", "unit", "universe", "unknown", "unlock", "until", "unusual", "unveil", "update", "upgrade", "uphold", "upon", "upper", "upset", "urban", "urge", "usage", "use", "used", "useful", "useless", "usual", "utility", "vacant", "vacuum", "vague", "valid", "valley", "valve", "van", "vanish", "vapor", "various", "vast", "vault", "vehicle", "velvet", "vendor", "venture", "venue", "verb", "verify", "version", "very", "vessel", "veteran", "viable", "vibrant", "vicious", "victory", "video", "view", "village", "vintage", "violin", "virtual", "virus", "visa", "visit", "visual", "vital", "vivid", "vocal", "voice", "void", "volcano", "volume", "vote", "voyage", "wage", "wagon", "wait", "walk", "wall", "walnut", "want", "warfare", "warm", "warrior", "wash", "wasp", "waste", "water", "wave", "way", "wealth", "weapon", "wear", "weasel", "weather", "web", "wedding", "weekend", "weird", "welcome", "west", "wet", "whale", "what", "wheat", "wheel", "when", "where", "whip", "whisper", "wide", "width", "wife", "wild", "will", "win", "window", "wine", "wing", "wink", "winner", "winter", "wire", "wisdom", "wise", "wish", "witness", "wolf", "woman", "wonder", "wood", "wool", "word", "work", "world", "worry", "worth", "wrap", "wreck", "wrestle", "wrist", "write", "wrong", "yard", "year", "yellow", "you", "young", "youth", "zebra", "zero", "zone", "zoo"};
@@ -2499,7 +2509,6 @@ void get_sha256(bnz_t *, const uint8_t *);
 void get_sha512(bnz_t *, const uint8_t *);
 void get_ripemd160_sha256(bnz_t *, const bnz_t *, size_t);
 void get_sha256_sha256(bnz_t *, const bnz_t *, size_t);
-bool is_valid_private_key(const SECP256K1, const bnz_t *);
 void bnz_256_bit_rnd(bnz_t *);
 void entropy_checksum(bnz_t *);
 void get_bip39_word_ids_bnz(bnz_t *, uint32_t *);
@@ -2574,14 +2583,6 @@ void get_sha256_sha256(bnz_t *res, const bnz_t *a, size_t len) // res = first le
     memcpy(res->digits, h2, len); // copy first len bytes of h2 into res.digits, big endian order
     bnz_reverse_digits(res); // convert res.digits to standard bnz_t little endian order
     bnz_free(&aa); // free aa resources
-}
-
-bool is_valid_private_key(const SECP256K1 secp256k1, const bnz_t *a)
-{
-    if (bnz_cmp_i32(a, 0) == 1 && bnz_cmp_bnz(a, &secp256k1.n) == -1) { // a valid private key is 0 < a < secp256k1.n
-        return true;
-    }
-    return false;
 }
 
 void bnz_256_bit_rnd(bnz_t *rnd) // generate pseudo random 256 bit entropy as a bnz_t
@@ -2949,7 +2950,7 @@ void get_public_key(const SECP256K1 secp256k1, APT *public_key, bnz_t *public_ke
 
 void get_public_key_xy(const SECP256K1 secp256k1, APT *public_key, const bnz_t *public_key_compressed) // regenerate public key point on secp256k1 from compressed public key
 {
-    uint8_t typ = public_key_compressed->digits[public_key_compressed->size - 1]; // byte at msb encodes the parity of y: typ = 0x02 for even y, typ = 0x03 for odd y
+    uint8_t parity_byte = public_key_compressed->digits[public_key_compressed->size - 1]; // byte at msb encodes the parity of y: parity_byte = 0x02 for even y, parity_byte = 0x03 for odd y
     bnz_t exp, y_sq;
 
     bnz_init(&exp);
@@ -2961,9 +2962,9 @@ void get_public_key_xy(const SECP256K1 secp256k1, APT *public_key, const bnz_t *
     the x coordinate of the point concatenated (at the msb end) with a byte of value 2 or 3, depending on whether the value of
     y is even (0x02) or odd (0x03).
 
-    Generating the y coordinate of a point on secp256k1, given the corresponding x coordinate, leverages a nice property of secp256k1
-    which is that, given y^2 mod secp256k1.p (easily calculated from x given the formula of secp256k1: y^2 = x^3 + 7), we can
-    calculate y as follows:
+    Generating the y coordinate of a point on secp256k1, given the corresponding x coordinate, leverages a nice property of
+    secp256k1 which is that, given y^2 mod secp256k1.p (easily calculated from x given the formula of secp256k1: y^2 = x^3 + 7),
+    we can calculate y as follows:
 
         y mod secp256k1.p = (y_sq^((secp256k1.p + 1) / 4)) mod secp256k1.p
 
@@ -2975,15 +2976,14 @@ void get_public_key_xy(const SECP256K1 secp256k1, APT *public_key, const bnz_t *
     bnz_set_bnz(&public_key->x, public_key_compressed); // public_key.x = compressed public key
     bnz_resize(&public_key->x, public_key->x.size - 1, true); // public_key.x = decompressed public key, byte at msb end removed
 
-    bnz_set_bnz(&y_sq, &public_key->x); // y_sq = public_key.x
-    bnz_multiply_bnz(&y_sq, &y_sq, &public_key->x); // y_sq = public_key.x^2
+    bnz_multiply_bnz(&y_sq, &public_key->x, &public_key->x); // y_sq = public_key.x^2
     bnz_multiply_bnz(&y_sq, &y_sq, &public_key->x); // y_sq = public_key.x^3
     bnz_add_i32(&y_sq, &y_sq, 7); // y_sq = public_key.x^3 + 7
     bnz_mod_bnz(&y_sq, &y_sq, &secp256k1.p); // y_sq mod secp256k1.p = (public_key.x^3 + 7) mod secp256k1.p
 
     bnz_mod_pow(&public_key->y, &y_sq, &exp, &secp256k1.p); // y mod secp256k1.p = (y_sq^((secp256k1.p + 1) / 4)) mod secp256k1.p
 
-    if ((typ == 2 && bnz_bit_set(&public_key->y, 0) == true) || (typ == 3 && bnz_bit_set(&public_key->y, 0) == false)) { // mismatched typ and y
+    if ((parity_byte == 2 && bnz_bit_set(&public_key->y, 0) == true) || (parity_byte == 3 && bnz_bit_set(&public_key->y, 0) == false)) { // mismatched parity_byte and y parity
         bnz_subtract_bnz(&public_key->y, &secp256k1.p, &public_key->y); // y = secp256k1.p - y, negation of y mod p
     }
 
@@ -3385,8 +3385,8 @@ bool secp256k1_ecdsa_verify_from_r_s(const SECP256K1, const bnz_t *, const bnz_t
 void secp256k1_ecdsa_get_random_nonce(SECP256K1 secp256k1, bnz_t *nonce)
 {
     do {
-        bnz_256_bit_rnd(nonce);
-    } while (bnz_cmp_bnz(nonce, &secp256k1.n) == 1);
+        bnz_256_bit_rnd(nonce); // ensure that nonce is in the range 0 < k < Secp256k1.n
+    } while (secp256k1_valid_multiplier(secp256k1, nonce) == false);
 }
 
 void secp256k1_ecdsa_get_RFC6979_nonce(const SECP256K1 secp256k1, const bnz_t *private_key, const bnz_t *hash, bnz_t *nonce) // RFC6979
@@ -3576,16 +3576,16 @@ void secp256k1_ecdsa_get_r_s_from_signature(const bnz_t *signature, bnz_t *r, bn
 
     bnz_set_bnz(&tmp, signature); // tmp = local mutable copy of signature, little endian order
 
-    bnz_reverse_digits(&tmp); // reverse tmp, big endian order
+    bnz_reverse_digits(&tmp); // reverse tmp.digits, big endian order
 
     bnz_resize(r, tmp.digits[3], false); // tmp.digits[3] = len(r) 
     memcpy(r->digits, tmp.digits + 4, tmp.digits[3]); // copy len(r) bytes into r, offset 4
-    bnz_reverse_digits(r);
+    bnz_reverse_digits(r); // convert r.digits to standard little endian order
     bnz_trim(r); // delete any leading zeros from the msb end
 
     bnz_resize(s, tmp.digits[tmp.digits[3] + 5], false); // tmp.digits[len(r) + 5] = len(s)
     memcpy(s->digits, tmp.digits + tmp.digits[3] + 6, tmp.digits[tmp.digits[3] + 5]); // copy len(s) bytes into s, offset len(r) + 6
-    bnz_reverse_digits(s);
+    bnz_reverse_digits(s); // convert s.digits to standard little endian order
     bnz_trim(s); // delete any leading zeros from the msb end
 
     bnz_free(&tmp); // free resources
@@ -3593,17 +3593,18 @@ void secp256k1_ecdsa_get_r_s_from_signature(const bnz_t *signature, bnz_t *r, bn
 
 void secp256k1_ecdsa_sign(const SECP256K1 secp256k1, const bnz_t *private_key, const bnz_t *hash, bnz_t *r, bnz_t *s, uint32_t nonce_type) // r = x coordinate of (nonce * Secp256k1.G), s = (hash + (r * private_key)) / nonce
 {
-    bnz_t nonce, inv_nonce, half_n;
+    const char *floor_half_n_str = "57896044618658097711785492504343953926418782139537452191302581570759080747168"; // floor(secp256k1.n / 2)
+    bnz_t nonce, inv_nonce, floor_half_n;
     APT tmp; // temporary APT
 
     bnz_init(&nonce); // random nonce ("number used once")
     bnz_init(&inv_nonce); // modular multiplicative inverse of nonce
-    bnz_init(&half_n); // floor(secp256k1.n / 2) // floor(secp256k1.n / 2), to determine whether s is "high" or "low"
+    bnz_init(&floor_half_n); // floor(secp256k1.n / 2), to determine whether s is "high" or "low"
 
     bnz_init(&tmp.x);
     bnz_init(&tmp.y);
 
-    bnz_set_str(&half_n, (const char *)"57896044618658097711785492504343953926418782139537452191302581570759080747168", 10); // floor(secp256k1.n / 2)
+    bnz_set_str(&floor_half_n, floor_half_n_str, 10); // floor(secp256k1.n / 2)
 
     if (nonce_type == 0) {
         secp256k1_ecdsa_get_RFC6979_nonce(secp256k1, private_key, hash, &nonce); // RFC6979 deterministic nonce
@@ -3612,7 +3613,7 @@ void secp256k1_ecdsa_sign(const SECP256K1 secp256k1, const bnz_t *private_key, c
     }
 
     bnz_modular_multiplicative_inverse(&inv_nonce, &nonce, &secp256k1.n); // set value of inv_nonce to the modular multiplicative inverse of nonce, modulo secp256k1.n the curve order
-    secp256k1_scalar_multiplication(secp256k1, &secp256k1.G, &nonce, &tmp); // tmp = nonce * secp256k1.G (generator point)
+    secp256k1_jacobian_scalar_multiplication(secp256k1, &nonce, &tmp); // tmp = nonce * secp256k1.G (generator point)
 
     bnz_set_bnz(r, &tmp.x); // r = x coordinate of tmp
     bnz_multiply_bnz(s, private_key, r); // s = private_key * r
@@ -3622,11 +3623,11 @@ void secp256k1_ecdsa_sign(const SECP256K1 secp256k1, const bnz_t *private_key, c
     bnz_mod_bnz(s, s, &secp256k1.n); // s = s mod secp256k1.n
     bnz_multiply_bnz(s, s, &inv_nonce); // s = s * inv_nonce
     bnz_mod_bnz(s, s, &secp256k1.n); // s = s mod secp256k1.n
-    if (bnz_cmp_bnz(s, &half_n) == 1) bnz_subtract_bnz(s, &secp256k1.n, s); // if s > floor(secp256k1.n / 2) ("high s") negate s i.e. s = secp256k1.n - s to ensure "low s"
+    if (bnz_cmp_bnz(s, &floor_half_n) == 1) bnz_subtract_bnz(s, &secp256k1.n, s); // if s > floor(secp256k1.n / 2) ("high s") negate s i.e. s = secp256k1.n - s to ensure "low s"
 
     bnz_free(&nonce); // free resources
     bnz_free(&inv_nonce);
-    bnz_free(&half_n);
+    bnz_free(&floor_half_n);
     bnz_free(&tmp.x);
     bnz_free(&tmp.y);
 }
@@ -3675,7 +3676,7 @@ bool secp256k1_ecdsa_verify_from_r_s(const SECP256K1 secp256k1, const bnz_t *pub
 
     bnz_multiply_bnz(&m1, &inv_s, hash); // m1 = inv_s * hash
     bnz_mod_bnz(&m1, &m1, &secp256k1.n); // m1 = m1 mod secp256k1.n
-    secp256k1_scalar_multiplication(secp256k1, &secp256k1.G, &m1, &tmp1); // tmp1 = m1 * secp256k1.G mod secp256k1.p
+    secp256k1_jacobian_scalar_multiplication(secp256k1, &m1, &tmp1); // tmp1 = m1 * secp256k1.G mod secp256k1.p
 
     bnz_multiply_bnz(&m2, &inv_s, r); // m2 = inv_s * r
     bnz_mod_bnz(&m2, &m2, &secp256k1.n); // m2 = m2 mod secp256k1.n
@@ -3686,9 +3687,9 @@ bool secp256k1_ecdsa_verify_from_r_s(const SECP256K1 secp256k1, const bnz_t *pub
     bnz_mod_bnz(&verification_pt.x, &verification_pt.x, &secp256k1.n);// verification_pt.x = verification_pt.x mod secp256k1.n
 
     if (bnz_cmp_bnz(&verification_pt.x, r) == 0) { // compare verfication_pt.x and r
-        verified = true; // if verification_pt.x and r are equal, verification has succeded, set value of verfied to 1
+        verified = true; // if verification_pt.x and r are equal, verification has succeded, set value of verfied to true
     } else {
-        verified = false; // if verification_pt.x and r are not equal, verification has failed, set value of verfied to 0
+        verified = false; // if verification_pt.x and r are not equal, verification has failed, set value of verfied to false
     }
 
     bnz_free(&public_key_pt.x); // free resources
@@ -3938,7 +3939,7 @@ void menu_1_master_keys(const char *version) // input 256 bits of entropy and ge
 
     get_master_keys(&master_private_key, &master_chain_code, &seed);
 
-    if (is_valid_private_key(secp256k1, &master_private_key) == false) { // ensure that master_private_key is valid
+    if (secp256k1_valid_multiplier(secp256k1, &master_private_key) == false) { // ensure that master_private_key is in the range 0 < k < Secp256k1.n
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&master_private_key, 16, "Master private key: ");
@@ -4066,7 +4067,7 @@ void menu_2_1_normal_child(const char *version)
         bnz_print(&parent_chain_code, 16, "Parent chain code: ");
     }
 
-    if (is_valid_private_key(secp256k1, &parent_private_key) == false) { // ensure that parent_private_key is valid
+    if (secp256k1_valid_multiplier(secp256k1, &parent_private_key) == false) { // ensure that parent_private_key is in the range 0 < k < Secp256k1.n
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&parent_private_key, 16, "Parent private key: ");
@@ -4228,7 +4229,7 @@ void menu_2_2_hardened_child(const char *version)
         bnz_print(&parent_chain_code, 16, "Parent chain code: ");
     }
 
-    if (is_valid_private_key(secp256k1, &parent_private_key) == false) { // ensure that parent_private_key is valid
+    if (secp256k1_valid_multiplier(secp256k1, &parent_private_key) == false) { // ensure that parent_private_key is in the range 0 < k < Secp256k1.n
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&parent_private_key, 16, "Parent private key: ");
@@ -4514,7 +4515,7 @@ void menu_2_4_hdk_intermediate_values(const char *version)
         bnz_print(&master_chain_code, 16, "Master chain code: ");
     }
 
-    if (is_valid_private_key(secp256k1, &master_private_key) == false) { // ensure that master_private_key is valid
+    if (secp256k1_valid_multiplier(secp256k1, &master_private_key) == false) { // ensure that master_private_key is in the range 0 < k < Secp256k1.n
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&master_private_key, 16, "Master private key: ");
@@ -4852,7 +4853,7 @@ void menu_4_2_1_private_key_to_WIF(const char *version)
 
     printf("\n");
 
-    if (is_valid_private_key(secp256k1, &private_key) == false) { // ensure that private_key is valid
+    if (secp256k1_valid_multiplier(secp256k1, &private_key) == false) { // ensure that private_key is valid
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&private_key, 16, "Private key: ");
@@ -5329,7 +5330,7 @@ void menu_4_3_3_secp256k1_scalar_multiplication(const char *version)
 
     printf("\n");
 
-    if (is_valid_private_key(secp256k1, &multiplier) == false) { // ensure that multiplier is valid
+    if (secp256k1_valid_multiplier(secp256k1, &multiplier) == false) { // ensure that multiplier is in the range 0 < k < Secp256k1.n
         bnz_mod_bnz(&multiplier, &multiplier, &secp256k1.n);
         bnz_print(&multiplier, 16, "Multiplier (mod Secp256k1.n): ");
     } else {
@@ -5649,7 +5650,7 @@ void menu_5_file_hash_functions(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.27, 2026-08-17";
+    static char *version = "bitcoin_math\nv0.27, 2026-08-23";
     int menu, running = 1;
     while (running) {
         system("cls");
