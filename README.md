@@ -17,6 +17,19 @@ The result is `bitcoin_math.exe`, a simple menu driven console application which
 
 Wherever possible, hash digests, MACs, seeds, keys, and addresses are manipulated as arbitrary precision integers, reflecting their essentially numerical nature. These numbers are typically rendered onscreen in hex or Bitcoin base 58 format, but can be rendered in any base between 2 and 64 using the base conversion function.
 
+Notes on Secp256k1 x coordinate validity verification function
+--------------------------------------------------------------
+
+The August 29, 2026 update includes a function that checks whether a given `x` coordinate, typed or pasted in any base between 2 and 64, is part of a valid pair of `xy` points on the Secp256k1 curve. Every `x` coordinate in the range `0 <= x <= Secp256k1.p` is associated with either 0 or 2 points on the Secp256k1 curve. If the `x` coordinate is found to be associated with 2 points, the corresponding `y` values are calculated, together with proof of congruence, with the results printed to the screen in the base specified for `x`.The process is described below.
+
+In order for a given `x` value to be associated with a pair of valid points, the value of `x^3 + 7` must be a quadratic residue modulo the Secp256k1 prime.
+
+Euler's criterion states that a number `a` will be a quadratic residue modulo a prime `p` if the value of `a^((p - 1) / 2) ? 1`, and a quadratic non-residue modulo `p` if the value of `a^((p - 1) / 2) ? -1`.
+
+The new function in `bitcoin_math.exe` applies Euler's criterion to the specified `x` value by calculating `(x^3 + 7)^((Secp256k1 - 1) / 2)` using a pre-calculated value of `(Secp256k1.p - 1) / 2`. If the result confirms that `x` is associated with a pair of valid points, the `y` value of the first point, `y1`, is calculated from the formula `y1 = (y1^2)^((Secp256k1.p + 1) / 4) mod Secp256k1.p`, bearing in mind that `y1^2 mod Secp256k1.p` == `x^3 + 7 mod Secp256k1.p`. The second `y` value, `y2` is the negation of `y1` modulo the Secp256k1 prime i.e. `y2 = Secp256k1.p - y1`.
+
+There are approximately (Secp256k1.p - 1) / 2 quadratic residues and (Secp256k1.p + 1) / 2 quadratic non-residues. Given the fact that each quadratic residue is associated with two points on the Secp256k1 curve, it is no surprise that the order of the Secp256k1 curve is close to the value of the Secp256k1 prime.
+
 Notes on ECDSA signing and verification functions
 -------------------------------------------------
 
