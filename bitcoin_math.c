@@ -2540,7 +2540,7 @@ bool secp256k1_valid_x(const SECP256K1 secp256k1, const bnz_t *x)
     secp256k1_get_rhs(secp256k1, &rhs, x); // rhs = x^3 + 7 mod secp256k1.p
     bnz_mod_pow(&res, &rhs, &euler_criterion_exp, &secp256k1.p); // res = (x^3 + 7)^((secp256k1.p - 1) / 2)) mod secp256k1.p
 
-    if (bnz_cmp_i32(&res, 1) == 0) { // res == 1 means that x^3 + 7 mod secp256k1.p is a quadratic residue
+    if (bnz_cmp_i32(&res, 1) == 0) { // res == 1 means that x^3 + 7 mod secp256k1.p is a quadratic residue modulo the secp256k1 prime
         result = true;
     } else {
         result = false;
@@ -4148,7 +4148,7 @@ void menu_2_1_normal_child(const char *version)
         printf("%s\n\n", version);
         bnz_print(&parent_private_key, 16, "Parent private key: ");
         printf("\n");
-        printf("This private key is not in the valid range 0 < k < Secp256k1.\n\n");
+        printf("This private key is not in the valid range 0 < k < Secp256k1.n\n\n");
         printf("It is not possible to generate a public key from this private key.\n\n");
         printf("Press any key to rerun the command with a different private key value.\n");
         getchar();
@@ -4310,7 +4310,7 @@ void menu_2_2_hardened_child(const char *version)
         printf("%s\n\n", version);
         bnz_print(&parent_private_key, 16, "Parent private key: ");
         printf("\n");
-        printf("This private key is not in the valid range 0 < k < Secp256k1.\n\n");
+        printf("This private key is not in the valid range 0 < k < Secp256k1.n\n\n");
         printf("It is not possible to generate a public key from this private key.\n\n");
         printf("Press any key to rerun the command with a different private key value.\n");
 
@@ -4596,7 +4596,7 @@ void menu_2_4_hdk_intermediate_values(const char *version)
         printf("%s\n\n", version);
         bnz_print(&master_private_key, 16, "Master private key: ");
         printf("\n");
-        printf("This private key is not in the valid range 0 < k < Secp256k1.\n\n");
+        printf("This private key is not in the valid range 0 < k < Secp256k1.n\n\n");
         printf("It is not possible to generate a public key from this private key.\n\n");
         printf("Press any key to rerun the command with a different private key value.\n");
 
@@ -4934,7 +4934,7 @@ void menu_4_2_1_private_key_to_WIF(const char *version)
         printf("%s\n\n", version);
         bnz_print(&private_key, 16, "Private key: ");
         printf("\n");
-        printf("This private key is not in the valid range 0 < k < Secp256k1.\n\n");
+        printf("This private key is not in the valid range 0 < k < Secp256k1.n\n\n");
         printf("It is not possible to generate a public key from this private key.\n\n");
         printf("Press any key to rerun the command with a different private key value.\n");
 
@@ -5158,7 +5158,7 @@ void menu_4_3_secp256k1_functions(const char *version)
 
 void menu_4_3_1_secp256k1_x_coordinate_validity(const char *version)
 {
-    uint8_t x_str[128], base = 16;
+    uint8_t x_str[257], base = 16;
     bnz_t x, lhs, rhs;
     APT p1, p2;
 
@@ -5194,6 +5194,29 @@ void menu_4_3_1_secp256k1_x_coordinate_validity(const char *version)
         do {
             bnz_rnd(&x, 32);
         } while (bnz_cmp_bnz(&x, &secp256k1.p) != -1);
+    }
+
+    if (bnz_cmp_i32(&x, 0) == -1 || bnz_cmp_bnz(&x, &secp256k1.p) == 1) { // x is not in the range 0 <= k <= secp256k1.p
+        system("cls");
+        printf("%s\n\n", version);
+        bnz_print(&x, base, "x: ");
+        printf("\n");
+        printf("This value of x is not in the valid range 0 <= k <= Secp256k1.p\n\n");
+        printf("Press any key to rerun the command with a different value of x.\n");
+
+        bnz_free(&x);
+        bnz_free(&lhs);
+        bnz_free(&rhs);
+        bnz_free(&p1.x);
+        bnz_free(&p1.y);
+        bnz_free(&p2.x);
+        bnz_free(&p2.y);
+
+        secp256k1_free(secp256k1);
+
+        getchar();
+
+        menu_4_3_1_secp256k1_x_coordinate_validity(version);
     }
 
     system("cls");
@@ -5235,6 +5258,16 @@ void menu_4_3_1_secp256k1_x_coordinate_validity(const char *version)
     }
 
     printf("\n");
+
+    bnz_free(&x);
+    bnz_free(&lhs);
+    bnz_free(&rhs);
+    bnz_free(&p1.x);
+    bnz_free(&p1.y);
+    bnz_free(&p2.x);
+    bnz_free(&p2.y);
+
+    secp256k1_free(secp256k1);
 
     printf("press any key to continue...");
 
