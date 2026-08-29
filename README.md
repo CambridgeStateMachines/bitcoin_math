@@ -24,7 +24,7 @@ The August 29, 2026 update includes a function that checks whether a given `x` c
 
 In order for a given `x` value to be associated with a pair of valid points, the value of `x^3 + 7` must be a quadratic residue modulo the Secp256k1 prime.
 
-Euler's criterion states that a number `a` will be a quadratic residue modulo a prime `p` if the value of `a^((p - 1) / 2) ? 1`, and a quadratic non-residue modulo `p` if the value of `a^((p - 1) / 2) ? -1`.
+Euler's criterion states that a number `a` will be a quadratic residue modulo a prime `p` if the value of `a^((p - 1) / 2) ? 1`, and a quadratic non-residue modulo `p` if the value of `a^((p - 1) / 2) = -1`.
 
 The new function in `bitcoin_math.exe` applies Euler's criterion to the specified `x` value by calculating `(x^3 + 7)^((Secp256k1 - 1) / 2)` using a pre-calculated value of `(Secp256k1.p - 1) / 2`. If the result confirms that `x` is associated with a pair of valid points, the `y` value of the first point, `y1`, is calculated from the formula `y1 = (y1^2)^((Secp256k1.p + 1) / 4) mod Secp256k1.p`, bearing in mind that `y1^2 mod Secp256k1.p` == `x^3 + 7 mod Secp256k1.p`. The second `y` value, `y2` is the negation of `y1` modulo the Secp256k1 prime i.e. `y2 = Secp256k1.p - y1`.
 
