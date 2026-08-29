@@ -2502,13 +2502,8 @@ bool secp256k1_valid_point(const SECP256K1 secp256k1, const APT apt) // check th
     bnz_init(&lhs); // initiate lhs and rhs
     bnz_init(&rhs);
 
-    bnz_multiply_bnz(&lhs, &apt.y, &apt.y); // lhs = y^2
-    bnz_mod_bnz(&lhs, &lhs, &secp256k1.p); // lhs = y^2 mod Secp256k1.p
-
-    bnz_multiply_bnz(&rhs, &apt.x, &apt.x); // rhs = x^2
-    bnz_multiply_bnz(&rhs, &rhs, &apt.x); // rhs = x^3
-    bnz_add_i32(&rhs, &rhs, 7); // rhs = x^3 + 7
-    bnz_mod_bnz(&rhs, &rhs, &secp256k1.p); // rhs = x^3 + 7 mod Secp256k1.p
+    secp256k1_get_rhs(secp256k1, &rhs, &apt.x);
+    secp256k1_get_lhs(secp256k1, &lhs, &apt.y);
 
     cmp = bnz_cmp_bnz(&lhs, &rhs); // compare lhs and rhs
 
