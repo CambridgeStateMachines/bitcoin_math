@@ -3050,10 +3050,7 @@ void get_public_key_xy(const SECP256K1 secp256k1, APT *public_key, const bnz_t *
     bnz_set_bnz(&public_key->x, public_key_compressed); // public_key.x = compressed public key
     bnz_resize(&public_key->x, public_key->x.size - 1, true); // public_key.x = decompressed public key, byte at msb end removed
 
-    bnz_multiply_bnz(&y_sq, &public_key->x, &public_key->x); // y_sq = public_key.x^2
-    bnz_multiply_bnz(&y_sq, &y_sq, &public_key->x); // y_sq = public_key.x^3
-    bnz_add_i32(&y_sq, &y_sq, 7); // y_sq = public_key.x^3 + 7
-    bnz_mod_bnz(&y_sq, &y_sq, &secp256k1.p); // y_sq mod secp256k1.p = (public_key.x^3 + 7) mod secp256k1.p
+    secp256k1_get_rhs(secp256k1, &y_sq, &public_key->x); // y_sq mod secp256k1.p = (public_key.x^3 + 7) mod secp256k1.p
 
     bnz_mod_pow(&public_key->y, &y_sq, &exp, &secp256k1.p); // y mod secp256k1.p = (y_sq^((secp256k1.p + 1) / 4)) mod secp256k1.p
 
@@ -5196,12 +5193,12 @@ void menu_4_3_1_secp256k1_x_coordinate_validity(const char *version)
         } while (bnz_cmp_bnz(&x, &secp256k1.p) != -1);
     }
 
-    if (bnz_cmp_i32(&x, 0) == -1 || bnz_cmp_bnz(&x, &secp256k1.p) == 1) { // x is not in the range 0 <= k <= secp256k1.p
+    if (bnz_cmp_i32(&x, 0) == -1 || bnz_cmp_bnz(&x, &secp256k1.p) != -1) { // x is not in the range 0 <= k < secp256k1.p
         system("cls");
         printf("%s\n\n", version);
         bnz_print(&x, base, "x: ");
         printf("\n");
-        printf("This value of x is not in the valid range 0 <= k <= Secp256k1.p\n\n");
+        printf("This value of x is not in the valid range 0 <= k < Secp256k1.p\n\n");
         printf("Press any key to rerun the command with a different value of x.\n");
 
         bnz_free(&x);
