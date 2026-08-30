@@ -20,7 +20,7 @@ Wherever possible, hash digests, MACs, seeds, keys, and addresses are manipulate
 Notes on Secp256k1 x coordinate validity verification function
 --------------------------------------------------------------
 
-The August 29, 2026 update includes a function that checks whether a given `x` coordinate, typed or pasted in any base between 2 and 64, is part of a valid pair of `xy` points on the Secp256k1 curve. Every `x` coordinate in the range `0 <= x <= Secp256k1.p` is associated with either 0 or 2 points on the Secp256k1 curve. If the `x` coordinate is found to be associated with 2 points, the corresponding `y` values are calculated, together with proof of congruence, with the results printed to the screen in the base specified for `x`.The process is described below.
+The August 29, 2026 update includes a function that checks whether a given `x` coordinate, typed or pasted in any base between 2 and 64, is part of a valid pair of `xy` points on the Secp256k1 curve. Every `x` coordinate in the range `0 <= x < Secp256k1.p` is associated with either 0 or 2 points on the Secp256k1 curve. If the `x` coordinate is found to be associated with 2 points, the corresponding `y` values are calculated, together with proof of congruence, with the results printed to the screen in the base specified for `x`.The process is described below.
 
 In order for a given `x` value to be associated with a pair of valid points, the value of `x^3 + 7` must be a quadratic residue modulo the Secp256k1 prime.
 
