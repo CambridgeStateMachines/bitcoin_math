@@ -2572,6 +2572,8 @@ void secp256k1_get_points_from_valid_x(const SECP256K1 secp256k1, APT *p1, APT *
         bnz_subtract_bnz(&p2->y, &secp256k1.p, &p1->y); // y2 = secp256k1.p - y1
     }
 
+    getchar();
+
     bnz_free(&rhs);
     bnz_free(&sqrt_exp);
 }
