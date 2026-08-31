@@ -28,7 +28,7 @@ Euler's criterion states that a number `a` will be a quadratic residue modulo a 
 
 The new function in `bitcoin_math.exe` applies Euler's criterion to the specified `x` value by calculating `(x^3 + 7)^((Secp256k1 - 1) / 2)` using a pre-calculated value of `(Secp256k1.p - 1) / 2`. If the result confirms that `x` is associated with a pair of valid points, the `y` value of the first point, `y1`, is calculated from the formula `y1 = (y1^2)^((Secp256k1.p + 1) / 4) mod Secp256k1.p`, bearing in mind that `y1^2 mod Secp256k1.p` == `x^3 + 7 mod Secp256k1.p`. The second `y` value, `y2` is the negation of `y1` modulo the Secp256k1 prime i.e. `y2 = Secp256k1.p - y1`.
 
-There are approximately (Secp256k1.p - 1) / 2 quadratic residues and (Secp256k1.p + 1) / 2 quadratic non-residues. Given the fact that each quadratic residue is associated with two points on the Secp256k1 curve, it is no surprise that the order of the Secp256k1 curve is close to the value of the Secp256k1 prime.
+There are (Secp256k1.p + 1) / 2 quadratic residues modulo Secp256k1.p and (Secp256k1.p - 1) / 2 quadratic non-residues modulo Secp256k1.p. Given the fact that each quadratic residue is associated with two points on the Secp256k1 curve, it is no surprise that the order of the Secp256k1 curve (i.e the total number of points) is close to the value of the Secp256k1 prime.
 
 Notes on ECDSA signing and verification functions
 -------------------------------------------------

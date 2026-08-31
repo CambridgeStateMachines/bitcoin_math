@@ -923,7 +923,7 @@ void hmac_sha512(const unsigned char *key, unsigned int key_size, const unsigned
 
 /* BNZ DEFINES */
 
-typedef struct {
+typedef struct { // arbitrary precision signed integer type, initialise using bnz_init() after declaration, and free using bnz_free() after use
     size_t sign;
     size_t size;
     uint8_t *digits;
@@ -2076,21 +2076,21 @@ uint8_t g_doublings_data[16384] = {152, 23, 248, 22, 91, 129, 242, 89, 217, 40, 
 
 /* SECP256K1 FUNCTIONS */
 
-SECP256K1 secp256k1_init(void);
-void secp256k1_populate_G_doublings_mod_p(APT *);
-void secp256k1_free(SECP256K1);
+SECP256K1 secp256k1_init(void); // initiate secp256k1 curve, y^2 = (x^3 + 7) mod secp256k1.p
+void secp256k1_populate_G_doublings_mod_p(APT *); // populate the 1D array of APT affine point x,y values in the secp256k1 struct
+void secp256k1_free(SECP256K1); // free secp256k1 curve resources
 void secp256k1_get_lhs(const SECP256K1, bnz_t *, const bnz_t *); // given y, calculate y^2 mod secp256k1.p
 void secp256k1_get_rhs(const SECP256K1, bnz_t *, const bnz_t *); // given x, calculate x^3 + 7 mod secp256k1.p
 void secp256k1_point_addition(const SECP256K1, const APT *, const APT *, APT *); // r = (p + q) mod secp256k1.p
 void secp256k1_point_doubling(const SECP256K1, const APT *, APT *); // r = 2p mod secp256k1.p
 void secp256k1_scalar_multiplication(const SECP256K1, const APT *, const bnz_t *, APT *); // r = q * m mod secp256k1.p
-void get_affine_from_jacobian(const SECP256K1, const JPT *, APT *);
-void secp256k1_jacobian_point_addition(const SECP256K1, const JPT *, const APT *, JPT *);
-void secp256k1_jacobian_scalar_multiplication(const SECP256K1, const bnz_t *, APT *);
-bool secp256k1_valid_point(const SECP256K1, const APT);
-bool secp256k1_valid_multiplier(const SECP256K1, const bnz_t *);
-bool secp256k1_valid_x(const SECP256K1, const bnz_t *);
-void secp256k1_get_points_from_valid_x(const SECP256K1, APT *, APT *, const bnz_t *);
+void get_affine_from_jacobian(const SECP256K1, const JPT *, APT *); // convert extended Jacobian x,y,z coordinates back to standard affine x,y coordinates
+void secp256k1_jacobian_point_addition(const SECP256K1, const JPT *, const APT *, JPT *); // r = (p + q) mod secp256k1.p
+void secp256k1_jacobian_scalar_multiplication(const SECP256K1, const bnz_t *, APT *); // r = (secp256k1.G * m) mod secp256k1.p using extended Jacobian x,y,z points derived from standard affine x,y points
+bool secp256k1_valid_point(const SECP256K1, const APT); // check that a given xy point is on Secp256k1 by confirming that y^2 mod Secp256k1.p = x^3 + 7 mod Secp256k1.p
+bool secp256k1_valid_multiplier(const SECP256K1, const bnz_t *); // valid multiplier range 0 < k < secp256k1.n
+bool secp256k1_valid_x(const SECP256K1, const bnz_t *); // for a given x, use Euler's criterion to check whether x^3 + 7 is a quadratic residue modulo secp256k1.p
+void secp256k1_get_points_from_valid_x(const SECP256K1, APT *, APT *, const bnz_t *); // given a valid x, get xy coordinates of p1 and p2
 
 SECP256K1 secp256k1_init() // initiate secp256k1 curve, y^2 = (x^3 + 7) mod secp256k1.p
 {
@@ -2122,7 +2122,7 @@ SECP256K1 secp256k1_init() // initiate secp256k1 curve, y^2 = (x^3 + 7) mod secp
     return secp256k1;
 }
 
-void secp256k1_populate_G_doublings_mod_p(APT *G_doublings_mod_p)
+void secp256k1_populate_G_doublings_mod_p(APT *G_doublings_mod_p) // populate the 1D array of APT affine point x,y values in the secp256k1 struct
 {
     int i;
 
@@ -2136,7 +2136,7 @@ void secp256k1_populate_G_doublings_mod_p(APT *G_doublings_mod_p)
     }
 }
 
-void secp256k1_free(SECP256K1 secp256k1) // free secp256k1 curve
+void secp256k1_free(SECP256K1 secp256k1) // free secp256k1 curve resources
 {
     int i;
 
@@ -2357,7 +2357,7 @@ void secp256k1_scalar_multiplication(const SECP256K1 secp256k1, const APT *q, co
     bnz_free(&qq.y);
 }
 
-void get_affine_from_jacobian(const SECP256K1 secp256k1, const JPT *jpt, APT *apt)
+void get_affine_from_jacobian(const SECP256K1 secp256k1, const JPT *jpt, APT *apt) // convert extended Jacobian x,y,z coordinates back to standard affine x,y coordinates
 {
     bnz_t z_inv, z_inv_2, z_inv_3; // 1/z, 1/z^2, 1/z^3
 
@@ -2368,15 +2368,15 @@ void get_affine_from_jacobian(const SECP256K1 secp256k1, const JPT *jpt, APT *ap
     bnz_modular_multiplicative_inverse(&z_inv, &jpt->z, &secp256k1.p); // z_inv = modular_multiplicative_inverse(jpt.z)
     bnz_mod_bnz(&z_inv, &z_inv, &secp256k1.p); // z_inv = 1/z
     bnz_multiply_bnz(&z_inv_2, &z_inv, &z_inv); // z_inv_2 = 1/z^2
-    bnz_mod_bnz(&z_inv_2, &z_inv_2, &secp256k1.p);
+    bnz_mod_bnz(&z_inv_2, &z_inv_2, &secp256k1.p); // z_inv_2 = 1/z^2 mod secp256k1
     bnz_multiply_bnz(&z_inv_3, &z_inv_2, &z_inv); // z_inv_3 = 1/z^3
-    bnz_mod_bnz(&z_inv_3, &z_inv_3, &secp256k1.p);
+    bnz_mod_bnz(&z_inv_3, &z_inv_3, &secp256k1.p); // z_inv_3 = 1/z^3 mod secp256k1
 
     bnz_multiply_bnz(&apt->x, &jpt->x, &z_inv_2); // apt.x = jpt.x / jpt.z^2
-    bnz_mod_bnz(&apt->x, &apt->x, &secp256k1.p);
+    bnz_mod_bnz(&apt->x, &apt->x, &secp256k1.p); // apt.x = jpt.x / jpt.z^2 mod secp256k1
 
     bnz_multiply_bnz(&apt->y, &jpt->y, &z_inv_3); // apt.y = jpt.y / jpt.z^3
-    bnz_mod_bnz(&apt->y, &apt->y, &secp256k1.p);
+    bnz_mod_bnz(&apt->y, &apt->y, &secp256k1.p); // apt.y = jpt.y / jpt.z^3 mod secp256k1
 
     bnz_free(&z_inv); // free resources
     bnz_free(&z_inv_2);
@@ -2472,7 +2472,7 @@ void secp256k1_jacobian_point_addition(const SECP256K1 secp256k1, const JPT *p, 
     bnz_free(&t4);
 }
 
-void secp256k1_jacobian_scalar_multiplication(const SECP256K1 secp256k1, const bnz_t *m, APT *r) // r = (secp256k1.G * m) mod secp256k1.p
+void secp256k1_jacobian_scalar_multiplication(const SECP256K1 secp256k1, const bnz_t *m, APT *r) // r = (secp256k1.G * m) mod secp256k1.p using extended Jacobian x,y,z points derived from standard affine x,y points
 {
     size_t i, bits = 8 * m->size;
 
@@ -2483,8 +2483,8 @@ void secp256k1_jacobian_scalar_multiplication(const SECP256K1 secp256k1, const b
     bnz_init(&tmp.z);
 
     for (i = 0; i < bits; i++) { // from lsb to msb
-        if (bnz_bit_set(m, i) == true) {
-            secp256k1_jacobian_point_addition(secp256k1, &tmp, &secp256k1.G_doublings_mod_p[i], &tmp); // if the current bit is set, add the corresponding Secp256k1.G doubling value to the running total
+        if (bnz_bit_set(m, i) == true) { // if the current bit is set...
+            secp256k1_jacobian_point_addition(secp256k1, &tmp, &secp256k1.G_doublings_mod_p[i], &tmp); // ...add the corresponding Secp256k1.G doubling value to the running total
         }
     }
     get_affine_from_jacobian(secp256k1, &tmp, r); // convert final JPT into the corresponding APT via the formulae: APT.x = JPT.x / JPT.z^2 and APT.y = JPT.y / JPT.z^3
@@ -2494,7 +2494,7 @@ void secp256k1_jacobian_scalar_multiplication(const SECP256K1 secp256k1, const b
     bnz_free(&tmp.z);
 }
 
-bool secp256k1_valid_point(const SECP256K1 secp256k1, const APT apt) // check that a given xy point is on Secp256k1 by confirming that y^2 mod Secp256k1.p = x^3 + 7 mod Secp256k1.p
+bool secp256k1_valid_point(const SECP256K1 secp256k1, const APT apt) // confirm whether a given xy point is on Secp256k1 by confirming that y^2 mod Secp256k1.p = x^3 + 7 mod Secp256k1.p
 {
     int32_t cmp;
     bnz_t lhs, rhs; // left hand side and right hand side of the equation
@@ -2517,7 +2517,7 @@ bool secp256k1_valid_point(const SECP256K1 secp256k1, const APT apt) // check th
     }
 }
 
-bool secp256k1_valid_multiplier(const SECP256K1 secp256k1, const bnz_t *a)
+bool secp256k1_valid_multiplier(const SECP256K1 secp256k1, const bnz_t *a) // valid multiplier range 0 < k < secp256k1.n
 {
     if (bnz_cmp_i32(a, 0) == 1 && bnz_cmp_bnz(a, &secp256k1.n) == -1) { // a is in the range 0 < k < secp256k1.n
         return true;
@@ -2526,7 +2526,7 @@ bool secp256k1_valid_multiplier(const SECP256K1 secp256k1, const bnz_t *a)
     }
 }
 
-bool secp256k1_valid_x(const SECP256K1 secp256k1, const bnz_t *x)
+bool secp256k1_valid_x(const SECP256K1 secp256k1, const bnz_t *x) // for a given x, use Euler's criterion to determine whether x^3 + 7 is a quadratic residue modulo secp256k1.p
 {
     bool result;
     const char *euler_criterion_exp_str = "57896044618658097711785492504343953926634992332820282019728792003954417335831"; // (secp256k1.p - 1) / 2
@@ -2569,7 +2569,7 @@ void secp256k1_get_points_from_valid_x(const SECP256K1 secp256k1, APT *p1, APT *
 
     if (secp256k1_valid_x(secp256k1, x) == true) {
         bnz_mod_pow(&p1->y, &rhs, &sqrt_exp, &secp256k1.p); // y1 mod secp256k1.p = (rhs^((secp256k1.p + 1) / 4)) mod secp256k1.p
-        bnz_subtract_bnz(&p2->y, &secp256k1.p, &p1->y); // y2 = secp256k1.p - y
+        bnz_subtract_bnz(&p2->y, &secp256k1.p, &p1->y); // y2 = secp256k1.p - y1
     }
 
     bnz_free(&rhs);
@@ -2773,7 +2773,7 @@ uint8_t *get_mnemonic_phrase(uint32_t *wd_ids) // generate mnemonic string of 24
     return(mnemonic_str);
 }
 
-uint8_t *get_salt(const char *passphrase) // generate salt string from passphrase
+uint8_t *get_salt(const char *passphrase) // generate salt string from a combination of "mnemonic", an optional passphrase, and the number 1 formatted as a uint32_t
 {
     uint8_t *salt = NULL;
 
@@ -2803,7 +2803,7 @@ void get_seed_from_mnemonic_phrase(bnz_t *seed, const char *mnemonic, const char
     hmac_sha512(mnemonic, strlen(mnemonic), salt, strlen("mnemonic") + strlen(passphrase) + sizeof(uint32_t), tmp, 64); // tmp = first hmac(mnemonic, salt)
     memcpy(seed->digits, tmp, 64); // set seed = result of first hmac process
 
-    for (i = 1; i < 2048; i++) { // repeat 2048 times
+    for (i = 1; i < 2048; i++) { // repeat a further 2047 times
         hmac_sha512(mnemonic, strlen(mnemonic), tmp, 64, tmp, 64);  // tmp = hmac(mnemonic, tmp)
         for (j = 0; j < 64; j++) {
             seed->digits[j] = tmp[j] ^ seed->digits[j]; // xor each byte of current seed.digits with corresponding byte of current tmp
@@ -4805,7 +4805,7 @@ void menu_4_functions(const char *version)
     }
 }
 
-void menu_4_1_validate_mnemonic_phrase_checksum(const char *version) // check validity of entropy checksum from mnemonic phrase comprising 24 BIP39 words
+void menu_4_1_validate_mnemonic_phrase_checksum(const char *version) // determine validity of entropy checksum from mnemonic phrase comprising 24 BIP39 words
 {
     uint8_t chk;
     char mnemonic_str[257];
