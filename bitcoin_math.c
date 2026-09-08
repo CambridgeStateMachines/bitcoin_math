@@ -1339,11 +1339,11 @@ void bnz_print(const bnz_t *a, int32_t base, const char *txt) // print a in a gi
 
 void bnz_free(bnz_t *a) // free bnz_t resources
 {
-    a->sign = 0;
-    a->size = 0;
     memset(a->digits, 0, a->size); // zero bytes of a.digits
-    free(a->digits); // free pointer
+    free(a->digits); // free a.digits
     a->digits = NULL;
+    a->size = 0;
+    a->sign = 0;
 }
 
 int8_t get_digit(const char *str, size_t idx, uint8_t base) // return numerical value of char at index idx of str which represents a number in the given base and in big endian order
@@ -2477,8 +2477,7 @@ void get_affine_from_jacobian(const SECP256K1 secp256k1, const JPT *jpt, APT *ap
     bnz_init(&z_inv_2);
     bnz_init(&z_inv_3);
 
-    bnz_modular_multiplicative_inverse(&z_inv, &jpt->z, &secp256k1.p); // z_inv = modular_multiplicative_inverse(jpt.z)
-    bnz_mod_bnz(&z_inv, &z_inv, &secp256k1.p); // z_inv = 1/z
+    bnz_modular_multiplicative_inverse(&z_inv, &jpt->z, &secp256k1.p); // z_inv = 1 / jpt.z mod secp256k1.p
     bnz_multiply_bnz(&z_inv_2, &z_inv, &z_inv); // z_inv_2 = 1/z^2
     bnz_mod_bnz(&z_inv_2, &z_inv_2, &secp256k1.p); // z_inv_2 = 1/z^2 mod secp256k1
     bnz_multiply_bnz(&z_inv_3, &z_inv_2, &z_inv); // z_inv_3 = 1/z^3
@@ -2497,25 +2496,25 @@ void get_affine_from_jacobian(const SECP256K1 secp256k1, const JPT *jpt, APT *ap
 
 bool secp256k1_valid_point(const SECP256K1 secp256k1, const APT apt) // confirm whether a given xy point is on Secp256k1 by confirming that y^2 mod Secp256k1.p = x^3 + 7 mod Secp256k1.p
 {
-    int32_t cmp;
-    bnz_t lhs, rhs; // left hand side and right hand side of the equation
+    bool result;
+    bnz_t lhs, rhs; // left hand side and right hand side of the equation y^2 = x^3 + 7 mod secp256k1.p
 
     bnz_init(&lhs); // initiate lhs and rhs
     bnz_init(&rhs);
 
-    secp256k1_get_rhs(secp256k1, &rhs, &apt.x);
-    secp256k1_get_lhs(secp256k1, &lhs, &apt.y);
+    secp256k1_get_rhs(secp256k1, &rhs, &apt.x); // rhs = apt.x^3 + 7 mod secp256k1.p
+    secp256k1_get_lhs(secp256k1, &lhs, &apt.y); // lhs = apt.y^2 mod secp256k1.p
 
-    cmp = bnz_cmp_bnz(&lhs, &rhs); // compare lhs and rhs
+    if (bnz_cmp_bnz(&lhs, &rhs) == 0) { // lhs == rhs
+        result = true;
+    } else { // lhs != rhs
+        result = false;
+    }
 
     bnz_free(&lhs); // free resources
     bnz_free(&rhs);
 
-    if (cmp == 0) { // lhs == rhs
-        return true;
-    } else { // lhs != rhs
-        return false;
-    }
+    return result;
 }
 
 bool secp256k1_valid_multiplier(const SECP256K1 secp256k1, const bnz_t *a) // valid multiplier range 0 < k < secp256k1.n
@@ -5853,7 +5852,7 @@ void menu_5_file_hash_functions(const char *version)
 
 int main()
 {
-    static char *version = "bitcoin_math\nv0.29, 2026-08-29";
+    static char *version = "bitcoin_math\nv0.30, 2026-09-08";
     int menu, running = 1;
     while (running) {
         system("cls");
